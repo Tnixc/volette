@@ -2,6 +2,7 @@ use super::tokens::{Span, Token, TokenKind};
 mod error;
 use error::LexError;
 use string_interner::symbol::SymbolUsize;
+mod numbers;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberBase {
@@ -77,74 +78,17 @@ impl Lexer {
                     // It's a number!
                     if float {
                         if base != NumberBase::Decimal {
-                            let err = LexError::NonIntegerBase {
-                                base: base,
+                            self.errors.push(LexError::NonIntegerBase {
+                                base,
                                 span: self.span.clone(),
-                            };
-                            self.errors.push(err);
-                            ()
-                        }
-                        let n = self.current_str.parse::<f64>().map_err(|e| {
-                            let e = LexError::InvalidFloat {
-                                value: self.current_str.clone(),
-                                span: self.span.clone(),
-                                source: e,
-                            };
-                            self.errors.push(e);
-                            ()
-                        });
-                        if let Ok(n) = n {
+                            });
+                        } else if let Ok(n) = self.parse_float() {
                             self.tokens
                                 .push(Token::new(TokenKind::FloatLiteral(n), self.span.clone()));
                         }
                     } else {
                         self.span.end -= 1;
-                        let n = match base {
-                            NumberBase::Decimal => self.current_str.parse::<i64>().map_err(|e| {
-                                let err = LexError::InvalidInteger {
-                                    value: self.current_str.clone(),
-                                    span: self.span.clone(),
-                                    source: e,
-                                };
-                                self.errors.push(err);
-                                ()
-                            }),
-                            NumberBase::Hex => {
-                                i64::from_str_radix(&self.current_str, 16).map_err(|e| {
-                                    let err = LexError::InvalidInteger {
-                                        value: self.current_str.clone(),
-                                        span: self.span.clone(),
-                                        source: e,
-                                    };
-                                    self.errors.push(err);
-                                    ()
-                                })
-                            }
-
-                            NumberBase::Binary => i64::from_str_radix(&self.current_str, 2)
-                                .map_err(|e| {
-                                    let err = LexError::InvalidInteger {
-                                        value: self.current_str.clone(),
-                                        span: self.span.clone(),
-                                        source: e,
-                                    };
-                                    self.errors.push(err);
-                                    ()
-                                }),
-
-                            NumberBase::Octal => {
-                                i64::from_str_radix(&self.current_str, 8).map_err(|e| {
-                                    let err = LexError::InvalidInteger {
-                                        value: self.current_str.clone(),
-                                        span: self.span.clone(),
-                                        source: e,
-                                    };
-                                    self.errors.push(err);
-                                    ()
-                                })
-                            }
-                        };
-                        if let Ok(n) = n {
+                        if let Ok(n) = self.parse_int_with_base(base) {
                             self.tokens
                                 .push(Token::new(TokenKind::IntLiteral(n), self.span.clone()));
                         }
