@@ -3,7 +3,7 @@ use crate::compiler::tokens::{Token, TokenKind};
 use super::{error::LexError, Lexer, LexerState, NumberBase};
 
 impl Lexer {
-    pub fn lex_number(&mut self, c: char, _window: &str, float: bool, negative: bool, base: NumberBase) -> () {
+    pub fn lex_number(&mut self, c: char, window: &str, float: bool, negative: bool, base: NumberBase) -> () {
         if self.current_str == "0" && (c == 'x' || c == 'b' || c == 'o') {
             self.state = LexerState::Number(
                 float,
@@ -12,52 +12,100 @@ impl Lexer {
                     'x' => NumberBase::Hex,
                     'b' => NumberBase::Binary,
                     'o' => NumberBase::Octal,
-                    _ => unreachable!(),
+                    _ => return,
                 },
             );
-        } else if c == '.' {
-            self.state = LexerState::Number(true, negative, base);
-            self.current_str.push(c);
-        } else if c == '_' {
-            // ignore
-        } else if base == NumberBase::Hex && c.is_numeric()
-            || ['a', 'b', 'c', 'd', 'e', 'f'].contains(&c.to_ascii_lowercase())
-        {
-            self.current_str.push(c);
-        } else if base == NumberBase::Binary && ['0', '1'].contains(&c) {
-            self.current_str.push(c);
-        } else if base == NumberBase::Octal && ['0', '1', '2', '3', '4', '5', '6', '7'].contains(&c) {
-            self.current_str.push(c);
-        } else if base == NumberBase::Decimal && c.is_numeric() {
-            self.current_str.push(c);
-        } else {
-            // It's a number!
-            if float {
-                if base != NumberBase::Decimal {
-                    self.errors.push(LexError::NonIntegerBase {
-                        base,
-                        span: self.span.clone(),
-                    });
-                } else if let Ok(mut n) = self.lex_float() {
-                    if negative {
-                        n = -n;
-                    }
-                    self.tokens
-                        .push(Token::new(TokenKind::FloatLiteral(n), self.span.clone()));
-                }
-            } else {
-                self.span.end -= 1;
-                if let Ok(mut n) = self.lex_int(base) {
-                    if negative {
-                        n = -n;
-                    }
-                    self.tokens
-                        .push(Token::new(TokenKind::IntLiteral(n), self.span.clone()));
-                }
-            }
-            self.state = LexerState::Normal;
-            self.current_str.clear();
+            return;
         }
+
+        let should_add_char = if c == '.' && !float && base == NumberBase::Decimal {
+            self.state = LexerState::Number(true, negative, base);
+            true
+        } else if c == '_' {
+            false
+        } else if base == NumberBase::Hex
+            && (c.is_numeric() || ['a', 'b', 'c', 'd', 'e', 'f'].contains(&c.to_ascii_lowercase()))
+        {
+            true
+        } else if base == NumberBase::Binary && ['0', '1'].contains(&c) {
+            true
+        } else if base == NumberBase::Octal && ['0', '1', '2', '3', '4', '5', '6', '7'].contains(&c) {
+            true
+        } else if base == NumberBase::Decimal && c.is_numeric() {
+            true
+        } else {
+            false
+        };
+
+        if should_add_char {
+            self.current_str.push(c);
+
+            let next_char = window.chars().nth(1);
+            let should_end = match next_char {
+                Some(next_c) => {
+                    if c == '0' && (next_c == 'x' || next_c == 'b' || next_c == 'o') {
+                        return;
+                    }
+                    if base != NumberBase::Decimal && next_c == '.' {
+                        let err = LexError::NonIntegerBase {
+                            base: base,
+                            span: self.span.clone(),
+                        };
+                        self.errors.push(err);
+                        return;
+                    }
+                    match base {
+                        NumberBase::Hex => {
+                            !(c.is_numeric() || ['a', 'b', 'c', 'd', 'e', 'f', '_'].contains(&c.to_ascii_lowercase()))
+                        }
+                        NumberBase::Binary => !['0', '1', '_'].contains(&next_c),
+                        NumberBase::Octal => !['0', '1', '2', '3', '4', '5', '6', '7', '_'].contains(&next_c),
+                        NumberBase::Decimal => {
+                            if float {
+                                !next_c.is_numeric() && next_c != '_'
+                            } else {
+                                !next_c.is_numeric() && next_c != '_' && next_c != '.'
+                            }
+                        }
+                    }
+                }
+                None => true,
+            };
+
+            if should_end {
+                self.finalize_number(float, negative, base);
+            }
+        } else {
+            self.finalize_number(float, negative, base);
+            self.span.end -= 1;
+        }
+    }
+
+    fn finalize_number(&mut self, float: bool, negative: bool, base: NumberBase) {
+        if float {
+            if base != NumberBase::Decimal {
+                self.errors.push(LexError::NonIntegerBase {
+                    base,
+                    span: self.span.clone(),
+                });
+            } else if let Ok(mut n) = self.lex_float() {
+                if negative {
+                    n = -n;
+                }
+                self.tokens
+                    .push(Token::new(TokenKind::FloatLiteral(n), self.span.clone()));
+            }
+        } else {
+            if let Ok(mut n) = self.lex_int(base) {
+                if negative {
+                    n = -n;
+                }
+                self.tokens
+                    .push(Token::new(TokenKind::IntLiteral(n), self.span.clone()));
+            }
+        }
+        self.state = LexerState::Normal;
+        self.current_str.clear();
     }
 
     pub fn lex_float(&mut self) -> Result<f64, ()> {
@@ -109,7 +157,7 @@ mod tests {
         let contents = "-123 2 -0xff 3.14 -2.71 0b1111 0o234";
         let mut lexer = Lexer::new(contents, file);
 
-        let chars: Vec<char> = contents.chars().chain(std::iter::once(' ')).collect();
+        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         for (i, &ch) in chars.iter().enumerate() {
             lexer.next(ch, &contents[i..]);
         }
@@ -128,10 +176,10 @@ mod tests {
     fn test_lex_float_with_base_error() {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
-        let contents = "0x12.3g";
+        let contents = "0x12.3";
         let mut lexer = Lexer::new(contents, file);
 
-        let chars: Vec<char> = contents.chars().chain(std::iter::once(' ')).collect();
+        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         for (i, &ch) in chars.iter().enumerate() {
             lexer.next(ch, &contents[i..]);
         }

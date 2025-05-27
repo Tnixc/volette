@@ -65,7 +65,7 @@ impl Lexer {
             LexerState::Number(float, negative, base) => {
                 self.lex_number(c, window, float, negative, base);
             }
-            _ => unreachable!(),
+            _ => todo!(),
         }
     }
 }

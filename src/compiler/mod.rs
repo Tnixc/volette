@@ -13,7 +13,7 @@ pub fn build(file: &Path) {
     let mut lexer = Lexer::new(&contents, interner.get_or_intern(file.to_str().unwrap()));
 
     let mut window_buffer = String::with_capacity(10);
-    let chars: Vec<char> = contents.chars().chain(std::iter::once(' ')).collect();
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
     for (i, &ch) in chars.iter().enumerate() {
         window_buffer.clear();
         let window_end = (i + 10).min(chars.len());
