@@ -14,9 +14,12 @@ pub enum NumberBase {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LexerState {
-    Number(bool, NumberBase),
+    Number(bool, bool, NumberBase),
     String,
     Normal,
+    Comment,
+    MultilineComment,
+    End,
 }
 
 #[derive(Debug)]
@@ -39,15 +42,18 @@ impl Lexer {
         }
     }
 
-    pub fn next(&mut self, c: char) -> () {
+    pub fn next(&mut self, c: char, window: &str) -> () {
         self.span.end += 1;
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() {
-                    self.state = LexerState::Number(false, NumberBase::Decimal);
+                if c.is_numeric() || c == '-' {
+                    let negative = c == '-';
+                    self.state = LexerState::Number(false, negative, NumberBase::Decimal);
                     self.span.start = self.span.end;
-                    self.current_str.push(c);
+                    if !negative {
+                        self.current_str.push(c);
+                    }
                 } else if c == '"' {
                     self.state = LexerState::String;
                 } else {
@@ -56,46 +62,8 @@ impl Lexer {
                     }
                 }
             }
-            LexerState::Number(float, base) => {
-                if self.current_str == "0" && (c == 'x' || c == 'b' || c == 'o') {
-                    self.state = LexerState::Number(
-                        float,
-                        match c {
-                            'x' => NumberBase::Hex,
-                            'b' => NumberBase::Binary,
-                            'o' => NumberBase::Octal,
-                            _ => unreachable!(),
-                        },
-                    );
-                } else if c.is_numeric() {
-                    self.current_str.push(c);
-                } else if c == '.' {
-                    self.state = LexerState::Number(true, base);
-                    self.current_str.push(c);
-                } else if c == '_' {
-                    // ignore
-                } else {
-                    // It's a number!
-                    if float {
-                        if base != NumberBase::Decimal {
-                            self.errors.push(LexError::NonIntegerBase {
-                                base,
-                                span: self.span.clone(),
-                            });
-                        } else if let Ok(n) = self.parse_float() {
-                            self.tokens
-                                .push(Token::new(TokenKind::FloatLiteral(n), self.span.clone()));
-                        }
-                    } else {
-                        self.span.end -= 1;
-                        if let Ok(n) = self.parse_int_with_base(base) {
-                            self.tokens
-                                .push(Token::new(TokenKind::IntLiteral(n), self.span.clone()));
-                        }
-                    }
-                    self.state = LexerState::Normal;
-                    self.current_str.clear();
-                }
+            LexerState::Number(float, negative, base) => {
+                self.lex_number(c, window, float, negative, base);
             }
             _ => unreachable!(),
         }

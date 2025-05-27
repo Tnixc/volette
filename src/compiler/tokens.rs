@@ -57,11 +57,28 @@ pub enum Punctuation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Type {
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
+    F32,
+    F64,
+    Bool,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
     StringLiteral(SymbolUsize),
     Keyword(Keyword),
+    TypeLiteral(Type),
     Punctuation(Punctuation),
     Identifier(SymbolUsize),
 }
@@ -77,8 +94,8 @@ pub struct Span {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    kind: TokenKind,
-    span: Span,
+    pub kind: TokenKind,
+    pub span: Span,
 }
 
 impl Token {
@@ -89,11 +106,6 @@ impl Token {
 
 impl Span {
     pub fn new(file: SymbolUsize, line: usize, start: usize, end: usize) -> Self {
-        Self {
-            file,
-            line,
-            start,
-            end,
-        }
+        Self { file, line, start, end }
     }
 }

@@ -12,7 +12,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(name = "build", about = "build <file> | Build a volette program into a binary")]
     Build { file: PathBuf },
+    #[command(name = "run", about = "run <file> | Run a volette program")]
     Run { file: PathBuf },
 }
 
