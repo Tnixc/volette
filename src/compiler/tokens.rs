@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use string_interner::symbol::SymbolUsize;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,7 +31,7 @@ pub enum Punctuation {
     Dot,
     Colon,
     Semicolon,
-    And,
+    AmpAmp,
     Bang,
 
     Plus,
@@ -50,7 +48,8 @@ pub enum Punctuation {
     GreaterThan,
     GreaterThanOrEq,
 
-    Ampersand,
+    Amp,
+    Pipe,
     PipePipe,
 }
 

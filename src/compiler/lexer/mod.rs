@@ -1,4 +1,4 @@
-use super::tokens::{Span, Token, TokenKind};
+use super::tokens::{Span, Token};
 mod error;
 use error::LexError;
 use string_interner::symbol::SymbolUsize;
@@ -43,14 +43,14 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize(&mut self, chars: Vec<char>) -> () {
+    pub fn tokenize(&mut self, chars: Vec<char>) {
         let mut iter = chars.iter().enumerate();
 
         while let Some((i, &ch)) = iter.next() {
             let window_end = (i + 10).min(chars.len());
             let window = &chars[i..window_end];
 
-            let skip_next = self.next(ch, &window);
+            let skip_next = self.next(ch, window);
             if skip_next {
                 iter.next();
             }
