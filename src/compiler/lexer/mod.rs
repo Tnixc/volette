@@ -3,6 +3,7 @@ mod error;
 use error::LexError;
 use string_interner::symbol::SymbolUsize;
 mod numbers;
+mod punctuation;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberBase {
@@ -42,28 +43,45 @@ impl Lexer {
         }
     }
 
-    pub fn next(&mut self, c: char, window: &str) -> () {
+    pub fn tokenize(&mut self, chars: Vec<char>) -> () {
+        let mut iter = chars.iter().enumerate();
+
+        while let Some((i, &ch)) = iter.next() {
+            let window_end = (i + 10).min(chars.len());
+            let window = &chars[i..window_end];
+
+            let skip_next = self.next(ch, &window);
+            if skip_next {
+                iter.next();
+            }
+        }
+    }
+
+    pub fn next(&mut self, c: char, window: &[char]) -> bool {
         self.span.end += 1;
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() || c == '-' {
+                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_numeric())) {
                     let negative = c == '-';
                     self.state = LexerState::Number(false, negative, NumberBase::Decimal);
                     self.span.start = self.span.end;
                     if !negative {
                         self.current_str.push(c);
                     }
-                } else if c == '"' {
-                    self.state = LexerState::String;
+                    false
+                } else if c == '\n' {
+                    self.span.line += 1;
+                    self.span.start = 0;
+                    self.span.end = 0;
+                    false
                 } else {
-                    if c == '\n' {
-                        self.span.line += 1;
-                    }
+                    self.lex_punctuation(c, window)
                 }
             }
             LexerState::Number(float, negative, base) => {
                 self.lex_number(c, window, float, negative, base);
+                false
             }
             _ => todo!(),
         }

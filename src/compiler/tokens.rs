@@ -33,27 +33,25 @@ pub enum Punctuation {
     Dot,
     Colon,
     Semicolon,
-    Ampersand,
+    And,
+    Bang,
 
     Plus,
     Minus, // Binop and Unary
     Star,
-    Pow,
+    StarStar,
     Slash,
     Percent,
-    Equal,
-    EqualEqual,
-    NotEqual,
+    Eq,
+    EqEq,
+    NotEq,
     LessThan, // generics ahh
-    LessThanOrEqual,
+    LessThanOrEq,
     GreaterThan,
-    GreaterThanOrEqual,
+    GreaterThanOrEq,
 
-    // Logical operators
-    And,
-    Or,
-    Xor,
-    Not, // Unary
+    Ampersand,
+    PipePipe,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

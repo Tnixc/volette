@@ -3,7 +3,7 @@ use crate::compiler::tokens::{Token, TokenKind};
 use super::{error::LexError, Lexer, LexerState, NumberBase};
 
 impl Lexer {
-    pub fn lex_number(&mut self, c: char, window: &str, float: bool, negative: bool, base: NumberBase) -> () {
+    pub fn lex_number(&mut self, c: char, window: &[char], float: bool, negative: bool, base: NumberBase) -> () {
         if self.current_str == "0" && (c == 'x' || c == 'b' || c == 'o') {
             self.state = LexerState::Number(
                 float,
@@ -40,13 +40,13 @@ impl Lexer {
         if should_add_char {
             self.current_str.push(c);
 
-            let next_char = window.chars().nth(1);
+            let next_char = window.get(1);
             let should_end = match next_char {
                 Some(next_c) => {
-                    if c == '0' && (next_c == 'x' || next_c == 'b' || next_c == 'o') {
+                    if c == '0' && (*next_c == 'x' || *next_c == 'b' || *next_c == 'o') {
                         return;
                     }
-                    if base != NumberBase::Decimal && next_c == '.' {
+                    if base != NumberBase::Decimal && *next_c == '.' {
                         let err = LexError::NonIntegerBase {
                             base: base,
                             span: self.span.clone(),
@@ -62,9 +62,9 @@ impl Lexer {
                         NumberBase::Octal => !['0', '1', '2', '3', '4', '5', '6', '7', '_'].contains(&next_c),
                         NumberBase::Decimal => {
                             if float {
-                                !next_c.is_numeric() && next_c != '_'
+                                !next_c.is_numeric() && *next_c != '_'
                             } else {
-                                !next_c.is_numeric() && next_c != '_' && next_c != '.'
+                                !next_c.is_numeric() && *next_c != '_' && *next_c != '.'
                             }
                         }
                     }
@@ -158,9 +158,7 @@ mod tests {
         let mut lexer = Lexer::new(contents, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-        for (i, &ch) in chars.iter().enumerate() {
-            lexer.next(ch, &contents[i..]);
-        }
+        lexer.tokenize(chars);
 
         assert_eq!(lexer.tokens.len(), 7);
         assert_eq!(lexer.tokens[0].kind, TokenKind::IntLiteral(-123));
@@ -180,9 +178,7 @@ mod tests {
         let mut lexer = Lexer::new(contents, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-        for (i, &ch) in chars.iter().enumerate() {
-            lexer.next(ch, &contents[i..]);
-        }
+        lexer.tokenize(chars);
 
         assert_eq!(lexer.errors.len(), 1);
     }
