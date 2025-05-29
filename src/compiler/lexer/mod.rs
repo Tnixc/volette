@@ -31,7 +31,6 @@ pub struct Lexer {
     pub errors: Vec<LexError>,
     pub cursor: Cursor,
     pub current_str: String,
-    pub token_start: usize,
     pub interner: StringInterner<BucketBackend<SymbolUsize>>,
 }
 
@@ -47,7 +46,6 @@ impl Lexer {
                 col: 0,
             },
             current_str: String::with_capacity(64),
-            token_start: 0, // TODO: refractor number to not use this
             interner,
         }
     }
@@ -71,7 +69,6 @@ impl Lexer {
         match self.state {
             LexerState::Normal => {
                 if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_ascii_digit())) {
-                    self.token_start = self.cursor.col;
                     let negative = c == '-';
                     self.state = LexerState::Number(false, negative, numbers::NumberBase::Decimal);
                     if !negative {
@@ -82,14 +79,12 @@ impl Lexer {
                     self.cursor.col = 0;
                 } else {
                     self.current_str.push(c);
-                    self.token_start = self.cursor.col;
 
                     if !self.check_punctuation()
                         && !self.check_keywords()
                         && !c.is_valid_ident_char()
                         && !self.current_str.trim().is_empty()
                     {
-                        // identifier
                         let identifier = self
                             .current_str
                             .drain(0..self.current_str.len() - 1)
