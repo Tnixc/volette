@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::compiler::tokens::TokenKind;
 
 use super::tokens::{Span, Token};
@@ -87,17 +85,17 @@ impl Lexer {
         match self.state {
             LexerState::Normal => {
                 if (c.is_numeric()
-                    && self.current_chars.len() > 0
-                    && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                    && !self.current_chars.is_empty()
+                    && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
                     || (c == '.'
-                        && self.current_chars.len() > 0
-                        && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                        && !self.current_chars.is_empty()
+                        && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
                     || (c == '_'
-                        && self.current_chars.len() > 0
-                        && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                        && !self.current_chars.is_empty()
+                        && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
                     || ((c == 'x' || c == 'o' || c == 'b')
-                        && self.current_chars.len() > 0
-                        && self.current_chars.get(0).is_some_and(|(_, ch)| *ch == '0'))
+                        && !self.current_chars.is_empty()
+                        && self.current_chars.first().is_some_and(|(_, ch)| *ch == '0'))
                 {
                     let base = match c {
                         'x' => numbers::NumberBase::Hex,
@@ -118,47 +116,45 @@ impl Lexer {
                         && !self.check_type_literals()
                         && !self.check_keywords()
                         && !c.is_valid_ident_char()
-                        && self.current_chars.len() > 0
+                        && !self.current_chars.is_empty()
+                        && self.current_chars.len() > 1
                     {
-                        if self.current_chars.len() > 1 {
-                            let ident_chars = &self.current_chars[..self.current_chars.len() - 1];
-                            if ident_chars
+                        let ident_chars = &self.current_chars[..self.current_chars.len() - 1];
+                        if ident_chars
+                            .iter()
+                            .all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace())
+                        {
+                            let identifier: String = ident_chars
                                 .iter()
-                                .all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace())
-                            {
-                                let identifier: String = ident_chars
-                                    .iter()
-                                    .map(|(_, ch)| *ch)
-                                    .filter(|ch| !ch.is_whitespace())
-                                    .collect();
+                                .map(|(_, ch)| *ch)
+                                .filter(|ch| !ch.is_whitespace())
+                                .collect();
 
-                                let is_single_digit =
-                                    identifier.len() == 1 && identifier.chars().all(|ch| ch.is_numeric());
-                                if !identifier.is_empty() && !is_single_digit {
-                                    let start_pos = ident_chars[0].0;
-                                    let end_pos = ident_chars[ident_chars.len() - 1].0;
-                                    let span = self.create_span_from_positions(start_pos, end_pos);
+                            let is_single_digit = identifier.len() == 1 && identifier.chars().all(|ch| ch.is_numeric());
+                            if !identifier.is_empty() && !is_single_digit {
+                                let start_pos = ident_chars[0].0;
+                                let end_pos = ident_chars[ident_chars.len() - 1].0;
+                                let span = self.create_span_from_positions(start_pos, end_pos);
 
-                                    self.tokens.push(Token::new(
-                                        TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
-                                        span,
-                                    ));
-                                } else if is_single_digit {
-                                    let start_pos = ident_chars[0].0;
-                                    let end_pos = ident_chars[0].0;
-                                    let span = self.create_span_from_positions(start_pos, end_pos);
+                                self.tokens.push(Token::new(
+                                    TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
+                                    span,
+                                ));
+                            } else if is_single_digit {
+                                let start_pos = ident_chars[0].0;
+                                let end_pos = ident_chars[0].0;
+                                let span = self.create_span_from_positions(start_pos, end_pos);
 
-                                    self.tokens.push(Token::new(
-                                        TokenKind::IntLiteral(identifier.parse::<i64>().unwrap()),
-                                        span,
-                                    ));
-                                }
+                                self.tokens.push(Token::new(
+                                    TokenKind::IntLiteral(identifier.parse::<i64>().unwrap()),
+                                    span,
+                                ));
+                            }
 
-                                let current_char = self.current_chars.pop();
-                                self.current_chars.clear();
-                                if let Some(ch) = current_char {
-                                    self.current_chars.push(ch);
-                                }
+                            let current_char = self.current_chars.pop();
+                            self.current_chars.clear();
+                            if let Some(ch) = current_char {
+                                self.current_chars.push(ch);
                             }
                         }
                     }
@@ -172,7 +168,6 @@ impl Lexer {
                 if !self.lex_number(c, float, base) {
                     self.cursor.col -= 1;
                     self.next(c, window);
-                    return;
                 }
             }
             LexerState::Comment => {
