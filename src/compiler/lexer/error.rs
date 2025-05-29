@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::compiler::tokens::Span;
 
-use super::NumberBase;
+use super::numbers::NumberBase;
 
 #[derive(Error, Debug)]
 pub enum LexError {

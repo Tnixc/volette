@@ -15,18 +15,21 @@ enum Commands {
     #[command(name = "build", about = "build <file> | Build a volette program into a binary")]
     Build { file: PathBuf },
     #[command(name = "run", about = "run <file> | Run a volette program")]
-    Run { file: PathBuf },
+    Run,
 }
 
 fn main() {
-    let cli = Cli::parse();
+    // let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Build { file } => {
-            compiler::build(&file);
-        }
-        Commands::Run { file } => {
-            compiler::run(&file);
-        }
-    }
+    let file = PathBuf::from("main.vt");
+    compiler::build(&file);
+    // match cli.command {
+    //     Commands::Build { file } => {
+    //         compiler::build(&file);
+    //     }
+    //     Commands::Run => {
+    //         let file = PathBuf::from("main.vt");
+    //         compiler::build(&file);
+    //     }
+    // }
 }

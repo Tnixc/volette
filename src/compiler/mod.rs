@@ -14,7 +14,15 @@ pub fn build(file: &Path) {
 
     let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
     lexer.tokenize(chars);
-    println!("{:#?}", lexer);
+
+    println!(
+        "{:?}",
+        lexer
+            .tokens
+            .iter()
+            .map(|t| (t.kind, t.span.line, (t.span.start, t.span.end)))
+            .collect::<Vec<_>>()
+    );
 }
 
 pub fn run(file: &Path) {

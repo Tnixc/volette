@@ -6,16 +6,8 @@ mod numbers;
 mod punctuation;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum NumberBase {
-    Decimal,
-    Hex,
-    Binary,
-    Octal,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LexerState {
-    Number(bool, bool, NumberBase),
+    Number(bool, bool, numbers::NumberBase),
     String,
     Normal,
     Comment,
@@ -23,13 +15,20 @@ pub enum LexerState {
     End,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Cursor {
+    pub file: SymbolUsize,
+    pub line: usize,
+    pub col: usize,
+}
+
 pub struct Lexer {
     pub tokens: Vec<Token>,
     pub state: LexerState,
     pub errors: Vec<LexError>,
-    pub span: Span,
+    pub cursor: Cursor,
     pub current_str: String,
+    pub token_start: usize,
 }
 
 impl Lexer {
@@ -38,8 +37,13 @@ impl Lexer {
             tokens: Vec::with_capacity(str.len() / 5),
             state: LexerState::Normal,
             errors: Vec::new(),
-            span: Span::new(path, 1, 0, 0),
-            current_str: String::new(),
+            cursor: Cursor {
+                file: path,
+                line: 1,
+                col: 0,
+            },
+            current_str: String::with_capacity(64),
+            token_start: 0,
         }
     }
 
@@ -50,40 +54,43 @@ impl Lexer {
             let window_end = (i + 10).min(chars.len());
             let window = &chars[i..window_end];
 
-            let skip_next = self.next(ch, window);
-            if skip_next {
-                iter.next();
-            }
+            self.next(ch, window);
         }
     }
 
-    pub fn next(&mut self, c: char, window: &[char]) -> bool {
-        self.span.end += 1;
+    pub fn next(&mut self, c: char, window: &[char]) {
+        self.cursor.col += 1;
+        self.current_str
+            .drain(..(self.current_str.len() - self.current_str.trim_start().len()));
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_numeric())) {
+                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_digit(10))) {
+                    self.token_start = self.cursor.col;
                     let negative = c == '-';
-                    self.state = LexerState::Number(false, negative, NumberBase::Decimal);
-                    self.span.start = self.span.end;
+                    self.state = LexerState::Number(false, negative, numbers::NumberBase::Decimal);
                     if !negative {
                         self.current_str.push(c);
                     }
-                    false
                 } else if c == '\n' {
-                    self.span.line += 1;
-                    self.span.start = 0;
-                    self.span.end = 0;
-                    false
+                    self.cursor.line += 1;
+                    self.cursor.col = 0;
                 } else {
-                    self.lex_punctuation(c, window)
+                    self.current_str.push(c);
+                    self.token_start = self.cursor.col;
+                    self.check_punctuation();
                 }
             }
             LexerState::Number(float, negative, base) => {
-                self.lex_number(c, window, float, negative, base);
-                false
+                if !self.lex_number(c, float, negative, base) {
+                    self.next(c, window);
+                }
             }
             _ => todo!(),
         }
+    }
+
+    fn create_span(&self, start: usize, end: usize) -> Span {
+        Span::new(self.cursor.file, self.cursor.line, start, end)
     }
 }
