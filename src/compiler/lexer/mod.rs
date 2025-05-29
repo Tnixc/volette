@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::compiler::tokens::TokenKind;
 
 use super::tokens::{Span, Token};
@@ -7,11 +9,11 @@ use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterne
 mod keywords;
 mod numbers;
 mod punctuation;
-mod types;
+mod type_literals;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LexerState {
-    Number(bool, bool, numbers::NumberBase),
+    Number(bool, numbers::NumberBase),
     String,
     Normal,
     Comment,
@@ -26,13 +28,15 @@ pub struct Cursor {
     pub col: usize,
 }
 
+#[derive(Debug)]
 pub struct Lexer {
     pub tokens: Vec<Token>,
     pub state: LexerState,
     pub errors: Vec<LexError>,
     pub cursor: Cursor,
-    pub current_str: String,
     pub interner: StringInterner<BucketBackend<SymbolUsize>>,
+    pub newline: bool,
+    pub current_chars: Vec<((usize, usize), char)>, // (line, col), char
 }
 
 impl Lexer {
@@ -46,73 +50,153 @@ impl Lexer {
                 line: 1,
                 col: 0,
             },
-            current_str: String::with_capacity(64),
+            current_chars: Vec::with_capacity(32),
             interner,
+            newline: false,
         }
     }
 
-    pub fn tokenize(&mut self, chars: Vec<char>) {
+    pub fn tokenize(&mut self, mut chars: Vec<char>) {
+        chars.extend_from_slice(&['\0'; 8]);
         let iter = chars.iter().enumerate();
 
         for (i, &ch) in iter {
             let window_end = (i + 10).min(chars.len());
             let window = &chars[i..window_end];
-            println!("'{}'", self.current_str);
             self.next(ch, window);
         }
     }
 
     pub fn next(&mut self, c: char, window: &[char]) {
+        if self.newline {
+            self.cursor.line += 1;
+            self.cursor.col = 0;
+            self.newline = false;
+        }
+
         self.cursor.col += 1;
-        self.current_str
-            .drain(..(self.current_str.len() - self.current_str.trim_start().len()));
+
+        while let Some(&((_, _), first_char)) = self.current_chars.first() {
+            if first_char.is_whitespace() {
+                self.current_chars.remove(0);
+            } else {
+                break;
+            }
+        }
 
         match self.state {
             LexerState::Normal => {
-                if self.current_str.is_empty()
-                    && (c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_ascii_digit())))
+                if (c.is_numeric()
+                    && self.current_chars.len() > 0
+                    && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                    || (c == '.'
+                        && self.current_chars.len() > 0
+                        && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                    || (c == '_'
+                        && self.current_chars.len() > 0
+                        && self.current_chars.get(0).is_some_and(|(_, ch)| ch.is_numeric()))
+                    || ((c == 'x' || c == 'o' || c == 'b')
+                        && self.current_chars.len() > 0
+                        && self.current_chars.get(0).is_some_and(|(_, ch)| *ch == '0'))
                 {
-                    let negative = c == '-';
-                    self.state = LexerState::Number(false, negative, numbers::NumberBase::Decimal);
-                    if !negative {
-                        self.current_str.push(c);
-                    }
-                } else if c == '\n' {
-                    self.cursor.line += 1;
-                    self.cursor.col = 0;
+                    let base = match c {
+                        'x' => numbers::NumberBase::Hex,
+                        'o' => numbers::NumberBase::Octal,
+                        'b' => numbers::NumberBase::Binary,
+                        _ => numbers::NumberBase::Decimal,
+                    };
+                    self.state = LexerState::Number(c == '.', base);
+                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+                } else if c == '/' && window.get(1).is_some_and(|&x| x == '*') {
+                    self.state = LexerState::MultilineComment;
+                } else if c == '/' && window.get(1).is_some_and(|&x| x == '/') {
+                    self.state = LexerState::Comment;
                 } else {
-                    self.current_str.push(c);
+                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
 
                     if !self.check_punctuation()
                         && !self.check_type_literals()
                         && !self.check_keywords()
                         && !c.is_valid_ident_char()
-                        && !self.current_str.trim().is_empty()
+                        && self.current_chars.len() > 0
                     {
-                        let identifier = self
-                            .current_str
-                            .drain(0..self.current_str.len() - 1)
-                            .collect::<String>();
-                        if !identifier.is_empty() {
-                            self.tokens.push(Token::new(
-                                TokenKind::Identifier(self.interner.get_or_intern(identifier.as_str())),
-                                self.create_span(self.cursor.col - identifier.len(), self.cursor.col - 1),
-                            ));
+                        if self.current_chars.len() > 1 {
+                            let ident_chars = &self.current_chars[..self.current_chars.len() - 1];
+                            if ident_chars
+                                .iter()
+                                .all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace())
+                            {
+                                let identifier: String = ident_chars
+                                    .iter()
+                                    .map(|(_, ch)| *ch)
+                                    .filter(|ch| !ch.is_whitespace())
+                                    .collect();
+
+                                let is_single_digit =
+                                    identifier.len() == 1 && identifier.chars().all(|ch| ch.is_numeric());
+                                if !identifier.is_empty() && !is_single_digit {
+                                    let start_pos = ident_chars[0].0;
+                                    let end_pos = ident_chars[ident_chars.len() - 1].0;
+                                    let span = self.create_span_from_positions(start_pos, end_pos);
+
+                                    self.tokens.push(Token::new(
+                                        TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
+                                        span,
+                                    ));
+                                } else if is_single_digit {
+                                    let start_pos = ident_chars[0].0;
+                                    let end_pos = ident_chars[0].0;
+                                    let span = self.create_span_from_positions(start_pos, end_pos);
+
+                                    self.tokens.push(Token::new(
+                                        TokenKind::IntLiteral(identifier.parse::<i64>().unwrap()),
+                                        span,
+                                    ));
+                                }
+
+                                let current_char = self.current_chars.pop();
+                                self.current_chars.clear();
+                                if let Some(ch) = current_char {
+                                    self.current_chars.push(ch);
+                                }
+                            }
                         }
                     }
                 }
+
+                if c == '\n' {
+                    self.newline = true;
+                }
             }
-            LexerState::Number(float, negative, base) => {
-                if !self.lex_number(c, float, negative, base) {
+            LexerState::Number(float, base) => {
+                if !self.lex_number(c, float, base) {
+                    self.cursor.col -= 1;
                     self.next(c, window);
+                    return;
+                }
+            }
+            LexerState::Comment => {
+                if c == '\n' {
+                    self.state = LexerState::Normal;
+                    self.cursor.line += 1;
+                    self.cursor.col = 0;
+                }
+            }
+            LexerState::MultilineComment => {
+                if c == '*' && window.get(1).is_some_and(|&x| x == '/') {
+                    self.state = LexerState::Normal;
+                }
+                if c == '\n' {
+                    self.cursor.line += 1;
+                    self.cursor.col = 0;
                 }
             }
             _ => todo!(),
         }
     }
 
-    fn create_span(&self, start: usize, end: usize) -> Span {
-        Span::new(self.cursor.file, self.cursor.line, start, end)
+    fn create_span_from_positions(&self, start_pos: (usize, usize), end_pos: (usize, usize)) -> Span {
+        Span::new(self.cursor.file, start_pos.0, start_pos.1, end_pos.1)
     }
 }
 
@@ -143,19 +227,19 @@ mod tests {
         lexer.tokenize(chars);
 
         let expected_tokens = vec![
-            ("let__".to_string(), 1, (1, 5)),
+            ("Identifier(let__)".to_string(), 1, (1, 5)),
             ("Keyword(Use)".to_string(), 1, (7, 9)),
-            ("some_ident".to_string(), 1, (11, 20)),
-            ("normal".to_string(), 1, (22, 27)),
+            ("Identifier(some_ident)".to_string(), 1, (11, 20)),
+            ("Identifier(normal)".to_string(), 1, (22, 27)),
         ];
-        assert_eq!(lexer.tokens.len(), expected_tokens.len());
+
         let tokens = lexer
             .tokens
             .iter()
             .map(|t| {
                 (
                     if let TokenKind::Identifier(identifier) = t.kind {
-                        format!("{}", lexer.interner.resolve(identifier).unwrap())
+                        format!("Identifier({})", lexer.interner.resolve(identifier).unwrap())
                     } else {
                         format!("{:?}", t.kind)
                     },
@@ -164,6 +248,8 @@ mod tests {
                 )
             })
             .collect::<Vec<_>>();
+        assert_eq!(tokens.len(), expected_tokens.len());
+
         for (i, token) in tokens.iter().enumerate() {
             assert_eq!(token, &expected_tokens[i]);
         }

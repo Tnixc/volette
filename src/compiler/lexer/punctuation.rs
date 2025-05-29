@@ -3,8 +3,19 @@ use crate::compiler::tokens::Token;
 use super::Lexer;
 
 impl Lexer {
-    fn push_punctuation(&mut self, punct: crate::compiler::tokens::Punctuation, str_len: usize) {
-        let span = self.create_span(self.cursor.col - str_len + 1, self.cursor.col);
+    fn push_punctuation(&mut self, punct: crate::compiler::tokens::Punctuation, chars_consumed: usize) {
+        if chars_consumed == 0 || self.current_chars.is_empty() {
+            return;
+        }
+
+        let start_pos = self.current_chars[0].0;
+        let end_pos = if chars_consumed <= self.current_chars.len() {
+            self.current_chars[chars_consumed - 1].0
+        } else {
+            self.current_chars.last().map(|c| c.0).unwrap_or(start_pos)
+        };
+
+        let span = self.create_span_from_positions(start_pos, end_pos);
         self.tokens
             .push(Token::new(crate::compiler::tokens::TokenKind::Punctuation(punct), span));
     }
@@ -13,12 +24,20 @@ impl Lexer {
         use crate::compiler::tokens::Punctuation::*;
 
         macro_rules! check_punct {
-            ($str:expr, $punct:expr, $min_check_len:expr) => {{
-                let len = $min_check_len;
-                if self.current_str.starts_with($str) && self.current_str.len() >= len {
-                    self.current_str.drain(0..=($str.len() - 1));
-                    self.push_punctuation($punct, $str.len());
-                    return true;
+            ($str:expr, $punct:expr, $chars_consumed:expr) => {{
+                let str_chars: Vec<char> = $str.chars().collect();
+
+                if self.current_chars.len() >= $chars_consumed {
+                    let matches = self.current_chars[..str_chars.len()]
+                        .iter()
+                        .zip(str_chars.iter())
+                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
+
+                    if matches {
+                        self.push_punctuation($punct, str_chars.len());
+                        self.current_chars.drain(..str_chars.len());
+                        return true;
+                    }
                 }
                 false
             }};
@@ -73,7 +92,7 @@ mod tests {
         let file = interner.get_or_intern("");
         let contents = r#"&&  !=   ** ==  <=
 >=   ||    &    !
-*    =  <       >    |    ) (
+*    =  <>    |    ) (
     {   }  [  ]   , .  :
 ;   /   %   +   -"#;
         let mut lexer = Lexer::new(contents, interner, file);
@@ -89,15 +108,15 @@ mod tests {
             (Punctuation(LessThanOrEq), 1, (17, 18)),
             (Punctuation(GreaterThanOrEq), 2, (1, 2)),
             (Punctuation(PipePipe), 2, (6, 7)),
-            (Punctuation(Amp), 2, (13, 13)),
-            (Punctuation(Bang), 3, (1, 1)),
-            (Punctuation(Star), 3, (2, 2)),
-            (Punctuation(Eq), 3, (7, 7)),
-            (Punctuation(LessThan), 3, (10, 10)),
-            (Punctuation(GreaterThan), 3, (18, 18)),
-            (Punctuation(Pipe), 3, (23, 23)),
-            (Punctuation(CloseParen), 3, (27, 27)),
-            (Punctuation(OpenParen), 3, (29, 29)),
+            (Punctuation(Amp), 2, (12, 12)),
+            (Punctuation(Bang), 2, (17, 17)),
+            (Punctuation(Star), 3, (1, 1)),
+            (Punctuation(Eq), 3, (6, 6)),
+            (Punctuation(LessThan), 3, (9, 9)),
+            (Punctuation(GreaterThan), 3, (10, 10)),
+            (Punctuation(Pipe), 3, (15, 15)),
+            (Punctuation(CloseParen), 3, (20, 20)),
+            (Punctuation(OpenParen), 3, (22, 22)),
             (Punctuation(OpenBrace), 4, (5, 5)),
             (Punctuation(CloseBrace), 4, (9, 9)),
             (Punctuation(OpenBracket), 4, (12, 12)),
@@ -117,23 +136,23 @@ mod tests {
         for (i, expected) in expected_tokens.iter().enumerate() {
             assert_eq!(
                 lexer.tokens[i].kind, expected.0,
-                "Token at index {} should be {:?}",
-                i, expected
+                "Token {:?} should be {:?}",
+                lexer.tokens[i].kind, expected
             );
             assert_eq!(
                 lexer.tokens[i].span.line, expected.1,
-                "Token at index {} should be on line {}",
-                i, expected.1
+                "Token {:?} should be on line {}",
+                lexer.tokens[i].kind, expected.1
             );
             assert_eq!(
                 lexer.tokens[i].span.start, expected.2 .0,
-                "Token at index {} should start at {}",
-                i, expected.2 .0
+                "Token {:?} should start at {}",
+                lexer.tokens[i].kind, expected.2 .0
             );
             assert_eq!(
                 lexer.tokens[i].span.end, expected.2 .1,
-                "Token at index {} should end at {}",
-                i, expected.2 .1
+                "Token {:?} should end at {}",
+                lexer.tokens[i].kind, expected.2 .1
             );
         }
     }

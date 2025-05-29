@@ -1,4 +1,7 @@
-fn add(a: i32, b: i32){
-    let result: i64 = a + b;
-    return result;
+fn generic_func<T>(val: T): Option<T> {
+    let use__number = 0xff;
+    if val > 0 {
+        return Some(val);
+    }
+    None
 }

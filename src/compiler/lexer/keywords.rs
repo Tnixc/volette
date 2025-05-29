@@ -4,10 +4,19 @@ use super::Lexer;
 use crate::compiler::lexer::IdentName;
 
 impl Lexer {
-    fn push_keyword(&mut self, keyword: crate::compiler::tokens::Keyword, str_len: usize) {
-        let span = self.create_span(self.cursor.col - str_len, self.cursor.col - 1);
-        // I really no have no idea why this is -1 on the end, unlike the punctuation check, but it works
-        // I hate off by one errors
+    fn push_keyword(&mut self, keyword: crate::compiler::tokens::Keyword, chars_consumed: usize) {
+        if chars_consumed == 0 || self.current_chars.is_empty() {
+            return;
+        }
+
+        let start_pos = self.current_chars[0].0;
+        let end_pos = if chars_consumed <= self.current_chars.len() {
+            self.current_chars[chars_consumed - 1].0
+        } else {
+            self.current_chars.last().map(|c| c.0).unwrap_or(start_pos)
+        };
+
+        let span = self.create_span_from_positions(start_pos, end_pos);
         self.tokens
             .push(Token::new(crate::compiler::tokens::TokenKind::Keyword(keyword), span));
     }
@@ -17,17 +26,25 @@ impl Lexer {
 
         macro_rules! check_keyword {
             ($str:expr, $keyword:expr) => {{
-                if self.current_str.len() > $str.len()
-                    && self
-                        .current_str
-                        .chars()
-                        .nth($str.len())
-                        .is_some_and(|c| !c.is_valid_ident_char())
-                    && self.current_str.starts_with($str)
-                {
-                    self.current_str.drain(0..=($str.len() - 1));
-                    self.push_keyword($keyword, $str.len());
-                    return true;
+                let str_chars: Vec<char> = $str.chars().collect();
+
+                if self.current_chars.len() > str_chars.len() {
+                    let matches = self.current_chars[..str_chars.len()]
+                        .iter()
+                        .zip(str_chars.iter())
+                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
+
+                    let has_valid_boundary = if self.current_chars.len() > str_chars.len() {
+                        !self.current_chars[str_chars.len()].1.is_valid_ident_char()
+                    } else {
+                        true
+                    };
+
+                    if matches && has_valid_boundary {
+                        self.push_keyword($keyword, str_chars.len());
+                        self.current_chars.drain(..str_chars.len());
+                        return true;
+                    }
                 }
                 false
             }};

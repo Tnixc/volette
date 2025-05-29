@@ -14,9 +14,7 @@ pub fn build(file: &Path) {
     let file_name = interner.get_or_intern(file.to_str().unwrap());
     let mut lexer = Lexer::new(&contents, interner, file_name);
 
-    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-    lexer.tokenize(chars);
-
+    lexer.tokenize(contents.chars().collect());
     println!(
         "{:?}",
         lexer
@@ -25,7 +23,7 @@ pub fn build(file: &Path) {
             .map(|t| {
                 (
                     if let TokenKind::Identifier(identifier) = t.kind {
-                        lexer.interner.resolve(identifier).unwrap().to_string()
+                        format!("Identifier({})", lexer.interner.resolve(identifier).unwrap())
                     } else {
                         format!("{:?}", t.kind)
                     },
