@@ -1,7 +1,3 @@
-fn generic_func<T>(val: T): Option<T> {
-    let use__number = 0xff;
-    if val > 0 {
-        return Some(val);
-    }
-    None
+fn add(u32)(a: u32, b: u32): u32 {
+    /*return*/a + b;
 }

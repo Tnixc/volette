@@ -178,10 +178,13 @@ impl Lexer {
                 }
             }
             LexerState::MultilineComment => {
-                if c == '*' && window.get(1).is_some_and(|&x| x == '/') {
+                if c == '*' {
+                    self.current_chars.clear();
+                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+                } else if c == '/' && self.current_chars.first().is_some_and(|(_, ch)| *ch == '*') {
+                    self.current_chars.clear();
                     self.state = LexerState::Normal;
-                }
-                if c == '\n' {
+                } else if c == '\n' {
                     self.cursor.line += 1;
                     self.cursor.col = 0;
                 }
