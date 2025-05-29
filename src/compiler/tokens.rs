@@ -54,7 +54,7 @@ pub enum Punctuation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Type {
+pub enum PrimitiveTypes {
     U8,
     U16,
     U32,
@@ -75,7 +75,7 @@ pub enum TokenKind {
     FloatLiteral(f64),
     StringLiteral(SymbolUsize),
     Keyword(Keyword),
-    TypeLiteral(Type),
+    TypeLiteral(PrimitiveTypes),
     Punctuation(Punctuation),
     Identifier(SymbolUsize),
     EOF,

@@ -7,6 +7,7 @@ use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterne
 mod keywords;
 mod numbers;
 mod punctuation;
+mod types;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LexerState {
@@ -56,7 +57,7 @@ impl Lexer {
         for (i, &ch) in iter {
             let window_end = (i + 10).min(chars.len());
             let window = &chars[i..window_end];
-
+            println!("'{}'", self.current_str);
             self.next(ch, window);
         }
     }
@@ -68,7 +69,9 @@ impl Lexer {
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_ascii_digit())) {
+                if self.current_str.is_empty()
+                    && (c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_ascii_digit())))
+                {
                     let negative = c == '-';
                     self.state = LexerState::Number(false, negative, numbers::NumberBase::Decimal);
                     if !negative {
@@ -81,6 +84,7 @@ impl Lexer {
                     self.current_str.push(c);
 
                     if !self.check_punctuation()
+                        && !self.check_type_literals()
                         && !self.check_keywords()
                         && !c.is_valid_ident_char()
                         && !self.current_str.trim().is_empty()

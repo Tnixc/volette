@@ -1,1 +1,4 @@
--123 2 -0xff 3.14 -2.71 0b1111 0o234
+fn add(a: i32, b: i32){
+    let result: i64 = a + b;
+    return result;
+}
