@@ -120,7 +120,7 @@ impl Lexer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::tokens::TokenKind;
+    use crate::compiler::tokens::TokenKind::*;
     use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
     type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
@@ -130,18 +130,29 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = "-123 2 -0xff 3.14 -2.71 0b1111 0o234";
-        let mut lexer = Lexer::new(contents, file);
+        let mut lexer = Lexer::new(contents, interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
 
-        assert_eq!(lexer.tokens.len(), 7);
-        assert_eq!(lexer.tokens[0].kind, TokenKind::IntLiteral(-123));
-        assert_eq!(lexer.tokens[1].kind, TokenKind::IntLiteral(2));
-        assert_eq!(lexer.tokens[2].kind, TokenKind::IntLiteral(-0xff));
-        assert_eq!(lexer.tokens[3].kind, TokenKind::FloatLiteral(3.14));
-        assert_eq!(lexer.tokens[4].kind, TokenKind::FloatLiteral(-2.71));
-        assert_eq!(lexer.tokens[5].kind, TokenKind::IntLiteral(0b1111));
-        assert_eq!(lexer.tokens[6].kind, TokenKind::IntLiteral(0o234));
+        let expected_tokens = vec![
+            (IntLiteral(-123), 1, (1, 5)),
+            (IntLiteral(2), 1, (6, 7)),
+            (IntLiteral(-255), 1, (8, 13)),
+            (FloatLiteral(3.14), 1, (14, 18)),
+            (FloatLiteral(-2.71), 1, (19, 24)),
+            (IntLiteral(15), 1, (25, 31)),
+            (IntLiteral(156), 1, (32, 37)),
+        ];
+
+        assert_eq!(lexer.tokens.len(), expected_tokens.len());
+        let tokens = lexer
+            .tokens
+            .iter()
+            .map(|t| (t.kind, t.span.line, (t.span.start, t.span.end)))
+            .collect::<Vec<_>>();
+        for (i, token) in tokens.iter().enumerate() {
+            assert_eq!(token, &expected_tokens[i]);
+        }
     }
 }

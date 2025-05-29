@@ -9,7 +9,7 @@ impl Lexer {
             .push(Token::new(crate::compiler::tokens::TokenKind::Punctuation(punct), span));
     }
 
-    pub fn check_punctuation(&mut self) {
+    pub fn check_punctuation(&mut self) -> bool {
         use crate::compiler::tokens::Punctuation::*;
 
         macro_rules! check_punct {
@@ -18,8 +18,9 @@ impl Lexer {
                 if self.current_str.starts_with($str) && self.current_str.len() >= len {
                     self.current_str.drain(0..=($str.len() - 1));
                     self.push_punctuation($punct, $str.len());
-                    return;
+                    return true;
                 }
+                false
             }};
         }
 
@@ -53,6 +54,8 @@ impl Lexer {
         check_punct!("%", Percent, 1);
         check_punct!("+", Plus, 1);
         check_punct!("-", Minus, 1);
+
+        false
     }
 }
 
@@ -73,7 +76,7 @@ mod tests {
 *    =  <       >    |    ) (
     {   }  [  ]   , .  :
 ;   /   %   +   -"#;
-        let mut lexer = Lexer::new(contents, file);
+        let mut lexer = Lexer::new(contents, interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
