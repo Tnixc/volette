@@ -25,7 +25,7 @@ pub fn build(file: &Path) {
             .map(|t| {
                 (
                     if let TokenKind::Identifier(identifier) = t.kind {
-                        format!("{}", lexer.interner.resolve(identifier).unwrap())
+                        lexer.interner.resolve(identifier).unwrap().to_string()
                     } else {
                         format!("{:?}", t.kind)
                     },

@@ -78,6 +78,7 @@ pub enum TokenKind {
     TypeLiteral(Type),
     Punctuation(Punctuation),
     Identifier(SymbolUsize),
+    EOF,
 }
 
 /// A span of text in a file. Start and end are inclusive.

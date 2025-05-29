@@ -29,18 +29,12 @@ impl Lexer {
         let is_valid_char = if c == '.' && !float && base == NumberBase::Decimal {
             self.state = LexerState::Number(true, negative, base);
             true
-        } else if c == '_' {
-            true
-        } else if base == NumberBase::Octal && c.is_digit(8) {
-            true
-        } else if base == NumberBase::Binary && c.is_digit(2) {
-            true
-        } else if base == NumberBase::Hex && c.is_ascii_hexdigit() {
-            true
-        } else if base == NumberBase::Decimal && c.is_numeric() {
-            true
         } else {
-            false
+            c == '_'
+                || base == NumberBase::Octal && c.is_digit(8)
+                || base == NumberBase::Binary && c.is_digit(2)
+                || base == NumberBase::Hex && c.is_ascii_hexdigit()
+                || base == NumberBase::Decimal && c.is_ascii_digit()
         };
 
         if is_valid_char {

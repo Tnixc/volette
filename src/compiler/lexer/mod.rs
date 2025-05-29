@@ -53,9 +53,9 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self, chars: Vec<char>) {
-        let mut iter = chars.iter().enumerate();
+        let iter = chars.iter().enumerate();
 
-        while let Some((i, &ch)) = iter.next() {
+        for (i, &ch) in iter {
             let window_end = (i + 10).min(chars.len());
             let window = &chars[i..window_end];
 
@@ -70,7 +70,7 @@ impl Lexer {
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_digit(10))) {
+                if c.is_numeric() || (c == '-' && window.get(1).is_some_and(|&x| x.is_ascii_digit())) {
                     self.token_start = self.cursor.col;
                     let negative = c == '-';
                     self.state = LexerState::Number(false, negative, numbers::NumberBase::Decimal);
@@ -132,8 +132,6 @@ mod tests {
     use super::*;
     use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
     type Interner = StringInterner<BucketBackend<SymbolUsize>>;
-    use crate::compiler::tokens::Keyword::*;
-    use crate::compiler::tokens::TokenKind::*;
 
     #[test]
     fn test_lex_identifiers_with_keywords() {
