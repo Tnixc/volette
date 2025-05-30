@@ -60,9 +60,8 @@ impl Lexer {
 
         if float {
             if base != NumberBase::Decimal {
-                self.errors.push(LexError::NonIntegerBase {
-                    base,
-                    span: span.clone(),
+                self.errors.push(LexError::NonDecimalFloat {
+                    span: span.to_display(&self.interner),
                 });
             } else if let Ok(n) = self.lex_float() {
                 self.tokens.push(Token::new(TokenKind::FloatLiteral(n), span));
@@ -91,7 +90,7 @@ impl Lexer {
 
             let err = LexError::InvalidFloat {
                 value: filtered_str.clone(),
-                span,
+                span: span.to_display(&self.interner),
                 source: e,
             };
             self.errors.push(err.clone());
@@ -133,7 +132,7 @@ impl Lexer {
 
             let err = LexError::InvalidInteger {
                 value: filtered_str.clone(),
-                span,
+                span: span.to_display(&self.interner),
                 source: e,
             };
             self.errors.push(err.clone());

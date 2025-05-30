@@ -1,7 +1,7 @@
 use crate::compiler::tokens::Token;
 
 use super::Lexer;
-use crate::compiler::lexer::IdentName;
+use crate::compiler::lexer::LexedChar;
 
 impl Lexer {
     fn push_keyword(&mut self, keyword: crate::compiler::tokens::Keyword, chars_consumed: usize) {

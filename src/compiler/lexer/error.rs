@@ -1,53 +1,148 @@
+use colored::Colorize;
 use std::fmt::{self, Display};
-
+use std::fs;
 use thiserror::Error;
 
-use crate::compiler::tokens::Span;
+use crate::compiler::{tokens::Span, Interner};
 
-use super::numbers::NumberBase;
+use super::Lexer;
 
 #[derive(Error, Debug, Clone)]
-#[allow(dead_code)]
 pub enum LexError {
-    #[error("Unexpected character '{character}' at {span}")]
-    UnexpectedCharacter { character: char, span: Span },
+    #[error("Invalid character '{character}'")]
+    InvalidCharacter { character: char, span: DisplaySpan },
 
-    #[error("Unterminated string literal starting at {span}")]
-    UnterminatedString { span: Span },
+    #[error("Unexpected character '{character}'")]
+    UnexpectedCharacter { character: char, span: DisplaySpan },
 
-    #[error("Invalid float '{value}' at {span}")]
+    #[error("Unterminated string literal starting")]
+    UnterminatedString { span: DisplaySpan },
+
+    #[error("Invalid float '{value}'")]
     InvalidFloat {
         value: String,
-        span: Span,
+        span: DisplaySpan,
         #[source]
         source: std::num::ParseFloatError,
     },
 
-    #[error("Invalid integer '{value}' at {span}")]
+    #[error("Invalid integer '{value}'")]
     InvalidInteger {
         value: String,
-        span: Span,
+        span: DisplaySpan,
         #[source]
         source: std::num::ParseIntError,
     },
 
-    #[error("Non-integer base '{base}' at {span}")]
-    NonIntegerBase { base: NumberBase, span: Span },
+    #[error("Non-decimal float")]
+    NonDecimalFloat { span: DisplaySpan },
 }
 
-impl Display for NumberBase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NumberBase::Decimal => write!(f, "decimal"),
-            NumberBase::Hex => write!(f, "0x hexadecimal"),
-            NumberBase::Binary => write!(f, "0b binary"),
-            NumberBase::Octal => write!(f, "0o octal"),
+#[derive(Debug, Clone)]
+pub struct DisplaySpan {
+    file: String,
+    line: usize,
+    start: usize,
+    end: usize,
+}
+impl Span {
+    pub fn to_display(&self, interner: &Interner) -> DisplaySpan {
+        DisplaySpan {
+            file: interner.resolve(self.file).unwrap_or("<unknown>").to_string(),
+            line: self.line,
+            start: self.start,
+            end: self.end,
         }
     }
 }
 
-impl Display for Span {
+impl DisplaySpan {
+    fn read_source_line(&self) -> Option<String> {
+        fs::read_to_string(&self.file)
+            .ok()?
+            .lines()
+            .nth(self.line.saturating_sub(1))
+            .map(|s| s.to_string())
+    }
+
+    fn format_error_display(&self, info: &str) -> String {
+        let source_line = self.read_source_line();
+
+        let mut output = String::new();
+
+        // Error header with location
+        output.push_str(&format!(
+            "{}: {} \n {} {}:{}:{}\n",
+            "Error".red().bold(),
+            info.bold(),
+            "-->".blue(),
+            self.file,
+            self.line,
+            self.start
+        ));
+
+        // Line number padding
+        let line_num_width = self.line.to_string().len();
+        let padding = " ".repeat(line_num_width);
+
+        output.push_str(&format!("{} {}\n", padding, "|".blue()));
+
+        if let Some(line_content) = source_line {
+            // Source line with line number
+            output.push_str(&format!(
+                "{} {} {}\n",
+                self.line.to_string().blue(),
+                "|".blue().bold(),
+                line_content
+            ));
+
+            // Error indicator line
+            let indicator_padding = " ".repeat(self.start.saturating_sub(1));
+            let indicator_length = (self.end - self.start).max(1);
+            let indicators = "^".repeat(indicator_length);
+
+            output.push_str(&format!(
+                "{} {} {}{} {}\n",
+                padding,
+                "|".blue(),
+                indicator_padding,
+                indicators.red().bold(),
+                info.red().bold()
+            ));
+        } else {
+            output.push_str(&format!("{} {} {}\n", padding, "|".blue(), info.red().bold()));
+        }
+
+        output.push_str(&format!("{} {}", padding, "|".blue()));
+
+        output
+    }
+}
+
+impl Display for DisplaySpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:#?}:{}", self.file, self.line)
+        write!(f, "{}:{}:{}-{}", self.file, self.line, self.start, self.end)
+    }
+}
+impl LexError {
+    pub fn span(&self) -> &DisplaySpan {
+        match self {
+            LexError::InvalidCharacter { span, .. }
+            | LexError::UnexpectedCharacter { span, .. }
+            | LexError::UnterminatedString { span }
+            | LexError::InvalidFloat { span, .. }
+            | LexError::InvalidInteger { span, .. }
+            | LexError::NonDecimalFloat { span } => span,
+        }
+    }
+}
+
+impl Lexer {
+    pub fn print_errors(&self) {
+        for error in &self.errors {
+            println!("{}", error.span().format_error_display(format!("{}", error).as_str()));
+        }
+        println!("{}", "-".repeat(50).dimmed());
+        println!("{}: {} found", "Errors".red().bold(), self.errors.len());
     }
 }

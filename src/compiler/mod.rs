@@ -42,4 +42,5 @@ pub fn build(file: &Path) {
             })
             .collect::<Vec<_>>()
     );
+    lexer.print_errors();
 }

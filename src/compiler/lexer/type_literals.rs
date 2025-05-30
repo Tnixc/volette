@@ -1,7 +1,7 @@
 use crate::compiler::tokens::{Token, TokenKind};
 
 use super::Lexer;
-use crate::compiler::lexer::IdentName;
+use crate::compiler::lexer::LexedChar;
 
 impl Lexer {
     fn push_type_literal(&mut self, type_literal: crate::compiler::tokens::PrimitiveTypes, chars_consumed: usize) {
@@ -40,7 +40,6 @@ impl Lexer {
                     };
 
                     if has_valid_boundary {
-                        // println!("TYPE: {:#?}", self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>());
                         self.push_type_literal($keyword, str_chars.len());
                         self.current_chars.drain(..str_chars.len());
                         return true;

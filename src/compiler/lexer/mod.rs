@@ -88,16 +88,23 @@ impl Lexer {
             }
         }
 
+        if !c.is_allowed_char() {
+            self.errors.push(LexError::InvalidCharacter {
+                character: c,
+                span: self
+                    .create_span_from_positions(
+                        (self.cursor.line, self.cursor.col),
+                        (self.cursor.line, self.cursor.col),
+                    )
+                    .to_display(&self.interner),
+            });
+            return;
+        }
+
         match self.state {
             LexerState::Normal => {
                 if c.is_numeric() && self.current_chars.is_empty() {
-                    let base = match c {
-                        'x' => numbers::NumberBase::Hex,
-                        'o' => numbers::NumberBase::Octal,
-                        'b' => numbers::NumberBase::Binary,
-                        _ => numbers::NumberBase::Decimal,
-                    };
-                    self.state = LexerState::Number(c == '.', base);
+                    self.state = LexerState::Number(c == '.', numbers::NumberBase::Decimal);
                     self.current_chars.push(((self.cursor.line, self.cursor.col), c));
                 } else if c == '/' && next == '*' {
                     self.state = LexerState::MultilineComment;
@@ -105,7 +112,6 @@ impl Lexer {
                     self.state = LexerState::Comment;
                 } else {
                     self.current_chars.push(((self.cursor.line, self.cursor.col), c));
-
                     if !self.check_punctuation()
                         && !self.check_type_literals()
                         && !self.check_keywords()
@@ -143,7 +149,6 @@ impl Lexer {
                         }
                     }
                 }
-
                 if c == '\n' {
                     self.newline = true;
                 }
@@ -182,13 +187,19 @@ impl Lexer {
     }
 }
 
-pub trait IdentName {
+pub trait LexedChar {
     fn is_valid_ident_char(&self) -> bool;
+    fn is_allowed_char(&self) -> bool;
 }
 
-impl IdentName for char {
+impl LexedChar for char {
     fn is_valid_ident_char(&self) -> bool {
-        self.is_alphanumeric() || *self == '_'
+        self.is_alphanumeric() || *self == '_' || *self == '$' || *self == '#'
+    }
+
+    fn is_allowed_char(&self) -> bool {
+        let disallowed_chars = ['^', '`', '~', '\'', '"', '?', '\\', '@'];
+        !disallowed_chars.contains(self) && self.is_ascii()
     }
 }
 

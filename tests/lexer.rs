@@ -227,7 +227,7 @@ fn test_lexer() {
         ("Identifier(b)", 42, (12, 12)),
         ("Punctuation(Semicolon)", 42, (13, 13)),
         ("Punctuation(CloseBrace)", 43, (1, 1)),
-        // ("Eof", 43, (2, 2)),
+        // ("Eof", 43, (1, 1)),
     ]
     .iter()
     .map(|(kind, line, (start, end))| (kind.to_string(), line.to_owned(), (start.to_owned(), end.to_owned())))
