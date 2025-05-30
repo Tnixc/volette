@@ -12,7 +12,7 @@ impl Lexer {
         let end_pos = if chars_consumed <= self.current_chars.len() {
             self.current_chars[chars_consumed - 1].0
         } else {
-            self.current_chars.last().map(|c| c.0).unwrap_or(start_pos)
+            self.current_chars.back().map(|c| c.0).unwrap_or(start_pos)
         };
 
         let span = self.create_span_from_positions(start_pos, end_pos);
@@ -28,8 +28,10 @@ impl Lexer {
                 let str_chars: Vec<char> = $str.chars().collect();
 
                 if self.current_chars.len() >= $chars_consumed {
-                    let matches = self.current_chars[..str_chars.len()]
+                    let matches = self
+                        .current_chars
                         .iter()
+                        .take(str_chars.len())
                         .zip(str_chars.iter())
                         .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
 

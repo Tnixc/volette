@@ -15,7 +15,7 @@ impl Lexer {
         let current_string = self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>();
 
         if current_string == "0" && (c == 'x' || c == 'b' || c == 'o') {
-            self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+            self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
             self.state = LexerState::Number(
                 float,
                 match c {
@@ -40,7 +40,7 @@ impl Lexer {
         };
 
         if is_valid_char {
-            self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+            self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
             true
         } else {
             self.push_number(float, base);
@@ -55,7 +55,7 @@ impl Lexer {
         }
 
         let start_pos = self.current_chars[0].0;
-        let end_pos = self.current_chars.last().map(|(pos, _)| *pos).unwrap_or(start_pos);
+        let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
         let span = self.create_span_from_positions(start_pos, end_pos);
 
         if float {
@@ -82,10 +82,10 @@ impl Lexer {
         filtered_str.parse::<f64>().map_err(|e| {
             let start_pos = self
                 .current_chars
-                .first()
+                .front()
                 .map(|(pos, _)| *pos)
                 .unwrap_or((self.cursor.line, self.cursor.col));
-            let end_pos = self.current_chars.last().map(|(pos, _)| *pos).unwrap_or(start_pos);
+            let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span_from_positions(start_pos, end_pos);
 
             let err = LexError::InvalidFloat {
@@ -124,10 +124,10 @@ impl Lexer {
         result.map_err(|e| {
             let start_pos = self
                 .current_chars
-                .first()
+                .front()
                 .map(|(pos, _)| *pos)
                 .unwrap_or((self.cursor.line, self.cursor.col));
-            let end_pos = self.current_chars.last().map(|(pos, _)| *pos).unwrap_or(start_pos);
+            let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span_from_positions(start_pos, end_pos);
 
             let err = LexError::InvalidInteger {

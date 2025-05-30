@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::compiler::tokens::TokenKind;
 
 use super::tokens::{Span, Token};
@@ -35,7 +37,7 @@ pub struct Lexer {
     pub cursor: Cursor,
     pub interner: StringInterner<BucketBackend<SymbolUsize>>,
     pub newline: bool,
-    pub current_chars: Vec<((usize, usize), char)>, // (line, col), char
+    pub current_chars: VecDeque<((usize, usize), char)>,
 }
 
 impl Lexer {
@@ -49,7 +51,7 @@ impl Lexer {
                 line: 1,
                 col: 0,
             },
-            current_chars: Vec::with_capacity(32),
+            current_chars: VecDeque::new(),
             interner,
             newline: false,
         }
@@ -59,8 +61,8 @@ impl Lexer {
         chars.extend_from_slice(&['\0'; 8]);
 
         let mut iter = chars.into_iter();
-        let mut curr = iter.next().unwrap();
-        let mut next = iter.next().unwrap();
+        let mut curr = iter.next().unwrap_or('\0');
+        let mut next = iter.next().unwrap_or('\0');
 
         for ch in iter {
             self.next(curr, next);
@@ -80,9 +82,9 @@ impl Lexer {
             self.cursor.col += 1;
         }
 
-        while let Some(&((_, _), first_char)) = self.current_chars.first() {
+        while let Some(&((_, _), first_char)) = self.current_chars.front() {
             if first_char.is_whitespace() {
-                self.current_chars.remove(0);
+                self.current_chars.pop_front();
             } else {
                 break;
             }
@@ -105,13 +107,13 @@ impl Lexer {
             LexerState::Normal => {
                 if c.is_numeric() && self.current_chars.is_empty() {
                     self.state = LexerState::Number(c == '.', numbers::NumberBase::Decimal);
-                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+                    self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
                 } else if c == '/' && next == '*' {
                     self.state = LexerState::MultilineComment;
                 } else if c == '/' && next == '/' {
                     self.state = LexerState::Comment;
                 } else {
-                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
+                    self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
                     if !self.check_punctuation()
                         && !self.check_type_literals()
                         && !self.check_keywords()
@@ -119,7 +121,11 @@ impl Lexer {
                         && !self.current_chars.is_empty()
                         && self.current_chars.len() > 1
                     {
-                        let ident_chars = &self.current_chars[..self.current_chars.len() - 1];
+                        let current_len = self.current_chars.len();
+                        let ident_range = 0..current_len.saturating_sub(1);
+
+                        let ident_chars: Vec<_> = ident_range.clone().map(|i| self.current_chars[i]).collect();
+
                         if ident_chars
                             .iter()
                             .all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace())
@@ -141,10 +147,10 @@ impl Lexer {
                                 ));
                             }
 
-                            let current_char = self.current_chars.pop();
+                            let current_char = self.current_chars.pop_back();
                             self.current_chars.clear();
                             if let Some(ch) = current_char {
-                                self.current_chars.push(ch);
+                                self.current_chars.push_back(ch);
                             }
                         }
                     }
@@ -169,8 +175,8 @@ impl Lexer {
             LexerState::MultilineComment => {
                 if c == '*' {
                     self.current_chars.clear();
-                    self.current_chars.push(((self.cursor.line, self.cursor.col), c));
-                } else if c == '/' && self.current_chars.first().is_some_and(|(_, ch)| *ch == '*') {
+                    self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
+                } else if c == '/' && self.current_chars.front().is_some_and(|(_, ch)| *ch == '*') {
                     self.current_chars.clear();
                     self.state = LexerState::Normal;
                 } else if c == '\n' {
