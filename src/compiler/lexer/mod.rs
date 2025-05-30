@@ -56,7 +56,7 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self, mut chars: Vec<char>) {
-        chars.extend_from_slice(&['\0', '\0']);
+        chars.extend_from_slice(&['\0'; 8]);
 
         let mut iter = chars.into_iter();
         let mut curr = iter.next().unwrap();
@@ -76,7 +76,9 @@ impl Lexer {
             self.newline = false;
         }
 
-        self.cursor.col += 1;
+        if c != '\0' {
+            self.cursor.col += 1;
+        }
 
         while let Some(&((_, _), first_char)) = self.current_chars.first() {
             if first_char.is_whitespace() {
@@ -88,19 +90,7 @@ impl Lexer {
 
         match self.state {
             LexerState::Normal => {
-                if (c.is_numeric()
-                    && !self.current_chars.is_empty()
-                    && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
-                    || (c == '.'
-                        && !self.current_chars.is_empty()
-                        && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
-                    || (c == '_'
-                        && !self.current_chars.is_empty()
-                        && self.current_chars.first().is_some_and(|(_, ch)| ch.is_numeric()))
-                    || ((c == 'x' || c == 'o' || c == 'b')
-                        && !self.current_chars.is_empty()
-                        && self.current_chars.first().is_some_and(|(_, ch)| *ch == '0'))
-                {
+                if c.is_numeric() && self.current_chars.is_empty() {
                     let base = match c {
                         'x' => numbers::NumberBase::Hex,
                         'o' => numbers::NumberBase::Octal,
@@ -134,23 +124,13 @@ impl Lexer {
                                 .filter(|ch| !ch.is_whitespace())
                                 .collect();
 
-                            let is_single_digit = identifier.len() == 1 && identifier.chars().all(|ch| ch.is_numeric());
-                            if !identifier.is_empty() && !is_single_digit {
+                            if !identifier.is_empty() {
                                 let start_pos = ident_chars[0].0;
                                 let end_pos = ident_chars[ident_chars.len() - 1].0;
                                 let span = self.create_span_from_positions(start_pos, end_pos);
 
                                 self.tokens.push(Token::new(
                                     TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
-                                    span,
-                                ));
-                            } else if is_single_digit {
-                                let start_pos = ident_chars[0].0;
-                                let end_pos = ident_chars[0].0;
-                                let span = self.create_span_from_positions(start_pos, end_pos);
-
-                                self.tokens.push(Token::new(
-                                    TokenKind::IntLiteral(identifier.parse::<i64>().unwrap()),
                                     span,
                                 ));
                             }

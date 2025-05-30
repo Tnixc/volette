@@ -20,8 +20,8 @@ pub fn build(file: &Path) {
         Span::new(
             file_name,
             lexer.cursor.line,
-            (lexer.cursor.col - 1).max(0),
-            (lexer.cursor.col - 1).max(0),
+            (lexer.cursor.col).max(0),
+            (lexer.cursor.col).max(0),
         ),
     ));
     println!(

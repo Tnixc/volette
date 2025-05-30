@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
-use volette::compiler;
 use std::path::PathBuf;
+use volette::compiler;
 
 #[derive(Parser)]
 #[command(name = "volette")]
