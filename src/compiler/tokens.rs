@@ -70,6 +70,7 @@ pub enum PrimitiveTypes {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
@@ -78,7 +79,7 @@ pub enum TokenKind {
     TypeLiteral(PrimitiveTypes),
     Punctuation(Punctuation),
     Identifier(SymbolUsize),
-    EOF,
+    Eof,
 }
 
 /// A span of text in a file. Start and end are inclusive.

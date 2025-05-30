@@ -5,7 +5,7 @@ pub mod tokens;
 
 use lexer::Lexer;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
-use tokens::TokenKind;
+use tokens::{Span, Token, TokenKind};
 type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
 pub fn build(file: &Path) {
@@ -15,6 +15,15 @@ pub fn build(file: &Path) {
     let mut lexer = Lexer::new(&contents, interner, file_name);
 
     lexer.tokenize(contents.chars().collect());
+    lexer.tokens.push(Token::new(
+        TokenKind::Eof,
+        Span::new(
+            file_name,
+            lexer.cursor.line,
+            (lexer.cursor.col - 1).max(0),
+            (lexer.cursor.col - 1).max(0),
+        ),
+    ));
     println!(
         "{:?}",
         lexer
@@ -33,8 +42,4 @@ pub fn build(file: &Path) {
             })
             .collect::<Vec<_>>()
     );
-}
-
-pub fn run(file: &Path) {
-    todo!()
 }

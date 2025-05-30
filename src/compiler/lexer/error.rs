@@ -6,16 +6,14 @@ use crate::compiler::tokens::Span;
 
 use super::numbers::NumberBase;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
+#[allow(dead_code)]
 pub enum LexError {
     #[error("Unexpected character '{character}' at {span}")]
     UnexpectedCharacter { character: char, span: Span },
 
     #[error("Unterminated string literal starting at {span}")]
     UnterminatedString { span: Span },
-
-    #[error("IO error")]
-    Io(#[from] std::io::Error),
 
     #[error("Invalid float '{value}' at {span}")]
     InvalidFloat {

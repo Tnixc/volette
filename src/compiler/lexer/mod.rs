@@ -10,6 +10,7 @@ mod punctuation;
 mod type_literals;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum LexerState {
     Number(bool, numbers::NumberBase),
     String,
@@ -55,17 +56,20 @@ impl Lexer {
     }
 
     pub fn tokenize(&mut self, mut chars: Vec<char>) {
-        chars.extend_from_slice(&['\0'; 8]);
-        let iter = chars.iter().enumerate();
+        chars.extend_from_slice(&['\0', '\0']);
 
-        for (i, &ch) in iter {
-            let window_end = (i + 10).min(chars.len());
-            let window = &chars[i..window_end];
-            self.next(ch, window);
+        let mut iter = chars.into_iter();
+        let mut curr = iter.next().unwrap();
+        let mut next = iter.next().unwrap();
+
+        for ch in iter {
+            self.next(curr, next);
+            curr = next;
+            next = ch;
         }
     }
 
-    pub fn next(&mut self, c: char, window: &[char]) {
+    pub fn next(&mut self, c: char, next: char) {
         if self.newline {
             self.cursor.line += 1;
             self.cursor.col = 0;
@@ -105,9 +109,9 @@ impl Lexer {
                     };
                     self.state = LexerState::Number(c == '.', base);
                     self.current_chars.push(((self.cursor.line, self.cursor.col), c));
-                } else if c == '/' && window.get(1).is_some_and(|&x| x == '*') {
+                } else if c == '/' && next == '*' {
                     self.state = LexerState::MultilineComment;
-                } else if c == '/' && window.get(1).is_some_and(|&x| x == '/') {
+                } else if c == '/' && next == '/' {
                     self.state = LexerState::Comment;
                 } else {
                     self.current_chars.push(((self.cursor.line, self.cursor.col), c));
@@ -167,7 +171,7 @@ impl Lexer {
             LexerState::Number(float, base) => {
                 if !self.lex_number(c, float, base) {
                     self.cursor.col -= 1;
-                    self.next(c, window);
+                    self.next(c, next);
                 }
             }
             LexerState::Comment => {

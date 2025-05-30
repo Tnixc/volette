@@ -1,5 +1,5 @@
-mod compiler;
 use clap::{Parser, Subcommand};
+use volette::compiler;
 use std::path::PathBuf;
 
 #[derive(Parser)]

@@ -76,7 +76,7 @@ impl Lexer {
         self.current_chars.drain(..self.current_chars.len()).for_each(|_| {});
     }
 
-    pub fn lex_float(&mut self) -> Result<f64, ()> {
+    pub fn lex_float(&mut self) -> Result<f64, LexError> {
         let current_string = self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>();
         let filtered_str: String = current_string.chars().filter(|&c| c != '_').collect();
 
@@ -89,15 +89,17 @@ impl Lexer {
             let end_pos = self.current_chars.last().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span_from_positions(start_pos, end_pos);
 
-            self.errors.push(LexError::InvalidFloat {
-                value: filtered_str,
+            let err = LexError::InvalidFloat {
+                value: filtered_str.clone(),
                 span,
                 source: e,
-            });
+            };
+            self.errors.push(err.clone());
+            err
         })
     }
 
-    pub fn lex_int(&mut self, base: NumberBase) -> Result<i64, ()> {
+    pub fn lex_int(&mut self, base: NumberBase) -> Result<i64, LexError> {
         let radix = match base {
             NumberBase::Decimal => 10,
             NumberBase::Hex => 16,
@@ -129,11 +131,13 @@ impl Lexer {
             let end_pos = self.current_chars.last().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span_from_positions(start_pos, end_pos);
 
-            self.errors.push(LexError::InvalidInteger {
-                value: filtered_str,
+            let err = LexError::InvalidInteger {
+                value: filtered_str.clone(),
                 span,
                 source: e,
-            });
+            };
+            self.errors.push(err.clone());
+            err
         })
     }
 }
