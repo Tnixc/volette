@@ -28,6 +28,9 @@ pub enum ParserError {
     #[error("Function parameter comma expected as a delimiter: {token}")]
     FnParamCommaExpected { token: Token },
 
+    #[error("Function parameter incomplete: {token}")]
+    FnParameterIncomplete { token: Token },
+
     #[error("Closing parenthesis expected: {token}")]
     CloseParenExpected { token: Token },
 
@@ -36,6 +39,9 @@ pub enum ParserError {
 
     #[error("Function return type expected after ':': {token}")]
     FnReturnTypeExpected { token: Token },
+
+    #[error("Block expected close brace: {token}")]
+    BlockExpectedCloseBrace { token: Token },
 }
 
 impl Display for Token {

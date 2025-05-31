@@ -46,11 +46,11 @@ impl Parser {
                 })
             }
         };
-        self.advance();
 
         let mut param: (Option<SymbolUsize>, Option<Type>) = (None, None);
         let mut params: Vec<(SymbolUsize, Type)> = Vec::new();
 
+        #[derive(Debug, PartialEq, Eq)]
         enum ParamMode {
             Name,
             Colon,
@@ -59,67 +59,80 @@ impl Parser {
         }
         let mut mode = ParamMode::Name;
 
-        while self.current().kind != TokenKind::Punctuation(Punctuation::CloseParen) {
+        while self
+            .advance()
+            .is_some_and(|t| t.kind != TokenKind::Punctuation(Punctuation::CloseParen))
+        {
             match mode {
                 ParamMode::Name => match self.current().kind {
                     TokenKind::Identifier(name) => {
-                        self.advance();
                         param.0 = Some(name);
                         mode = ParamMode::Colon;
                     }
                     _ => {
-                        println!("name: {:?}", self.current());
-                        return Err(ParserError::FnParamNameExpected {
+                        self.parse_errors.push(ParserError::FnParamNameExpected {
                             token: self.current().clone(),
                         });
+                        mode = ParamMode::Colon;
+                        self.backtrack();
                     }
                 },
                 ParamMode::Colon => match self.current().kind {
                     TokenKind::Punctuation(Punctuation::Colon) => {
-                        self.advance();
                         mode = ParamMode::Type;
                     }
                     _ => {
-                        return Err(ParserError::FnParamTypeExpected {
+                        self.parse_errors.push(ParserError::FnParamTypeExpected {
                             token: self.current().clone(),
-                        })
+                        });
+                        mode = ParamMode::Type;
+                        self.backtrack();
                     }
                 },
                 ParamMode::Type => match self.current().kind {
                     TokenKind::TypeLiteral(ty) => {
-                        self.advance();
                         params.push((param.0.expect("[!] name should be Some"), Type::Primitive(ty)));
                         param = (None, None);
                         mode = ParamMode::Comma;
                     }
                     _ => {
-                        return Err(ParserError::FnParamTypeExpected {
+                        self.parse_errors.push(ParserError::FnParamTypeExpected {
                             token: self.current().clone(),
-                        })
+                        });
+                        mode = ParamMode::Type;
+                        self.backtrack();
                     }
                 },
                 ParamMode::Comma => match self.current().kind {
                     TokenKind::Punctuation(Punctuation::Comma) => {
-                        self.advance();
                         mode = ParamMode::Name;
                     }
                     _ => {
-                        return Err(ParserError::FnParamCommaExpected {
+                        self.parse_errors.push(ParserError::FnParamCommaExpected {
                             token: self.current().clone(),
-                        })
+                        });
+                        mode = ParamMode::Name;
+                        self.backtrack();
                     }
                 },
             }
         }
 
         match self.current().kind {
-            TokenKind::Punctuation(Punctuation::CloseParen) => {}
+            TokenKind::Punctuation(Punctuation::CloseParen) => {
+                if mode != ParamMode::Comma {
+                    self.parse_errors.push(ParserError::FnParameterIncomplete {
+                        token: self.current().clone(),
+                    });
+                }
+            }
             _ => {
                 return Err(ParserError::CloseParenExpected {
                     token: self.current().clone(),
                 })
             }
         };
+
         self.advance();
 
         let mut return_type = Type::Primitive(PrimitiveTypes::Nil);

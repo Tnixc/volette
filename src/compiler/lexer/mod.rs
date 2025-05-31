@@ -43,7 +43,7 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(str: &str, interner: StringInterner<BucketBackend<SymbolUsize>>, path: SymbolUsize) -> Self {
         Lexer {
-            tokens: Vec::with_capacity(str.len() / 5),
+            tokens: vec![Token::new(TokenKind::Start, Span::new(path, 0, 0, 0, 0))],
             state: LexerState::Normal,
             errors: Vec::new(),
             cursor: Cursor {

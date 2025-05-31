@@ -80,6 +80,7 @@ pub enum TokenKind {
     Punctuation(Punctuation),
     Identifier(SymbolUsize),
     Eof,
+    Start,
 }
 
 /// A span of text in a file. Start and end are inclusive.

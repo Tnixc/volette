@@ -141,6 +141,10 @@ impl Lexer {
             println!("{}", error.span().format_error_display(format!("{}", error).as_str()));
         }
         println!("{}", "-".repeat(50).dimmed());
-        println!("{}: {} found", "Errors".red().bold(), self.errors.len());
+        if self.errors.len() > 0 {
+            println!("{}: {} found", "Lex errors".red().bold(), self.errors.len());
+        } else {
+            println!("{}: {} found", "Lex errors".green().bold(), self.errors.len());
+        }
     }
 }

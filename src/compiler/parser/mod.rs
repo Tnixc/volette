@@ -22,7 +22,7 @@ pub struct Parser {
 impl Parser {
     pub fn new(tokens: Vec<Token>, interner: StringInterner<BucketBackend<SymbolUsize>>) -> Self {
         Self {
-            tree: Arena::new(),
+            tree: Arena::with_capacity(tokens.len()),
             interner,
             current_idx: 0,
             current_token: tokens.first().unwrap().clone(), // FIXME in lexer -> parser stage
@@ -66,12 +66,11 @@ impl Parser {
         let mut span = self.current().span;
         let mut defs = Vec::new();
 
-        while self.current().kind != TokenKind::Eof {
+        while self.advance().is_some_and(|t| t.kind != TokenKind::Eof) {
             match self.parse_def() {
                 Ok(idx) => defs.push(idx),
                 Err(e) => self.parse_errors.push(e),
             }
-            self.advance();
         }
 
         if let Some(last_node) = defs.last().and_then(|idx| self.node(&idx)) {
@@ -84,13 +83,39 @@ impl Parser {
             type_: None,
         }
     }
-    pub fn advance(&mut self) {
+
+    pub fn advance_unchecked(&mut self) -> Token {
         self.current_idx += 1;
         self.current_token = self
             .tokens
             .get(self.current_idx)
             .expect("No next token but advanced anyway")
             .clone();
+        self.current_token
+    }
+
+    /// returns true if there is a next token, and advances if there is
+    pub fn advance(&mut self) -> Option<Token> {
+        if self.current_idx < self.tokens.len() - 1 {
+            Some(self.advance_unchecked())
+        } else {
+            None
+        }
+    }
+
+    pub fn backtrack_unchecked(&mut self) {
+        self.current_idx -= 1;
+        self.current_token = self
+            .tokens
+            .get(self.current_idx)
+            .expect("No previous token but backtracked anyway")
+            .clone();
+    }
+
+    pub fn backtrack(&mut self) {
+        if self.current_idx > 0 {
+            self.backtrack_unchecked();
+        }
     }
 
     pub fn peek_offset(&self, offset: usize) -> Option<&Token> {
