@@ -3,7 +3,7 @@ use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
     parser::node::Type,
-    tokens::{Keyword, PrimitiveTypes, Punctuation, TokenKind},
+    tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
 };
 
 use super::{
@@ -16,11 +16,7 @@ impl Parser {
     pub fn parse_def(&mut self) -> Result<Index, ParserError> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),
-            _ => {
-                return Err(ParserError::UnexpectedTokenAtTopLevel {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::UnexpectedTokenAtTopLevel { token: *self.current() }),
         }
     }
 
@@ -30,25 +26,17 @@ impl Parser {
 
         let name = match self.current().kind {
             TokenKind::Identifier(name) => name,
-            _ => {
-                return Err(ParserError::IdentifierExpectedAfterFn {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::IdentifierExpectedAfterFn { token: *self.current() }),
         };
         self.advance();
 
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::OpenParen) => {}
-            _ => {
-                return Err(ParserError::OpenParenExpectedAfterFnName {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::OpenParenExpectedAfterFnName { token: *self.current() }),
         };
 
-        let mut param: (Option<SymbolUsize>, Option<Type>) = (None, None);
-        let mut params: Vec<(SymbolUsize, Type)> = Vec::new();
+        let mut param: (Option<SymbolUsize>, Option<Type>, Option<Span>) = (None, None, None);
+        let mut params: Vec<(SymbolUsize, Type, Span)> = Vec::new();
 
         #[derive(Debug, PartialEq, Eq)]
         enum ParamMode {
@@ -67,12 +55,12 @@ impl Parser {
                 ParamMode::Name => match self.current().kind {
                     TokenKind::Identifier(name) => {
                         param.0 = Some(name);
+                        param.2 = Some(self.current().span);
                         mode = ParamMode::Colon;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamNameExpected {
-                            token: self.current().clone(),
-                        });
+                        self.parse_errors
+                            .push(ParserError::FnParamNameExpected { token: *self.current() });
                         mode = ParamMode::Colon;
                         self.backtrack();
                     }
@@ -80,25 +68,33 @@ impl Parser {
                 ParamMode::Colon => match self.current().kind {
                     TokenKind::Punctuation(Punctuation::Colon) => {
                         mode = ParamMode::Type;
+                        if let Some(span) = param.2.as_mut() {
+                            span.connect_mut(&self.current().span);
+                        }
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamTypeExpected {
-                            token: self.current().clone(),
-                        });
+                        self.parse_errors
+                            .push(ParserError::FnParamTypeExpected { token: *self.current() });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
                 },
                 ParamMode::Type => match self.current().kind {
                     TokenKind::TypeLiteral(ty) => {
-                        params.push((param.0.expect("[!] name should be Some"), Type::Primitive(ty)));
-                        param = (None, None);
+                        if let Some(span) = param.2.as_mut() {
+                            span.connect_mut(&self.current().span);
+                        }
+                        params.push((
+                            param.0.expect("[!] name should be Some"),
+                            Type::Primitive(ty),
+                            param.2.expect("[!] span should be Some"),
+                        ));
+                        param = (None, None, None);
                         mode = ParamMode::Comma;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamTypeExpected {
-                            token: self.current().clone(),
-                        });
+                        self.parse_errors
+                            .push(ParserError::FnParamTypeExpected { token: *self.current() });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
@@ -108,9 +104,8 @@ impl Parser {
                         mode = ParamMode::Name;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamCommaExpected {
-                            token: self.current().clone(),
-                        });
+                        self.parse_errors
+                            .push(ParserError::FnParamCommaExpected { token: *self.current() });
                         mode = ParamMode::Name;
                         self.backtrack();
                     }
@@ -121,42 +116,30 @@ impl Parser {
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseParen) => {
                 if mode != ParamMode::Comma {
-                    self.parse_errors.push(ParserError::FnParameterIncomplete {
-                        token: self.current().clone(),
-                    });
+                    self.parse_errors
+                        .push(ParserError::FnParameterIncomplete { token: *self.current() });
                 }
             }
-            _ => {
-                return Err(ParserError::CloseParenExpected {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::CloseParenExpected { token: *self.current() }),
         };
 
         self.advance();
 
         let mut return_type = Type::Primitive(PrimitiveTypes::Nil);
 
-        match self.current().kind {
-            TokenKind::Punctuation(Punctuation::Colon) => {
-                self.advance();
-                match self.current().kind {
-                    TokenKind::TypeLiteral(ty) => {
-                        return_type = Type::Primitive(ty);
-                        self.advance();
-                    }
-                    TokenKind::Identifier(name) => {
-                        return_type = Type::Custom(name);
-                        self.advance();
-                    }
-                    _ => {
-                        return Err(ParserError::FnReturnTypeExpected {
-                            token: self.current().clone(),
-                        })
-                    }
+        if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
+            self.advance();
+            match self.current().kind {
+                TokenKind::TypeLiteral(ty) => {
+                    return_type = Type::Primitive(ty);
+                    self.advance();
                 }
+                TokenKind::Identifier(name) => {
+                    return_type = Type::Custom(name);
+                    self.advance();
+                }
+                _ => return Err(ParserError::FnReturnTypeExpected { token: *self.current() }),
             }
-            _ => {}
         }
 
         match self.current().kind {
@@ -173,11 +156,7 @@ impl Parser {
                 );
                 Ok(self.push(node))
             }
-            _ => {
-                return Err(ParserError::FnBodyExpected {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::FnBodyExpected { token: *self.current() }),
         }
     }
 }

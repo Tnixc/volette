@@ -25,7 +25,7 @@ impl Parser {
             tree: Arena::with_capacity(tokens.len()),
             interner,
             current_idx: 0,
-            current_token: tokens.first().unwrap().clone(), // FIXME in lexer -> parser stage
+            current_token: *tokens.first().unwrap(), // FIXME in lexer -> parser stage
             tokens,
             parse_errors: Vec::new(),
         }
@@ -34,30 +34,27 @@ impl Parser {
     pub fn parse(&mut self) {
         let root = self.parse_root();
         println!("errors: {:?}", self.parse_errors);
-        match &root.kind {
-            NodeKind::Root { defs } => {
-                defs.iter().for_each(|idx| match &self.tree.get(*idx).unwrap().kind {
-                    NodeKind::Def(DefKind::Function {
-                        name,
-                        params,
-                        body,
-                        return_type,
-                    }) => {
-                        println!("name: {:?}", self.interner.resolve(*name));
-                        println!(
-                            "params: {:?}",
-                            params
-                                .iter()
-                                .map(|(name, ty)| (self.interner.resolve(*name), ty))
-                                .collect::<Vec<_>>()
-                        );
-                        println!("body: {:?}", body);
-                        println!("return_type: {:?}", return_type);
-                    }
-                    _ => {}
-                });
-            }
-            _ => {}
+        if let NodeKind::Root { defs } = &root.kind {
+            defs.iter().for_each(|idx| {
+                if let NodeKind::Def(DefKind::Function {
+                    name,
+                    params,
+                    body,
+                    return_type,
+                }) = &self.tree.get(*idx).unwrap().kind
+                {
+                    println!("name: {:?}", self.interner.resolve(*name));
+                    println!(
+                        "params: {:?}",
+                        params
+                            .iter()
+                            .map(|(name, ty, span)| (self.interner.resolve(*name), ty, span))
+                            .collect::<Vec<_>>()
+                    );
+                    println!("body: {:?}", body);
+                    println!("return_type: {:?}", return_type);
+                }
+            });
         }
         self.tree.insert(root);
     }
@@ -73,7 +70,7 @@ impl Parser {
             }
         }
 
-        if let Some(last_node) = defs.last().and_then(|idx| self.node(&idx)) {
+        if let Some(last_node) = defs.last().and_then(|idx| self.node(idx)) {
             span.connect_mut(&last_node.span);
         }
 
@@ -86,11 +83,10 @@ impl Parser {
 
     pub fn advance_unchecked(&mut self) -> Token {
         self.current_idx += 1;
-        self.current_token = self
+        self.current_token = *self
             .tokens
             .get(self.current_idx)
-            .expect("No next token but advanced anyway")
-            .clone();
+            .expect("No next token but advanced anyway");
         self.current_token
     }
 
@@ -105,11 +101,10 @@ impl Parser {
 
     pub fn backtrack_unchecked(&mut self) {
         self.current_idx -= 1;
-        self.current_token = self
+        self.current_token = *self
             .tokens
             .get(self.current_idx)
-            .expect("No previous token but backtracked anyway")
-            .clone();
+            .expect("No previous token but backtracked anyway");
     }
 
     pub fn backtrack(&mut self) {

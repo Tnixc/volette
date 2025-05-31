@@ -252,9 +252,9 @@ mod tests {
         ];
 
         let tokens = lexer.format_tokens();
-        assert_eq!(tokens.len(), expected_tokens.len());
+        assert_eq!(tokens.len() - 1, expected_tokens.len());
 
-        for (i, token) in tokens.iter().enumerate() {
+        for (i, token) in tokens.iter().skip(1).enumerate() {
             assert_eq!(token, &expected_tokens[i]);
         }
     }

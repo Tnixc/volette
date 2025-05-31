@@ -71,7 +71,7 @@ pub enum NodeKind {
 pub enum DefKind {
     Function {
         name: SymbolUsize,
-        params: Vec<(SymbolUsize, Type)>,
+        params: Vec<(SymbolUsize, Type, Span)>,
 
         /// Block expr
         body: Index,
@@ -80,7 +80,7 @@ pub enum DefKind {
     },
     Struct {
         name: SymbolUsize,
-        fields: Vec<(SymbolUsize, Type)>,
+        fields: Vec<(SymbolUsize, Type, Span)>,
     },
 }
 

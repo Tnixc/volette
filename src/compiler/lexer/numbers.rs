@@ -169,10 +169,11 @@ mod tests {
             (IntLiteral(156), 1, (26, 30)), // 0o234 = 156
         ];
 
-        assert_eq!(lexer.tokens.len(), expected_tokens.len());
+        assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
         let tokens = lexer
             .tokens
             .iter()
+            .skip(1)
             .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
             .collect::<Vec<_>>();
         for (i, token) in tokens.iter().enumerate() {

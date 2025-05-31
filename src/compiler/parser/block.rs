@@ -10,24 +10,16 @@ use super::{
 
 impl Parser {
     pub fn parse_block(&mut self) -> Result<Index, ParserError> {
-        let mut nodes = Vec::new();
+        let nodes = Vec::new();
 
-        // TODO: depth
         while self
             .advance()
             .is_some_and(|t| t.kind != TokenKind::Punctuation(Punctuation::CloseBrace))
-        {
-            //     let node = self.parse_stmt()?;
-            //     nodes.push(node);
-        }
+        {}
 
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseBrace) => {}
-            _ => {
-                return Err(ParserError::BlockExpectedCloseBrace {
-                    token: self.current().clone(),
-                })
-            }
+            _ => return Err(ParserError::BlockExpectedCloseBrace { token: *self.current() }),
         }
 
         Ok(self.push(Node::new(

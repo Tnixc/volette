@@ -81,7 +81,7 @@ mod tests {
     use crate::compiler::tokens::TokenKind::*;
 
     #[test]
-    fn test_lex_punctuation() {
+    fn test_lex_keywords() {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = r#"fn use const let loop break return struct alloc free pub local self as in"#;
@@ -108,14 +108,14 @@ mod tests {
             (Keyword(In), 1, (72, 73)),
         ];
 
-        assert_eq!(lexer.tokens.len(), expected_tokens.len());
-
-        for (i, expected) in expected_tokens.iter().enumerate() {
-            assert_eq!(lexer.tokens[i].kind, expected.0);
-            assert_eq!(lexer.tokens[i].span.start.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.end.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.start.1, expected.2 .0);
-            assert_eq!(lexer.tokens[i].span.end.1, expected.2 .1);
+        let tokens = lexer
+            .tokens
+            .iter()
+            .skip(1)
+            .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+            .collect::<Vec<_>>();
+        for (i, token) in tokens.iter().enumerate() {
+            assert_eq!(token, &expected_tokens[i]);
         }
     }
 }

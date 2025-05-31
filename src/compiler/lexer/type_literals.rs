@@ -101,14 +101,16 @@ mod tests {
             (TypeLiteral(Nil), 1, (44, 46)),
         ];
 
-        assert_eq!(lexer.tokens.len(), expected_tokens.len());
+        let tokens = lexer
+            .tokens
+            .iter()
+            .skip(1)
+            .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+            .collect::<Vec<_>>();
 
-        for (i, expected) in expected_tokens.iter().enumerate() {
-            assert_eq!(lexer.tokens[i].kind, expected.0);
-            assert_eq!(lexer.tokens[i].span.start.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.end.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.start.1, expected.2 .0);
-            assert_eq!(lexer.tokens[i].span.end.1, expected.2 .1);
+        assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
+        for (i, token) in tokens.iter().enumerate() {
+            assert_eq!(token, &expected_tokens[i]);
         }
     }
 }

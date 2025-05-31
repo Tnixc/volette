@@ -51,6 +51,8 @@ pub enum Punctuation {
     Amp,
     Pipe,
     PipePipe,
+
+    FatArrow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -113,23 +115,18 @@ impl Span {
     }
 
     fn connect(&self, other: &Self) -> ((usize, usize), (usize, usize)) {
-        let (start_line, start_col) = if (self.start.0, self.start.1) <= (other.start.0, other.start.1) {
-            self.start
-        } else {
-            other.start
-        };
-        let (end_line, end_col) = if (self.end.0, self.end.1) >= (other.end.0, other.end.1) {
-            self.end
-        } else {
-            other.end
-        };
+        let start_line = self.start.0.min(other.start.0);
+        let start_col = self.start.1.min(other.start.1);
+        let end_line = self.end.0.max(other.end.0);
+        let end_col = self.end.1.max(other.end.1);
         ((start_line, start_col), (end_line, end_col))
     }
 
-    pub fn connect_mut(&mut self, other: &Self) {
+    pub fn connect_mut(&mut self, other: &Self) -> &mut Self {
         let ((start_line, start_col), (end_line, end_col)) = self.connect(other);
         self.start = (start_line, start_col);
         self.end = (end_line, end_col);
+        self
     }
 
     pub fn connect_new(&self, other: &Self) -> Self {

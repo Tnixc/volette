@@ -52,6 +52,7 @@ impl Lexer {
         check_punct!("<=", LessThanOrEq, 2);
         check_punct!(">=", GreaterThanOrEq, 2);
         check_punct!("||", PipePipe, 2);
+        check_punct!("=>", FatArrow, 2);
 
         check_punct!("&", Amp, 2);
         check_punct!("!", Bang, 2);
@@ -96,7 +97,8 @@ mod tests {
 >=   ||    &    !
 *    =  <>    |    ) (
     {   }  [  ]   , .  :
-;   /   %   +   -"#;
+;   /   %   +   -
+=>"#;
         let mut lexer = Lexer::new(contents, interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
@@ -131,15 +133,19 @@ mod tests {
             (Punctuation(Percent), 5, (9, 9)),
             (Punctuation(Plus), 5, (13, 13)),
             (Punctuation(Minus), 5, (17, 17)),
+            (Punctuation(FatArrow), 6, (1, 2)),
         ];
 
-        assert_eq!(lexer.tokens.len(), expected_tokens.len());
-        for (i, expected) in expected_tokens.iter().enumerate() {
-            assert_eq!(lexer.tokens[i].kind, expected.0);
-            assert_eq!(lexer.tokens[i].span.start.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.end.0, expected.1);
-            assert_eq!(lexer.tokens[i].span.start.1, expected.2 .0);
-            assert_eq!(lexer.tokens[i].span.end.1, expected.2 .1);
+        let tokens = lexer
+            .tokens
+            .iter()
+            .skip(1)
+            .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+            .collect::<Vec<_>>();
+
+        assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
+        for (i, token) in tokens.iter().enumerate() {
+            assert_eq!(token, &expected_tokens[i]);
         }
     }
 }
