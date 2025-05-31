@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
 colored = "3.0.0"
+generational-arena = "0.2.9"
 string-interner = "0.19.0"
 thiserror = "2.0.12"

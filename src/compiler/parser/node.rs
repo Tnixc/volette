@@ -45,7 +45,7 @@ pub enum Literal {
     U8(u8),
     F64(f64),
     Bool(bool),
-    None,
+    Nil,
 }
 
 pub enum NodeKind {

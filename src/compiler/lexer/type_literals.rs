@@ -16,7 +16,7 @@ impl Lexer {
             self.current_chars.back().map(|c| c.0).unwrap_or(start_pos)
         };
 
-        let span = self.create_span_from_positions(start_pos, end_pos);
+        let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
         self.tokens.push(Token::new(TokenKind::TypeLiteral(type_literal), span));
     }
 
@@ -62,7 +62,7 @@ impl Lexer {
         check_type!("f32", F32);
         check_type!("f64", F64);
         check_type!("bool", Bool);
-        check_type!("None", None);
+        check_type!("Nil", Nil);
 
         false
     }
@@ -80,7 +80,7 @@ mod tests {
     fn test_lex_types() {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
-        let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool None"#;
+        let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool Nil"#;
         let mut lexer = Lexer::new(contents, interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
@@ -98,32 +98,17 @@ mod tests {
             (TypeLiteral(F32), 1, (31, 33)),
             (TypeLiteral(F64), 1, (35, 37)),
             (TypeLiteral(Bool), 1, (39, 42)),
-            (TypeLiteral(None), 1, (44, 47)),
+            (TypeLiteral(Nil), 1, (44, 46)),
         ];
 
         assert_eq!(lexer.tokens.len(), expected_tokens.len());
 
         for (i, expected) in expected_tokens.iter().enumerate() {
-            assert_eq!(
-                lexer.tokens[i].kind, expected.0,
-                "Token at index {} should be {:?}",
-                i, expected
-            );
-            assert_eq!(
-                lexer.tokens[i].span.line, expected.1,
-                "Token at index {} should be on line {}",
-                i, expected.1
-            );
-            assert_eq!(
-                lexer.tokens[i].span.start, expected.2 .0,
-                "Token at index {} should start at {}",
-                i, expected.2 .0
-            );
-            assert_eq!(
-                lexer.tokens[i].span.end, expected.2 .1,
-                "Token at index {} should end at {}",
-                i, expected.2 .1
-            );
+            assert_eq!(lexer.tokens[i].kind, expected.0);
+            assert_eq!(lexer.tokens[i].span.start.0, expected.1);
+            assert_eq!(lexer.tokens[i].span.end.0, expected.1);
+            assert_eq!(lexer.tokens[i].span.start.1, expected.2 .0);
+            assert_eq!(lexer.tokens[i].span.end.1, expected.2 .1);
         }
     }
 }

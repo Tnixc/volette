@@ -16,7 +16,7 @@ impl Lexer {
             self.current_chars.back().map(|c| c.0).unwrap_or(start_pos)
         };
 
-        let span = self.create_span_from_positions(start_pos, end_pos);
+        let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
         self.tokens
             .push(Token::new(crate::compiler::tokens::TokenKind::Keyword(keyword), span));
     }
@@ -111,26 +111,11 @@ mod tests {
         assert_eq!(lexer.tokens.len(), expected_tokens.len());
 
         for (i, expected) in expected_tokens.iter().enumerate() {
-            assert_eq!(
-                lexer.tokens[i].kind, expected.0,
-                "Token at index {} should be {:?}",
-                i, expected
-            );
-            assert_eq!(
-                lexer.tokens[i].span.line, expected.1,
-                "Token at index {} should be on line {}",
-                i, expected.1
-            );
-            assert_eq!(
-                lexer.tokens[i].span.start, expected.2 .0,
-                "Token at index {} should start at {}",
-                i, expected.2 .0
-            );
-            assert_eq!(
-                lexer.tokens[i].span.end, expected.2 .1,
-                "Token at index {} should end at {}",
-                i, expected.2 .1
-            );
+            assert_eq!(lexer.tokens[i].kind, expected.0);
+            assert_eq!(lexer.tokens[i].span.start.0, expected.1);
+            assert_eq!(lexer.tokens[i].span.end.0, expected.1);
+            assert_eq!(lexer.tokens[i].span.start.1, expected.2 .0);
+            assert_eq!(lexer.tokens[i].span.end.1, expected.2 .1);
         }
     }
 }

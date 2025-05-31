@@ -56,7 +56,7 @@ impl Lexer {
 
         let start_pos = self.current_chars[0].0;
         let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
-        let span = self.create_span_from_positions(start_pos, end_pos);
+        let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
         if float {
             if base != NumberBase::Decimal {
@@ -71,7 +71,6 @@ impl Lexer {
         }
 
         self.state = LexerState::Normal;
-        // drain the current_chars from start up to this invalid char
         self.current_chars.drain(..self.current_chars.len()).for_each(|_| {});
     }
 
@@ -86,7 +85,7 @@ impl Lexer {
                 .map(|(pos, _)| *pos)
                 .unwrap_or((self.cursor.line, self.cursor.col));
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
-            let span = self.create_span_from_positions(start_pos, end_pos);
+            let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
             let err = LexError::InvalidFloat {
                 value: filtered_str.clone(),
@@ -128,7 +127,7 @@ impl Lexer {
                 .map(|(pos, _)| *pos)
                 .unwrap_or((self.cursor.line, self.cursor.col));
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
-            let span = self.create_span_from_positions(start_pos, end_pos);
+            let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
             let err = LexError::InvalidInteger {
                 value: filtered_str.clone(),
@@ -174,7 +173,7 @@ mod tests {
         let tokens = lexer
             .tokens
             .iter()
-            .map(|t| (t.kind, t.span.line, (t.span.start, t.span.end)))
+            .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
             .collect::<Vec<_>>();
         for (i, token) in tokens.iter().enumerate() {
             assert_eq!(token, &expected_tokens[i]);

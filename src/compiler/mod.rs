@@ -11,9 +11,9 @@ use tokens::{Span, Token, TokenKind};
 type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
 pub fn build(file: &Path) {
-    let contents = std::fs::read_to_string(file).unwrap();
+    let contents = std::fs::read_to_string(file).unwrap_or_else(|_| panic!("Failed to read file: {:?}", file));
     let mut interner = Interner::new();
-    let file_name = interner.get_or_intern(file.to_str().unwrap());
+    let file_name = interner.get_or_intern(file.to_str().unwrap_or("<unknown>"));
     let mut lexer = Lexer::new(&contents, interner, file_name);
 
     lexer.tokenize(contents.chars().collect());
@@ -22,8 +22,9 @@ pub fn build(file: &Path) {
         Span::new(
             file_name,
             lexer.cursor.line,
-            (lexer.cursor.col).max(0),
-            (lexer.cursor.col).max(0),
+            lexer.cursor.col.max(0),
+            lexer.cursor.col.max(0),
+            lexer.cursor.col.max(0),
         ),
     ));
     println!("{:?}", lexer.format_tokens());

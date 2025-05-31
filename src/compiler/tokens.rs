@@ -66,7 +66,7 @@ pub enum PrimitiveTypes {
     F32,
     F64,
     Bool,
-    None,
+    Nil,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -86,9 +86,8 @@ pub enum TokenKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
     pub file: SymbolUsize,
-    pub line: usize,
-    pub start: usize,
-    pub end: usize,
+    pub start: (usize, usize),
+    pub end: (usize, usize),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -104,7 +103,29 @@ impl Token {
 }
 
 impl Span {
-    pub fn new(file: SymbolUsize, line: usize, start: usize, end: usize) -> Self {
-        Self { file, line, start, end }
+    pub fn new(file: SymbolUsize, start_line: usize, start_col: usize, end_line: usize, end_col: usize) -> Self {
+        Self {
+            file,
+            start: (start_line, start_col),
+            end: (end_line, end_col),
+        }
+    }
+
+    pub fn connect(&self, other: &Self) -> Self {
+        let (start_line, start_col) = if (self.start.0, self.start.1) <= (other.start.0, other.start.1) {
+            self.start
+        } else {
+            other.start
+        };
+        let (end_line, end_col) = if (self.end.0, self.end.1) >= (other.end.0, other.end.1) {
+            self.end
+        } else {
+            other.end
+        };
+        Self {
+            file: self.file,
+            start: (start_line, start_col),
+            end: (end_line, end_col),
+        }
     }
 }

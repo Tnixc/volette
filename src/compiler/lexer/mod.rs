@@ -94,10 +94,7 @@ impl Lexer {
             self.errors.push(LexError::InvalidCharacter {
                 character: c,
                 span: self
-                    .create_span_from_positions(
-                        (self.cursor.line, self.cursor.col),
-                        (self.cursor.line, self.cursor.col),
-                    )
+                    .create_span(self.cursor.line, self.cursor.col, self.cursor.line, self.cursor.col)
                     .to_display(&self.interner),
             });
             return;
@@ -139,7 +136,7 @@ impl Lexer {
                             if !identifier.is_empty() {
                                 let start_pos = ident_chars[0].0;
                                 let end_pos = ident_chars[ident_chars.len() - 1].0;
-                                let span = self.create_span_from_positions(start_pos, end_pos);
+                                let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
                                 self.tokens.push(Token::new(
                                     TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
@@ -188,8 +185,8 @@ impl Lexer {
         }
     }
 
-    fn create_span_from_positions(&self, start_pos: (usize, usize), end_pos: (usize, usize)) -> Span {
-        Span::new(self.cursor.file, start_pos.0, start_pos.1, end_pos.1)
+    fn create_span(&self, start_line: usize, start_col: usize, end_line: usize, end_col: usize) -> Span {
+        Span::new(self.cursor.file, start_line, start_col, end_line, end_col)
     }
 }
 
@@ -206,6 +203,28 @@ impl LexedChar for char {
     fn is_allowed_char(&self) -> bool {
         let disallowed_chars = ['^', '`', '~', '\'', '"', '?', '\\', '@'];
         !disallowed_chars.contains(self) && self.is_ascii()
+    }
+}
+
+impl Lexer {
+    pub fn format_tokens(&self) -> Vec<(String, usize, (usize, usize))> {
+        self.tokens
+            .iter()
+            .map(|t| {
+                (
+                    if let TokenKind::Identifier(identifier) = t.kind {
+                        format!(
+                            "Identifier({})",
+                            self.interner.resolve(identifier).unwrap_or("<unknown>")
+                        )
+                    } else {
+                        format!("{:?}", t.kind)
+                    },
+                    t.span.start.0,
+                    (t.span.start.1, t.span.end.1),
+                )
+            })
+            .collect::<Vec<_>>()
     }
 }
 
@@ -232,21 +251,7 @@ mod tests {
             ("Identifier(normal)".to_string(), 1, (22, 27)),
         ];
 
-        let tokens = lexer
-            .tokens
-            .iter()
-            .map(|t| {
-                (
-                    if let TokenKind::Identifier(identifier) = t.kind {
-                        format!("Identifier({})", lexer.interner.resolve(identifier).unwrap())
-                    } else {
-                        format!("{:?}", t.kind)
-                    },
-                    t.span.line,
-                    (t.span.start, t.span.end),
-                )
-            })
-            .collect::<Vec<_>>();
+        let tokens = lexer.format_tokens();
         assert_eq!(tokens.len(), expected_tokens.len());
 
         for (i, token) in tokens.iter().enumerate() {

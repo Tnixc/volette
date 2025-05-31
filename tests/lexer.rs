@@ -1,5 +1,5 @@
 use string_interner::StringInterner;
-use volette::compiler::{lexer::Lexer, tokens::TokenKind};
+use volette::compiler::lexer::Lexer;
 
 const CONTENTS: &str = r#"fn add(u32)(a: u32, b: u32): u32 {
     return a + b;
@@ -19,7 +19,7 @@ let dy = p1.y - p2.y; */
 
 const SIZE = 10;
 
-fn fill(arr: [u8; SIZE], val: u8): None {
+fn fill(arr: [u8; SIZE], val: u8): Nil {
     let i = 0;
     loop {
         if i >= SIZE {
@@ -28,7 +28,7 @@ fn fill(arr: [u8; SIZE], val: u8): None {
         arr[i] = val;
         i = i + 1;
     }
-    None
+    Nil
 }
 
 fn fact(n: u64): u64 {
@@ -136,8 +136,8 @@ fn test_lexer() {
         ("TypeLiteral(U8)", 19, (31, 32)),
         ("Punctuation(CloseParen)", 19, (33, 33)),
         ("Punctuation(Colon)", 19, (34, 34)),
-        ("TypeLiteral(None)", 19, (36, 39)),
-        ("Punctuation(OpenBrace)", 19, (41, 41)),
+        ("TypeLiteral(Nil)", 19, (36, 38)),
+        ("Punctuation(OpenBrace)", 19, (40, 40)),
         ("Keyword(Let)", 20, (5, 7)),
         ("Identifier(i)", 20, (9, 9)),
         ("Punctuation(Eq)", 20, (11, 11)),
@@ -167,7 +167,7 @@ fn test_lexer() {
         ("IntLiteral(1)", 26, (17, 17)),
         ("Punctuation(Semicolon)", 26, (18, 18)),
         ("Punctuation(CloseBrace)", 27, (5, 5)),
-        ("TypeLiteral(None)", 28, (5, 8)),
+        ("TypeLiteral(Nil)", 28, (5, 7)),
         ("Punctuation(CloseBrace)", 29, (1, 1)),
         ("Keyword(Fn)", 31, (1, 2)),
         ("Identifier(fact)", 31, (4, 7)),
@@ -233,21 +233,7 @@ fn test_lexer() {
     .map(|(kind, line, (start, end))| (kind.to_string(), line.to_owned(), (start.to_owned(), end.to_owned())))
     .collect::<Vec<_>>();
 
-    let tokens = lexer
-        .tokens
-        .iter()
-        .map(|t| {
-            (
-                if let TokenKind::Identifier(identifier) = t.kind {
-                    format!("Identifier({})", lexer.interner.resolve(identifier).unwrap())
-                } else {
-                    format!("{:?}", t.kind)
-                },
-                t.span.line,
-                (t.span.start, t.span.end),
-            )
-        })
-        .collect::<Vec<_>>();
+    let tokens = lexer.format_tokens();
 
     assert_eq!(tokens.len(), expected_tokens.len());
     for (i, token) in tokens.iter().enumerate() {

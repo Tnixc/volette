@@ -41,15 +41,13 @@ pub enum LexError {
 #[derive(Debug, Clone)]
 pub struct DisplaySpan {
     file: String,
-    line: usize,
-    start: usize,
-    end: usize,
+    start: (usize, usize),
+    end: (usize, usize),
 }
 impl Span {
     pub fn to_display(&self, interner: &Interner) -> DisplaySpan {
         DisplaySpan {
             file: interner.resolve(self.file).unwrap_or("<unknown>").to_string(),
-            line: self.line,
             start: self.start,
             end: self.end,
         }
@@ -61,7 +59,7 @@ impl DisplaySpan {
         fs::read_to_string(&self.file)
             .ok()?
             .lines()
-            .nth(self.line.saturating_sub(1))
+            .nth(self.start.0.saturating_sub(1))
             .map(|s| s.to_string())
     }
 
@@ -77,12 +75,12 @@ impl DisplaySpan {
             info.bold(),
             "-->".blue(),
             self.file,
-            self.line,
-            self.start
+            self.start.0,
+            self.start.1
         ));
 
         // Line number padding
-        let line_num_width = self.line.to_string().len();
+        let line_num_width = self.start.0.to_string().len();
         let padding = " ".repeat(line_num_width);
 
         output.push_str(&format!("{} {}\n", padding, "|".blue()));
@@ -91,14 +89,14 @@ impl DisplaySpan {
             // Source line with line number
             output.push_str(&format!(
                 "{} {} {}\n",
-                self.line.to_string().blue(),
+                self.start.0.to_string().blue(),
                 "|".blue().bold(),
                 line_content
             ));
 
             // Error indicator line
-            let indicator_padding = " ".repeat(self.start.saturating_sub(1));
-            let indicator_length = (self.end - self.start).max(1);
+            let indicator_padding = " ".repeat(self.start.1.saturating_sub(1));
+            let indicator_length = (self.end.1 - self.start.1).max(1);
             let indicators = "^".repeat(indicator_length);
 
             output.push_str(&format!(
@@ -121,7 +119,7 @@ impl DisplaySpan {
 
 impl Display for DisplaySpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}-{}", self.file, self.line, self.start, self.end)
+        write!(f, "{}:{}:{}-{}", self.file, self.start.0, self.start.1, self.end.1)
     }
 }
 impl LexError {
