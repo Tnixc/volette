@@ -1,11 +1,13 @@
 use std::path::Path;
 
 pub mod lexer;
+pub mod parser;
 pub mod tokens;
 
 use lexer::Lexer;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 use tokens::{Span, Token, TokenKind};
+
 type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
 pub fn build(file: &Path) {
@@ -24,23 +26,6 @@ pub fn build(file: &Path) {
             (lexer.cursor.col).max(0),
         ),
     ));
-    println!(
-        "{:?}",
-        lexer
-            .tokens
-            .iter()
-            .map(|t| {
-                (
-                    if let TokenKind::Identifier(identifier) = t.kind {
-                        format!("Identifier({})", lexer.interner.resolve(identifier).unwrap())
-                    } else {
-                        format!("{:?}", t.kind)
-                    },
-                    t.span.line,
-                    (t.span.start, t.span.end),
-                )
-            })
-            .collect::<Vec<_>>()
-    );
+    println!("{:?}", lexer.format_tokens());
     lexer.print_errors();
 }
