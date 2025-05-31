@@ -5,6 +5,7 @@ pub mod parser;
 pub mod tokens;
 
 use lexer::Lexer;
+use parser::Parser;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 use tokens::{Span, Token, TokenKind};
 
@@ -29,4 +30,7 @@ pub fn build(file: &Path) {
     ));
     println!("{:?}", lexer.format_tokens());
     lexer.print_errors();
+
+    let mut parser = Parser::new(lexer.tokens, lexer.interner);
+    parser.parse();
 }

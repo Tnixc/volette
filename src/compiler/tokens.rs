@@ -83,14 +83,14 @@ pub enum TokenKind {
 }
 
 /// A span of text in a file. Start and end are inclusive.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct Span {
     pub file: SymbolUsize,
     pub start: (usize, usize),
     pub end: (usize, usize),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -111,7 +111,7 @@ impl Span {
         }
     }
 
-    pub fn connect(&self, other: &Self) -> Self {
+    fn connect(&self, other: &Self) -> ((usize, usize), (usize, usize)) {
         let (start_line, start_col) = if (self.start.0, self.start.1) <= (other.start.0, other.start.1) {
             self.start
         } else {
@@ -122,6 +122,17 @@ impl Span {
         } else {
             other.end
         };
+        ((start_line, start_col), (end_line, end_col))
+    }
+
+    pub fn connect_mut(&mut self, other: &Self) {
+        let ((start_line, start_col), (end_line, end_col)) = self.connect(other);
+        self.start = (start_line, start_col);
+        self.end = (end_line, end_col);
+    }
+
+    pub fn connect_new(&self, other: &Self) -> Self {
+        let ((start_line, start_col), (end_line, end_col)) = self.connect(other);
         Self {
             file: self.file,
             start: (start_line, start_col),

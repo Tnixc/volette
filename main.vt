@@ -1,1 +1,4 @@
-let__us_useaReallyReallyLongIdentifierPlease use some_ident normal
+fn main(a: i32, b!: i64) {
+}
+
+
