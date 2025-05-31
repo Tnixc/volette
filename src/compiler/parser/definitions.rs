@@ -2,7 +2,7 @@ use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    parser::node::Type,
+    parser::node::{Def, Type},
     tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
 };
 
@@ -21,7 +21,7 @@ impl Parser {
     }
 
     fn parse_fn_def(&mut self) -> Result<Index, ParserError> {
-        let start_span = self.current().span;
+        let mut start_span = self.current().span;
         self.advance(); // we know there's a fn keyword
 
         let name = match self.current().kind {
@@ -125,7 +125,7 @@ impl Parser {
 
         self.advance();
 
-        let mut return_type = Type::Primitive(PrimitiveTypes::Nil);
+        let mut return_type = Type::Primitive(PrimitiveTypes::Unit);
 
         if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
             self.advance();
@@ -146,11 +146,14 @@ impl Parser {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 let body = self.parse_block()?;
                 let node = Node::new(
-                    NodeKind::Def(DefKind::Function {
-                        name,
-                        params,
-                        body,
-                        return_type,
+                    NodeKind::Def(Def {
+                        span: start_span.connect_new(&self.current().span),
+                        kind: DefKind::Function {
+                            name,
+                            params,
+                            body,
+                            return_type,
+                        },
                     }),
                     start_span.connect_new(&self.current().span),
                 );

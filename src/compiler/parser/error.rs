@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use thiserror::Error;
 
-use crate::compiler::tokens::Token;
+use crate::compiler::tokens::{Token, TokenKind};
 
 #[derive(Error, Debug, Clone)]
 pub enum ParserError {
@@ -12,6 +12,12 @@ pub enum ParserError {
 
     #[error("Unexpected token at top level: {token}")]
     UnexpectedTokenAtTopLevel { token: Token },
+
+    #[error("Unexpected token: {token}, expecting one of {allowed:?}")]
+    UnexpectedToken { token: Token, allowed: Vec<TokenKind> },
+
+    #[error("Expected a type literal or an identifier: {token}")]
+    ExpectedType { token: Token },
 
     #[error("Identifier expected after 'fn'")]
     IdentifierExpectedAfterFn { token: Token },
@@ -42,6 +48,9 @@ pub enum ParserError {
 
     #[error("Block expected close brace: {token}")]
     BlockExpectedCloseBrace { token: Token },
+
+    #[error("Expected identifier: {token}")]
+    ExpectedIdentifier { token: Token },
 }
 
 impl Display for Token {

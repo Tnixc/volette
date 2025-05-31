@@ -1,14 +1,17 @@
 use error::ParserError;
 use generational_arena::{Arena, Index};
-use node::{DefKind, Node, NodeKind};
+use node::{Def, DefKind, Node, NodeKind};
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 
 use super::tokens::{Token, TokenKind};
 
 mod block;
+mod calls;
 mod definitions;
 mod error;
+mod expr;
 mod node;
+mod statements;
 
 pub struct Parser {
     tree: Arena<Node>,
@@ -34,29 +37,8 @@ impl Parser {
     pub fn parse(&mut self) {
         let root = self.parse_root();
         println!("errors: {:?}", self.parse_errors);
-        if let NodeKind::Root { defs } = &root.kind {
-            defs.iter().for_each(|idx| {
-                if let NodeKind::Def(DefKind::Function {
-                    name,
-                    params,
-                    body,
-                    return_type,
-                }) = &self.tree.get(*idx).unwrap().kind
-                {
-                    println!("name: {:?}", self.interner.resolve(*name));
-                    println!(
-                        "params: {:?}",
-                        params
-                            .iter()
-                            .map(|(name, ty, span)| (self.interner.resolve(*name), ty, span))
-                            .collect::<Vec<_>>()
-                    );
-                    println!("body: {:?}", body);
-                    println!("return_type: {:?}", return_type);
-                }
-            });
-        }
         self.tree.insert(root);
+        println!("tree: {:?}", self.tree);
     }
 
     pub fn parse_root(&mut self) -> Node {

@@ -68,6 +68,7 @@ pub enum PrimitiveTypes {
     F32,
     F64,
     Bool,
+    Unit,
     Nil,
 }
 

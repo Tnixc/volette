@@ -62,9 +62,15 @@ pub enum NodeKind {
         // imports, consts, etc
         defs: Vec<Index>,
     },
-    Expr(ExprKind),
-    Stmt(StmtKind),
-    Def(DefKind),
+    Expr(Expr),
+    Stmt(Stmt),
+    Def(Def),
+}
+
+#[derive(Debug)]
+pub struct Def {
+    pub span: Span,
+    pub kind: DefKind,
 }
 
 #[derive(Debug)]
@@ -85,18 +91,42 @@ pub enum DefKind {
 }
 
 #[derive(Debug)]
+pub struct Stmt {
+    pub span: Span,
+    pub kind: StmtKind,
+}
+
+#[derive(Debug)]
 pub enum StmtKind {
-    Expr(ExprKind),
-    Let { name: SymbolUsize, value: Index },
-    Return { value: Option<Index> },
+    Let {
+        name: SymbolUsize,
+        type_: Option<Type>,
+        init_value: Option<Index>,
+    },
+    Return {
+        value: Option<Index>,
+    },
     Break,
-    Loop { body: Index },
+    Loop {
+        body: Index,
+    },
+}
+
+#[derive(Debug)]
+pub struct Expr {
+    pub span: Span,
+    pub kind: ExprKind,
+    pub type_: Option<Type>,
 }
 
 #[derive(Debug)]
 pub enum ExprKind {
     Literal(Literal),
     Identifier(SymbolUsize),
+    Assign {
+        name: SymbolUsize,
+        value: Index,
+    },
     BinOp {
         left: Index,
         right: Index,
