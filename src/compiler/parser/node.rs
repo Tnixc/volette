@@ -3,13 +3,13 @@ use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::tokens::{PrimitiveTypes, Span};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Type {
     Primitive(PrimitiveTypes),
     Custom(SymbolUsize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     pub span: Span,
     pub kind: NodeKind,
@@ -26,7 +26,7 @@ impl Node {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinOpKind {
     Add,
     Sub,
@@ -42,13 +42,13 @@ pub enum BinOpKind {
     GreaterThanOrEq,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOpKind {
     Neg,
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Literal {
     Int(i64),
     Float(f64),
@@ -56,24 +56,31 @@ pub enum Literal {
     Nil,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NodeKind {
     Root {
         // imports, consts, etc
         defs: Vec<Index>,
     },
-    Expr(Expr),
-    Stmt(Stmt),
-    Def(Def),
+    Expr {
+        kind: ExprKind,
+        type_: Option<Type>,
+    },
+    Stmt {
+        kind: StmtKind,
+    },
+    Def {
+        kind: DefKind,
+    },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Def {
     pub span: Span,
     pub kind: DefKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DefKind {
     Function {
         name: SymbolUsize,
@@ -90,42 +97,28 @@ pub enum DefKind {
     },
 }
 
-#[derive(Debug)]
-pub struct Stmt {
-    pub span: Span,
-    pub kind: StmtKind,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StmtKind {
-    Let {
-        name: SymbolUsize,
-        type_: Option<Type>,
-        init_value: Option<Index>,
-    },
-    Return {
-        value: Option<Index>,
-    },
+    Return { value: Option<Index> },
+    BlockReturn { value: Option<Index> },
     Break,
-    Loop {
-        body: Index,
-    },
+    Loop { body: Index },
+    ExpressionStmt { expr: Index },
 }
 
-#[derive(Debug)]
-pub struct Expr {
-    pub span: Span,
-    pub kind: ExprKind,
-    pub type_: Option<Type>,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExprKind {
     Literal(Literal),
     Identifier(SymbolUsize),
     Assign {
+        target: Index, // LHS expression (e.g. identifier, field access, array index)
+        value: Index,  // RHS expression
+    },
+    LetBinding {
+        // For `let name = value` expressions
         name: SymbolUsize,
-        value: Index,
+        type_annotation: Option<Type>,
+        value: Index, // Initializer is mandatory for the expression to have this value
     },
     BinOp {
         left: Index,
@@ -133,16 +126,21 @@ pub enum ExprKind {
         op: BinOpKind,
     },
     Call {
-        func: Index,
+        func: Index, // Can be an identifier or any expression that evaluates to a function
         args: Vec<Index>,
     },
     Block {
-        exprs: Vec<Index>,
+        // Block can be an expression, its value is the last expression in it
+        // Or an explicit `=> value` syntax from your spec
+        exprs: Vec<Index>, // Sequence of statements/expressions
+    },
+    ParenExpr {
+        expr: Index,
     },
     If {
         cond: Index,
-        then: Index,
-        else_: Option<Index>,
+        then_block: Index,         // Should be a block expression
+        else_block: Option<Index>, // Should be a block expression
     },
     UnaryOp {
         op: UnaryOpKind,
@@ -150,12 +148,13 @@ pub enum ExprKind {
     },
     Cast {
         expr: Index,
-        ty: Type,
+        target_type: Type,
     },
-    Alloc {
-        ty: Type,
-    },
-    Free {
-        expr: Index,
-    },
+    // Alloc {
+    //     target_type: Type,
+    // },
+    // Free {
+    //     expr: Index,
+    // },
+    // TODO: FieldAccess, MethodCall
 }

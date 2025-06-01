@@ -139,3 +139,20 @@ impl Span {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenName {
+    Integer,
+    Float,
+    String,
+    Keyword(Keyword),
+    Punctuation(Punctuation),
+    Identifier,
+}
+
+#[derive(Debug, Clone)]
+pub struct DisplaySpan {
+    pub file: String,
+    pub start: (usize, usize),
+    pub end: (usize, usize),
+}

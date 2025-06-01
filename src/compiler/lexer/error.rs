@@ -3,6 +3,7 @@ use std::fmt::{self, Display};
 use std::fs;
 use thiserror::Error;
 
+use crate::compiler::tokens::DisplaySpan;
 use crate::compiler::{tokens::Span, Interner};
 
 use super::Lexer;
@@ -38,12 +39,6 @@ pub enum LexError {
     NonDecimalFloat { span: DisplaySpan },
 }
 
-#[derive(Debug, Clone)]
-pub struct DisplaySpan {
-    file: String,
-    start: (usize, usize),
-    end: (usize, usize),
-}
 impl Span {
     pub fn to_display(&self, interner: &Interner) -> DisplaySpan {
         DisplaySpan {

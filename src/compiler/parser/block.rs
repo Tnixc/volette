@@ -4,7 +4,7 @@ use crate::compiler::tokens::{Punctuation, TokenKind};
 
 use super::{
     error::ParserError,
-    node::{Expr, ExprKind, Node, NodeKind},
+    node::{ExprKind, Node, NodeKind},
     Parser,
 };
 
@@ -24,12 +24,11 @@ impl Parser {
         }
 
         Ok(self.push(Node::new(
-            NodeKind::Expr(Expr {
-                span: start_span.connect_new(&self.current().span),
+            NodeKind::Expr {
                 kind: ExprKind::Block { exprs: nodes },
                 type_: None,
-            }),
-            self.current().span,
+            },
+            start_span.connect_new(&self.current().span),
         )))
     }
 }

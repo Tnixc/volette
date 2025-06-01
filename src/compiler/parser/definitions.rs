@@ -2,7 +2,7 @@ use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    parser::node::{Def, Type},
+    parser::node::Type,
     tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
 };
 
@@ -146,15 +146,14 @@ impl Parser {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 let body = self.parse_block()?;
                 let node = Node::new(
-                    NodeKind::Def(Def {
-                        span: start_span.connect_new(&self.current().span),
+                    NodeKind::Def {
                         kind: DefKind::Function {
                             name,
                             params,
                             body,
                             return_type,
                         },
-                    }),
+                    },
                     start_span.connect_new(&self.current().span),
                 );
                 Ok(self.push(node))

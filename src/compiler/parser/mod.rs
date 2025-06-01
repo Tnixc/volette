@@ -1,6 +1,6 @@
 use error::ParserError;
 use generational_arena::{Arena, Index};
-use node::{Def, DefKind, Node, NodeKind};
+use node::{Node, NodeKind};
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 
 use super::tokens::{Token, TokenKind};
