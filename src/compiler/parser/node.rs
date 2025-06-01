@@ -40,6 +40,8 @@ pub enum BinOpKind {
     LessThanOrEq,
     GreaterThan,
     GreaterThanOrEq,
+    LogicalAnd,
+    LogicalOr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

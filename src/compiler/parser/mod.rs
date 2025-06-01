@@ -6,7 +6,6 @@ use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterne
 use super::tokens::{Token, TokenKind};
 
 mod block;
-mod calls;
 mod definitions;
 mod error;
 mod expr;
@@ -38,7 +37,6 @@ impl Parser {
         let root = self.parse_root();
         println!("errors: {:?}", self.parse_errors);
         self.tree.insert(root);
-        println!("tree: {:?}", self.tree);
     }
 
     pub fn parse_root(&mut self) -> Node {

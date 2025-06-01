@@ -16,7 +16,10 @@ impl Parser {
         while self
             .advance()
             .is_some_and(|t| t.kind != TokenKind::Punctuation(Punctuation::CloseBrace))
-        {}
+        {
+            let node = self.parse_expr()?;
+            println!("{:?}", node);
+        }
 
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseBrace) => {}

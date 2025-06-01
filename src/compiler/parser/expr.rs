@@ -1,148 +1,204 @@
+use std::ops::Add;
+
 use super::{
     error::ParserError,
-    node::{ExprKind, Literal, Node, NodeKind, Type},
+    node::{BinOpKind, ExprKind, Literal, Node, NodeKind, Type},
     Parser,
 };
-use crate::compiler::tokens::{Keyword, Punctuation, TokenKind};
+use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
 use generational_arena::Index;
+
+// --- Pratt Parser Configuration ---
+
+/// Defines binding power (precedence) for operators. Higher numbers mean higher precedence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u32)]
+enum BindingPower {
+    None = 0,
+    Assignment = 1,    // Lowest precedence, right-associative (handled specially)
+    LogicalOr = 2,     // ||
+    LogicalAnd = 3,    // &&
+    Equality = 4,      // == !=
+    Comparison = 5,    // < > <= >=
+    Term = 6,          // + -
+    Factor = 7,        // * / %
+    Unary = 8,         // Prefix - !
+    Call = 9,          // () (function call)
+    MemberAccess = 10, // . (field access), [] (indexing)
+    Primary = 11,      // Literals, identifiers
+    More(u32),
+}
 
 impl Parser {
     pub fn parse_expr(&mut self) -> Result<Index, ParserError> {
-        self.parse_primary_expr()
+        self.pratt_parse_expression(BindingPower::None)
     }
 
-    fn parse_primary_expr(&mut self) -> Result<Index, ParserError> {
+    /// the core pratt parsing loop.
+    /// parses an expression whose components have at least `min_bp` binding power.
+    fn pratt_parse_expression(&mut self, min_bp: BindingPower) -> Result<Index, ParserError> {
+        // 1. Handle NUD (Null Denotation) for the current token (prefix context)
+        let mut left_expr_idx: Index;
         let current_token = *self.current();
-        match self.current().kind {
-            TokenKind::Keyword(Keyword::Let) => self.parse_let_expr(),
-            TokenKind::IntLiteral(i) => {
-                self.advance();
-                Ok(self.push(Node::new(
-                    NodeKind::Expr {
-                        kind: ExprKind::Literal(Literal::Int(i)),
-                        type_: None,
-                    },
-                    current_token.span,
-                )))
+
+        match current_token.kind {
+            TokenKind::IntLiteral(_) | TokenKind::FloatLiteral(_) | TokenKind::BoolLiteral(_) => {
+                left_expr_idx = self.parse_literal_nud(current_token)?;
             }
-            TokenKind::FloatLiteral(f) => {
-                self.advance();
-                Ok(self.push(Node::new(
-                    NodeKind::Expr {
-                        kind: ExprKind::Literal(Literal::Float(f)),
-                        type_: None,
-                    },
-                    current_token.span,
-                )))
+            TokenKind::Identifier(_) => {
+                left_expr_idx = self.parse_identifier_nud(current_token)?;
             }
-            TokenKind::Identifier(name) => {
-                self.advance();
-                Ok(self.push(Node::new(
-                    NodeKind::Expr {
-                        kind: ExprKind::Identifier(name),
-                        type_: None,
-                    },
-                    current_token.span,
-                )))
+            TokenKind::Keyword(Keyword::Let) => {
+                left_expr_idx = self.parse_let_expr_nud(current_token)?;
             }
             TokenKind::Punctuation(Punctuation::OpenParen) => {
-                self.advance(); // consume '('
-                let expr_idx = self.parse_expr()?;
-                if self.current().kind != TokenKind::Punctuation(Punctuation::CloseParen) {
-                    return Err(ParserError::CloseParenExpected { token: *self.current() });
-                }
-                let close_paren_span = self.current().span;
-                self.advance(); // Consume ')'
-
-                let full_span = current_token.span.connect_new(&close_paren_span);
-                let paren_expr_node = Node::new(
-                    NodeKind::Expr {
-                        kind: ExprKind::ParenExpr { expr: expr_idx },
-                        type_: None,
-                    },
-                    full_span,
-                );
-                Ok(self.push(paren_expr_node))
+                left_expr_idx = self.parse_paren_expr_nud(current_token)?;
             }
-            // TODO: Add other primary expressions: block, if, call
-            _ => Err(ParserError::ExpressionExpected { token: current_token }),
+            // todo: add nud handlers for:
+            // - unary operators (e.g., '-', '!') -> self.parse_prefix_op_nud(current_token)?
+            // - block expressions '{ ... }' -> self.parse_block_expr_nud(current_token)?
+            // - if expressions 'if ...' -> self.parse_if_expr_nud(current_token)?
+            _ => {
+                return Err(ParserError::ExpressionExpected { token: current_token });
+            }
         }
-    }
 
-    // assignment: target = value
-    // right-associative.
-    fn parse_assignment_expr(&mut self) -> Result<Index, ParserError> {
-        let lhs_expr_idx = self.parse_binary_op(0)?;
+        // 2. handle led (left denotation) for subsequent tokens (infix/postfix context)
+        loop {
+            let next_token = *self.current();
+            let (left_bp, is_right_associative) = match next_token.kind {
+                TokenKind::Punctuation(Punctuation::Eq) => (BindingPower::Assignment, true), // Special: right-associative
 
-        if self.current().kind == TokenKind::Punctuation(Punctuation::Eq) {
-            let lhs_node = self
-                .node(&lhs_expr_idx)
-                .ok_or_else(|| ParserError::InternalError("LHS node not found for assignment check".to_string()))?
-                .clone();
+                TokenKind::Punctuation(Punctuation::Plus) | TokenKind::Punctuation(Punctuation::Minus) => {
+                    (BindingPower::Term, false)
+                }
 
-            // check if LHS is a valid assignment target (L-value)
-            match lhs_node.kind {
-                NodeKind::Expr {
-                    kind: ExprKind::Identifier(_),
-                    ..
-                } => {}
-                // TODO: other valid L-values like field access
+                TokenKind::Punctuation(Punctuation::Star)
+                | TokenKind::Punctuation(Punctuation::Slash)
+                | TokenKind::Punctuation(Punctuation::Percent) => (BindingPower::Factor, false),
+
+                TokenKind::Punctuation(Punctuation::EqEq) | TokenKind::Punctuation(Punctuation::NotEq) => {
+                    (BindingPower::Equality, false)
+                }
+
+                TokenKind::Punctuation(Punctuation::LessThan)
+                | TokenKind::Punctuation(Punctuation::LessThanOrEq)
+                | TokenKind::Punctuation(Punctuation::GreaterThan)
+                | TokenKind::Punctuation(Punctuation::GreaterThanOrEq) => (BindingPower::Comparison, false),
+
+                TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false), // Assuming && for logical AND
+                TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false), // Assuming || for logical OR
+
+                // TODO: Add binding powers for:
+                // - Function call '(' -> (BindingPower::Call, false)
+                // - Array indexing '[' -> (BindingPower::MemberAccess, false)
+                // - Field access '.' -> (BindingPower::MemberAccess, false)
+                _ => (BindingPower::None, false), // Not an operator or end of expression segment
+            };
+
+            if left_bp < min_bp || left_bp == BindingPower::None {
+                break; // operator precedence is too low or not an operator
+            }
+
+            self.advance();
+
+            match next_token.kind {
+                TokenKind::Punctuation(Punctuation::Eq) => {
+                    left_expr_idx = self.parse_assignment_led(next_token, left_expr_idx, is_right_associative)?;
+                }
+                TokenKind::Punctuation(Punctuation::Plus)
+                | TokenKind::Punctuation(Punctuation::Minus)
+                | TokenKind::Punctuation(Punctuation::Star)
+                | TokenKind::Punctuation(Punctuation::Slash)
+                | TokenKind::Punctuation(Punctuation::Percent)
+                | TokenKind::Punctuation(Punctuation::EqEq)
+                | TokenKind::Punctuation(Punctuation::NotEq)
+                | TokenKind::Punctuation(Punctuation::LessThan)
+                | TokenKind::Punctuation(Punctuation::LessThanOrEq)
+                | TokenKind::Punctuation(Punctuation::GreaterThan)
+                | TokenKind::Punctuation(Punctuation::GreaterThanOrEq)
+                | TokenKind::Punctuation(Punctuation::AmpAmp)
+                | TokenKind::Punctuation(Punctuation::PipePipe) => {
+                    left_expr_idx =
+                        self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
+                }
+
+                // TODO: add LED handlers for calls, indexing, field access
+                // TokenKind::Punctuation(Punctuation::OpenParen) => self.parse_call_led(next_token, left_expr_idx)?
                 _ => {
-                    return Err(ParserError::InvalidLHSInAssignment {
-                        span: lhs_node.span.to_display(&self.interner),
-                    });
+                    // should not happen if lbp was > None
+                    return Err(ParserError::InternalError(format!(
+                        "Unhandled LED token: {:?}",
+                        next_token.kind
+                    )));
                 }
             }
-
-            self.advance(); // Consume '='
-            let rhs_expr_idx = self.parse_assignment_expr()?; // recursive call for right-associativity (e.g., a = b = c)
-
-            let rhs_node = self
-                .node(&rhs_expr_idx)
-                .ok_or_else(|| ParserError::InternalError("RHS node not found for assignment".to_string()))?
-                .clone();
-
-            let assignment_span = lhs_node.span.connect_new(&rhs_node.span);
-            let assignment_type = rhs_node.type_;
-
-            return Ok(self.push(Node::new(
-                NodeKind::Expr {
-                    kind: ExprKind::Assign {
-                        target: lhs_expr_idx,
-                        value: rhs_expr_idx,
-                    },
-                    type_: assignment_type,
-                },
-                assignment_span,
-            )));
         }
-        Ok(lhs_expr_idx)
+        Ok(left_expr_idx)
     }
 
-    // pratt soon tm
-    fn parse_binary_op(&mut self, _min_precedence: u8) -> Result<Index, ParserError> {
-        todo!();
+    fn parse_literal_nud(&mut self, literal_token: Token) -> Result<Index, ParserError> {
+        let literal_kind = match literal_token.kind {
+            TokenKind::IntLiteral(i) => (Literal::Int(i), Some(Type::Primitive(PrimitiveTypes::I64))),
+            TokenKind::FloatLiteral(f) => (Literal::Float(f), Some(Type::Primitive(PrimitiveTypes::F64))),
+            TokenKind::BoolLiteral(b) => (Literal::Bool(b), Some(Type::Primitive(PrimitiveTypes::Bool))),
+            _ => {
+                return Err(ParserError::InternalError(
+                    "Not a literal token in parse_literal_nud".into(),
+                ))
+            }
+        };
+
+        self.advance(); // consume the literal token
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Literal(literal_kind.0),
+                type_: literal_kind.1,
+            },
+            literal_token.span,
+        )))
     }
 
-    // parses `let name : type = value`, where : type is optional
-    pub fn parse_let_expr(&mut self) -> Result<Index, ParserError> {
-        let let_keyword_token = *self.current();
-        self.advance(); // consumes 'let'
+    fn parse_identifier_nud(&mut self, ident_token: Token) -> Result<Index, ParserError> {
+        let name_symbol = match ident_token.kind {
+            TokenKind::Identifier(s) => s,
+            _ => {
+                return Err(ParserError::InternalError(
+                    "Not an identifier token in parse_identifier_nud".into(),
+                ))
+            }
+        };
+
+        self.advance(); // consume the identifier token
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Identifier(name_symbol),
+                type_: None,
+            },
+            ident_token.span,
+        )))
+    }
+
+    /// Parses `let name [: type] = value` as an expression (NUD for 'let' keyword)
+    fn parse_let_expr_nud(&mut self, let_keyword_token: Token) -> Result<Index, ParserError> {
+        self.advance(); // consume 'let'
 
         let name_token = *self.current();
         let name_symbol = match name_token.kind {
             TokenKind::Identifier(s) => s,
             _ => return Err(ParserError::ExpectedIdentifier { token: name_token }),
         };
-        self.advance(); // consumes identifier
+
+        self.advance(); // consume identifier
 
         let mut type_annotation: Option<Type> = None;
         let mut current_span = let_keyword_token.span.connect_new(&name_token.span);
 
-        // optional type annotation
         if self.current().kind == TokenKind::Punctuation(Punctuation::Colon) {
-            self.advance(); // consumes ':'
-            let type_node_token = *self.current();
+            self.advance(); // consume ':'
+            let type_node_token = self.current().clone();
             current_span.connect_mut(&type_node_token.span);
             let parsed_type = match type_node_token.kind {
                 TokenKind::TypeLiteral(tl) => Type::Primitive(tl),
@@ -150,23 +206,31 @@ impl Parser {
                 _ => return Err(ParserError::ExpectedType { token: type_node_token }),
             };
             type_annotation = Some(parsed_type);
-            self.advance(); // consumes type
+            self.advance(); // Consumes type
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::Eq) {
-            return Err(ParserError::LetInitializerExpected { token: *self.current() });
+            return Err(ParserError::LetInitializerExpected {
+                token: self.current().clone(),
+            });
         }
 
         let eq_token = *self.current();
         current_span.connect_mut(&eq_token.span);
-        self.advance(); // consumes '='
+        self.advance(); // consume '='
 
-        let value_expr_idx = self.parse_expr()?;
-        let value_expr_node = self.node(&value_expr_idx).ok_or_else(|| ParserError::ExpectedNode {
-            span: self.current().span.to_display(&self.interner),
-        })?;
-
-        current_span.connect_mut(&value_expr_node.span);
+        // The value is an expression, parse it with full precedence.
+        let value_expr_idx = self.pratt_parse_expression(BindingPower::None)?;
+        let value_expr_node_cloned = self
+            .node(&value_expr_idx)
+            .ok_or_else(|| {
+                ParserError::InternalError(format!(
+                    "Node not found for let binding value at {:?}",
+                    self.current().span
+                ))
+            })?
+            .clone();
+        current_span.connect_mut(&value_expr_node_cloned.span);
 
         Ok(self.push(Node::new(
             NodeKind::Expr {
@@ -175,9 +239,207 @@ impl Parser {
                     type_annotation,
                     value: value_expr_idx,
                 },
-                type_: value_expr_node.type_, // let expr type is the value's type
+                type_: value_expr_node_cloned.type_.clone(),
             },
             current_span,
         )))
+    }
+
+    fn parse_paren_expr_nud(&mut self, open_paren_token: Token) -> Result<Index, ParserError> {
+        self.advance(); // consume '('
+        let inner_expr_idx = self.pratt_parse_expression(BindingPower::None)?; // Parse expression inside parentheses
+
+        if self.current().kind != TokenKind::Punctuation(Punctuation::CloseParen) {
+            return Err(ParserError::CloseParenExpected {
+                token: self.current().clone(),
+            });
+        }
+        let close_paren_token = *self.current();
+        self.advance(); // consume ')'
+
+        let full_span = open_paren_token.span.connect_new(&close_paren_token.span);
+
+        let actual_inner_node = self.tree.get_mut(inner_expr_idx).unwrap();
+        actual_inner_node.span = full_span; // Update span to include parentheses
+        Ok(inner_expr_idx)
+    }
+
+    fn parse_prefix_op_nud(&mut self, op_token: Token) -> Result<Index, ParserError> {
+        todo!()
+    }
+
+    fn parse_block_expr_nud(&mut self, open_brace_token: Token) -> Result<Index, ParserError> {
+        // use self.parse_block()
+        todo!()
+    }
+
+    fn parse_if_expr_nud(&mut self, if_token: Token) -> Result<Index, ParserError> {
+        todo!()
+    }
+
+    fn parse_binary_infix_op_led(
+        &mut self,
+        op_token: Token,
+        left_idx: Index,
+        op_bp: BindingPower,
+        is_right_assoc: bool,
+    ) -> Result<Index, ParserError> {
+        let op_kind = match op_token.kind {
+            TokenKind::Punctuation(Punctuation::Plus) => BinOpKind::Add,
+            TokenKind::Punctuation(Punctuation::Minus) => BinOpKind::Sub,
+            TokenKind::Punctuation(Punctuation::Star) => BinOpKind::Mul,
+            TokenKind::Punctuation(Punctuation::Slash) => BinOpKind::Div,
+            TokenKind::Punctuation(Punctuation::Percent) => BinOpKind::Mod,
+            TokenKind::Punctuation(Punctuation::EqEq) => BinOpKind::Eq,
+            TokenKind::Punctuation(Punctuation::NotEq) => BinOpKind::NotEq,
+            TokenKind::Punctuation(Punctuation::LessThan) => BinOpKind::LessThan,
+            TokenKind::Punctuation(Punctuation::LessThanOrEq) => BinOpKind::LessThanOrEq,
+            TokenKind::Punctuation(Punctuation::GreaterThan) => BinOpKind::GreaterThan,
+            TokenKind::Punctuation(Punctuation::GreaterThanOrEq) => BinOpKind::GreaterThanOrEq,
+            TokenKind::Punctuation(Punctuation::AmpAmp) => BinOpKind::LogicalAnd,
+            TokenKind::Punctuation(Punctuation::PipePipe) => BinOpKind::LogicalOr,
+            _ => {
+                return Err(ParserError::InternalError(format!(
+                    "Not a binary infix operator: {:?}",
+                    op_token.kind
+                )))
+            }
+        };
+
+        let right_bp = if is_right_assoc {
+            op_bp
+        } else {
+            op_bp + BindingPower::from(1)
+        }; // Next level for left-assoc
+        let right_idx = self.pratt_parse_expression(right_bp)?;
+
+        let left_node_cloned = self.node(&left_idx).unwrap().clone();
+        let right_node_cloned = self.node(&right_idx).unwrap().clone();
+        let combined_span = left_node_cloned.span.connect_new(&right_node_cloned.span);
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::BinOp {
+                    left: left_idx,
+                    right: right_idx,
+                    op: op_kind,
+                },
+                type_: None,
+            },
+            combined_span,
+        )))
+    }
+
+    fn parse_assignment_led(
+        &mut self,
+        eq_token: Token,
+        target_idx: Index,
+        is_right_assoc: bool, /* should be true */
+    ) -> Result<Index, ParserError> {
+        // L-value check (target must be assignable)
+        let target_node_cloned = self
+            .node(&target_idx)
+            .ok_or_else(|| ParserError::InternalError("Target node not found for assignment".to_string()))?
+            .clone();
+        match target_node_cloned.kind {
+            NodeKind::Expr {
+                kind: ExprKind::Identifier(_),
+                ..
+            } => { /* OK */ }
+            // TODO: Add other valid L-values (field access, array index)
+            _ => {
+                return Err(ParserError::InvalidLHSInAssignment {
+                    span: target_node_cloned.span.to_display(&self.interner),
+                })
+            }
+        }
+
+        // For right-associativity, parse RHS with the same binding power.
+        let value_idx = self.pratt_parse_expression(BindingPower::Assignment)?;
+
+        let value_node_cloned = self.node(&value_idx).unwrap().clone();
+        let assignment_span = target_node_cloned.span.connect_new(&value_node_cloned.span);
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Assign {
+                    target: target_idx,
+                    value: value_idx,
+                },
+                type_: value_node_cloned.type_.clone(), // Assignment expr type is value's type
+            },
+            assignment_span,
+        )))
+    }
+
+    // TODO: fn parse_call_led(&mut self, open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError> { todo!() }
+    // TODO: fn parse_index_led(&mut self, open_bracket_token: Token, array_idx: Index) -> Result<Index, ParserError> { todo!() }
+    // TODO: fn parse_field_access_led(&mut self, dot_token: Token, object_idx: Index) -> Result<Index, ParserError> { todo!() }
+}
+
+// Helper to convert u8 to BindingPower if needed for op_bp + 1
+impl From<u8> for BindingPower {
+    fn from(val: u8) -> Self {
+        match val {
+            0 => BindingPower::None,
+            1 => BindingPower::Assignment,
+            2 => BindingPower::LogicalOr,
+            3 => BindingPower::LogicalAnd,
+            4 => BindingPower::Equality,
+            5 => BindingPower::Comparison,
+            6 => BindingPower::Term,
+            7 => BindingPower::Factor,
+            8 => BindingPower::Unary,
+            9 => BindingPower::Call,
+            10 => BindingPower::MemberAccess,
+            _ => BindingPower::Primary, // Or panic, or handle appropriately
+        }
+    }
+}
+
+impl BindingPower {
+    fn from_u32_sum(val: u32) -> Self {
+        match val {
+            0 => BindingPower::None,
+            1 => BindingPower::Assignment,
+            2 => BindingPower::LogicalOr,
+            3 => BindingPower::LogicalAnd,
+            4 => BindingPower::Equality,
+            5 => BindingPower::Comparison,
+            6 => BindingPower::Term,
+            7 => BindingPower::Factor,
+            8 => BindingPower::Unary,
+            9 => BindingPower::Call,
+            10 => BindingPower::MemberAccess,
+            11 => BindingPower::Primary,
+            _ => BindingPower::More(val),
+        }
+    }
+
+    fn to_u32(&self) -> u32 {
+        match self {
+            BindingPower::None => 0,
+            BindingPower::Assignment => 1,
+            BindingPower::LogicalOr => 2,
+            BindingPower::LogicalAnd => 3,
+            BindingPower::Equality => 4,
+            BindingPower::Comparison => 5,
+            BindingPower::Term => 6,
+            BindingPower::Factor => 7,
+            BindingPower::Unary => 8,
+            BindingPower::Call => 9,
+            BindingPower::MemberAccess => 10,
+            BindingPower::Primary => 11,
+            BindingPower::More(val) => *val,
+        }
+    }
+}
+
+impl Add for BindingPower {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let sum_val = self.to_u32() + rhs.to_u32();
+        BindingPower::from_u32_sum(sum_val)
     }
 }

@@ -112,10 +112,9 @@ impl Parser {
                 },
             }
         }
-
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseParen) => {
-                if mode != ParamMode::Comma {
+                if mode != ParamMode::Comma && !params.is_empty() {
                     self.parse_errors
                         .push(ParserError::FnParameterIncomplete { token: *self.current() });
                 }
