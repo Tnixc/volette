@@ -8,14 +8,11 @@ use super::{
 use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
 use generational_arena::Index;
 
-// --- Pratt Parser Configuration ---
-
-/// Defines binding power (precedence) for operators. Higher numbers mean higher precedence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u32)]
 enum BindingPower {
     None = 0,
-    Assignment = 1,    // Lowest precedence, right-associative (handled specially)
+    Assignment = 1,    // lowest precedence, right-associative (handled specially)
     LogicalOr = 2,     // ||
     LogicalAnd = 3,    // &&
     Equality = 4,      // == !=
@@ -24,7 +21,7 @@ enum BindingPower {
     Factor = 7,        // * / %
     Unary = 8,         // Prefix - !
     Call = 9,          // () (function call)
-    MemberAccess = 10, // . (field access), [] (indexing)
+    MemberAccess = 10, // . (field access)
     Primary = 11,      // Literals, identifiers
     More(u32),
 }
@@ -37,7 +34,7 @@ impl Parser {
     /// the core pratt parsing loop.
     /// parses an expression whose components have at least `min_bp` binding power.
     fn pratt_parse_expression(&mut self, min_bp: BindingPower) -> Result<Index, ParserError> {
-        // 1. Handle NUD (Null Denotation) for the current token (prefix context)
+        // 1. handle nud (null denotation) for the current token (prefix context)
         let mut left_expr_idx: Index;
         let current_token = *self.current();
 
@@ -54,7 +51,7 @@ impl Parser {
             TokenKind::Punctuation(Punctuation::OpenParen) => {
                 left_expr_idx = self.parse_paren_expr_nud(current_token)?;
             }
-            // todo: add nud handlers for:
+            // TODO: add nud handlers for:
             // - unary operators (e.g., '-', '!') -> self.parse_prefix_op_nud(current_token)?
             // - block expressions '{ ... }' -> self.parse_block_expr_nud(current_token)?
             // - if expressions 'if ...' -> self.parse_if_expr_nud(current_token)?
@@ -86,12 +83,11 @@ impl Parser {
                 | TokenKind::Punctuation(Punctuation::GreaterThan)
                 | TokenKind::Punctuation(Punctuation::GreaterThanOrEq) => (BindingPower::Comparison, false),
 
-                TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false), // Assuming && for logical AND
-                TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false), // Assuming || for logical OR
+                TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false),
+                TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
 
-                // TODO: Add binding powers for:
+                // TODO: add binding powers for:
                 // - Function call '(' -> (BindingPower::Call, false)
-                // - Array indexing '[' -> (BindingPower::MemberAccess, false)
                 // - Field access '.' -> (BindingPower::MemberAccess, false)
                 _ => (BindingPower::None, false), // Not an operator or end of expression segment
             };
@@ -198,7 +194,7 @@ impl Parser {
 
         if self.current().kind == TokenKind::Punctuation(Punctuation::Colon) {
             self.advance(); // consume ':'
-            let type_node_token = self.current().clone();
+            let type_node_token = *self.current();
             current_span.connect_mut(&type_node_token.span);
             let parsed_type = match type_node_token.kind {
                 TokenKind::TypeLiteral(tl) => Type::Primitive(tl),
@@ -210,9 +206,7 @@ impl Parser {
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::Eq) {
-            return Err(ParserError::LetInitializerExpected {
-                token: self.current().clone(),
-            });
+            return Err(ParserError::LetInitializerExpected { token: *self.current() });
         }
 
         let eq_token = *self.current();
@@ -239,7 +233,7 @@ impl Parser {
                     type_annotation,
                     value: value_expr_idx,
                 },
-                type_: value_expr_node_cloned.type_.clone(),
+                type_: value_expr_node_cloned.type_,
             },
             current_span,
         )))
@@ -250,9 +244,7 @@ impl Parser {
         let inner_expr_idx = self.pratt_parse_expression(BindingPower::None)?; // Parse expression inside parentheses
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::CloseParen) {
-            return Err(ParserError::CloseParenExpected {
-                token: self.current().clone(),
-            });
+            return Err(ParserError::CloseParenExpected { token: *self.current() });
         }
         let close_paren_token = *self.current();
         self.advance(); // consume ')'
@@ -354,7 +346,7 @@ impl Parser {
             }
         }
 
-        // For right-associativity, parse RHS with the same binding power.
+        // for right-associativity, parse rhs with the same binding power.
         let value_idx = self.pratt_parse_expression(BindingPower::Assignment)?;
 
         let value_node_cloned = self.node(&value_idx).unwrap().clone();
@@ -366,39 +358,19 @@ impl Parser {
                     target: target_idx,
                     value: value_idx,
                 },
-                type_: value_node_cloned.type_.clone(), // Assignment expr type is value's type
+                type_: value_node_cloned.type_, // Assignment expr type is value's type
             },
             assignment_span,
         )))
     }
 
-    // TODO: fn parse_call_led(&mut self, open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError> { todo!() }
-    // TODO: fn parse_index_led(&mut self, open_bracket_token: Token, array_idx: Index) -> Result<Index, ParserError> { todo!() }
-    // TODO: fn parse_field_access_led(&mut self, dot_token: Token, object_idx: Index) -> Result<Index, ParserError> { todo!() }
+    // TODO: fn parse_call_led(&mut self, open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError>
+    // TODO: fn parse_index_led(&mut self, open_bracket_token: Token, array_idx: Index) -> Result<Index, ParserError>
+    // TODO: fn parse_field_access_led(&mut self, dot_token: Token, object_idx: Index) -> Result<Index, ParserError>
 }
 
-// Helper to convert u8 to BindingPower if needed for op_bp + 1
-impl From<u8> for BindingPower {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => BindingPower::None,
-            1 => BindingPower::Assignment,
-            2 => BindingPower::LogicalOr,
-            3 => BindingPower::LogicalAnd,
-            4 => BindingPower::Equality,
-            5 => BindingPower::Comparison,
-            6 => BindingPower::Term,
-            7 => BindingPower::Factor,
-            8 => BindingPower::Unary,
-            9 => BindingPower::Call,
-            10 => BindingPower::MemberAccess,
-            _ => BindingPower::Primary, // Or panic, or handle appropriately
-        }
-    }
-}
-
-impl BindingPower {
-    fn from_u32_sum(val: u32) -> Self {
+impl From<u32> for BindingPower {
+    fn from(val: u32) -> Self {
         match val {
             0 => BindingPower::None,
             1 => BindingPower::Assignment,
@@ -415,8 +387,10 @@ impl BindingPower {
             _ => BindingPower::More(val),
         }
     }
+}
 
-    fn to_u32(&self) -> u32 {
+impl BindingPower {
+    fn val(&self) -> u32 {
         match self {
             BindingPower::None => 0,
             BindingPower::Assignment => 1,
@@ -439,7 +413,7 @@ impl Add for BindingPower {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let sum_val = self.to_u32() + rhs.to_u32();
-        BindingPower::from_u32_sum(sum_val)
+        let sum_val = self.val() + rhs.val();
+        BindingPower::from(sum_val)
     }
 }

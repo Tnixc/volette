@@ -21,7 +21,7 @@ impl Parser {
     }
 
     fn parse_fn_def(&mut self) -> Result<Index, ParserError> {
-        let mut start_span = self.current().span;
+        let start_span = self.current().span;
         self.advance(); // we know there's a fn keyword
 
         let name = match self.current().kind {
@@ -143,7 +143,7 @@ impl Parser {
 
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
-                let body = self.parse_block()?;
+                let body = self.parse_block_body()?;
                 let node = Node::new(
                     NodeKind::Def {
                         kind: DefKind::Function {

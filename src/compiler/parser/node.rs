@@ -17,110 +17,21 @@ pub struct Node {
     pub type_: Option<Type>,
 }
 
-impl Node {
-    pub fn new(kind: NodeKind, span: Span) -> Self {
-        Self {
-            kind,
-            span,
-            type_: None,
-        }
-    }
-
-    pub fn print_tree(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) {
-        self.fmt_tree(arena, interner, 0, &mut std::io::stdout()).ok();
-    }
-
-    fn fmt_tree<W: std::io::Write>(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-        out: &mut W,
-    ) -> std::io::Result<()> {
-        let indent_str = "  ".repeat(indent);
-        writeln!(out, "{}{}", indent_str, self.display_node_kind(arena, interner, indent))?;
-        Ok(())
-    }
-
-    fn display_node_kind(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-    ) -> String {
-        match &self.kind {
-            NodeKind::Root { defs } => {
-                let mut s = format!("Root [span: {:?}]", self.span.to_display(interner));
-                for idx in defs {
-                    if let Some(child) = arena.get(*idx) {
-                        s.push('\n');
-                        s.push_str(&child.display_node_kind_recursive(arena, interner, indent + 1));
-                    }
-                }
-                s
-            }
-            NodeKind::Expr { kind, type_ } => {
-                let mut s = format!("Expr [type: {:?}, span: {:?}]: ", type_, self.span.to_display(interner));
-                s.push_str(&kind.display_expr_kind(arena, interner, indent));
-                s
-            }
-            NodeKind::Stmt { kind } => {
-                let mut s = format!("Stmt [span: {:?}]: ", self.span.to_display(interner));
-                s.push_str(&kind.display_stmt_kind(arena, interner, indent));
-                s
-            }
-            NodeKind::Def { kind } => {
-                let mut s = format!("Def [span: {:?}]: ", self.span.to_display(interner));
-                s.push_str(&kind.display_def_kind(arena, interner, indent));
-                s
-            }
-        }
-    }
-
-    fn display_node_kind_recursive(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-    ) -> String {
-        let indent_str = "  ".repeat(indent);
-        let mut s = format!("{}{}", indent_str, self.display_node_kind(arena, interner, indent));
-        match &self.kind {
-            NodeKind::Root { defs } => {
-                for idx in defs {
-                    if let Some(child) = arena.get(*idx) {
-                        s.push('\n');
-                        s.push_str(&child.display_node_kind_recursive(arena, interner, indent + 1));
-                    }
-                }
-            }
-            NodeKind::Expr { kind, .. } => {
-                s.push_str(&kind.display_expr_children(arena, interner, indent + 1));
-            }
-            NodeKind::Stmt { kind } => {
-                s.push_str(&kind.display_stmt_children(arena, interner, indent + 1));
-            }
-            NodeKind::Def { kind } => {
-                s.push_str(&kind.display_def_children(arena, interner, indent + 1));
-            }
-        }
-        s
-    }
-}
-
-impl Display for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.display_node_kind_recursive(
-                // placeholders
-                &Arena::new(),
-                &StringInterner::new(),
-                0
-            )
-        )
-    }
+#[derive(Debug, Clone, PartialEq)]
+pub enum NodeKind {
+    Root {
+        defs: Vec<Index>,
+    },
+    Expr {
+        kind: ExprKind,
+        type_: Option<Type>, // This is NodeKind::Expr.type_
+    },
+    Stmt {
+        kind: StmtKind,
+    },
+    Def {
+        kind: DefKind,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -156,43 +67,45 @@ pub enum Literal {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum NodeKind {
-    Root {
-        // imports, consts, etc
-        defs: Vec<Index>,
+pub enum ExprKind {
+    Literal(Literal),
+    Identifier(SymbolUsize),
+    Assign {
+        target: Index,
+        value: Index,
     },
-    Expr {
-        kind: ExprKind,
-        type_: Option<Type>,
-    },
-    Stmt {
-        kind: StmtKind,
-    },
-    Def {
-        kind: DefKind,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Def {
-    pub span: Span,
-    pub kind: DefKind,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum DefKind {
-    Function {
+    LetBinding {
         name: SymbolUsize,
-        params: Vec<(SymbolUsize, Type, Span)>,
-
-        /// Block expr
-        body: Index,
-
-        return_type: Type,
+        type_annotation: Option<Type>,
+        value: Index,
     },
-    Struct {
-        name: SymbolUsize,
-        fields: Vec<(SymbolUsize, Type, Span)>,
+    BinOp {
+        left: Index,
+        right: Index,
+        op: BinOpKind,
+    },
+    Call {
+        func: Index,
+        args: Vec<Index>,
+    },
+    Block {
+        exprs: Vec<Index>,
+    },
+    ParenExpr {
+        expr: Index,
+    },
+    If {
+        cond: Index,
+        then_block: Index,
+        else_block: Option<Index>,
+    },
+    UnaryOp {
+        op: UnaryOpKind,
+        expr: Index,
+    },
+    Cast {
+        expr: Index,
+        target_type: Type,
     },
 }
 
@@ -206,265 +119,232 @@ pub enum StmtKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ExprKind {
-    Literal(Literal),
-    Identifier(SymbolUsize),
-    Assign {
-        target: Index, // LHS expression (e.g. identifier, field access, array index)
-        value: Index,  // RHS expression
-    },
-    LetBinding {
-        // For `let name = value` expressions
+pub enum DefKind {
+    Function {
         name: SymbolUsize,
-        type_annotation: Option<Type>,
-        value: Index, // Initializer is mandatory for the expression to have this value
+        params: Vec<(SymbolUsize, Type, Span)>,
+        body: Index,
+        return_type: Type,
     },
-    BinOp {
-        left: Index,
-        right: Index,
-        op: BinOpKind,
+    Struct {
+        name: SymbolUsize,
+        fields: Vec<(SymbolUsize, Type, Span)>,
     },
-    Call {
-        func: Index, // Can be an identifier or any expression that evaluates to a function
-        args: Vec<Index>,
-    },
-    Block {
-        // Block can be an expression, its value is the last expression in it
-        // Or an explicit `=> value` syntax from your spec
-        exprs: Vec<Index>, // Sequence of statements/expressions
-    },
-    ParenExpr {
-        expr: Index,
-    },
-    If {
-        cond: Index,
-        then_block: Index,         // Should be a block expression
-        else_block: Option<Index>, // Should be a block expression
-    },
-    UnaryOp {
-        op: UnaryOpKind,
-        expr: Index,
-    },
-    Cast {
-        expr: Index,
-        target_type: Type,
-    },
-    // Alloc {
-    //     target_type: Type,
-    // },
-    // Free {
-    //     expr: Index,
-    // },
-    // TODO: FieldAccess, MethodCall
 }
 
-impl ExprKind {
-    fn display_expr_kind(
+// formatting functions
+
+fn format_symbol(sym: SymbolUsize, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
+    interner.resolve(sym).unwrap_or("<unknown>").to_string()
+}
+
+fn format_type_val(type_val: &Type, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
+    match type_val {
+        Type::Primitive(pt) => format!("Primitive{{type:\"{:?}\"}}", pt),
+        Type::Custom(s_idx) => {
+            format!("Custom{{name:\"{}\"}}", format_symbol(*s_idx, interner))
+        }
+    }
+}
+
+fn format_optional_type(opt_type: Option<Type>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
+    opt_type
+        .as_ref()
+        .map(|t| format_type_val(t, interner))
+        .unwrap_or_else(|| "∅".to_string())
+}
+
+fn format_node_to_string(
+    idx: Index,
+    arena: &Arena<Node>,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+) -> String {
+    arena
+        .get(idx)
+        .map(|node| node.to_json_like_string(arena, interner))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn format_optional_node_to_string(
+    opt_idx: Option<Index>,
+    arena: &Arena<Node>,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+) -> String {
+    opt_idx
+        .map(|idx| format_node_to_string(idx, arena, interner))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn format_node_list_to_string(
+    indices: &[Index],
+    arena: &Arena<Node>,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+) -> String {
+    let items = indices
+        .iter()
+        .map(|idx| format_node_to_string(*idx, arena, interner))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{}]", items)
+}
+
+impl Node {
+    pub fn new(kind: NodeKind, span: Span) -> Self {
+        Self {
+            kind,
+            span,
+            type_: None,
+        }
+    }
+
+    pub fn print_tree(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) {
+        println!("{}", self.to_json_like_string(arena, interner));
+    }
+
+    // Kept if direct writing to a writer is still desired, otherwise print_tree is simpler.
+    pub fn fmt_tree<W: std::io::Write>(
         &self,
         arena: &Arena<Node>,
         interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
+        out: &mut W,
+    ) -> std::io::Result<()> {
+        writeln!(out, "{}", self.to_json_like_string(arena, interner))
+    }
+
+    pub fn to_json_like_string(
+        &self,
+        arena: &Arena<Node>,
+        interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    ) -> String {
+        match &self.kind {
+            NodeKind::Root { defs } => {
+                format!("Root{{defs:{}}}", format_node_list_to_string(defs, arena, interner))
+            }
+            NodeKind::Expr { kind, type_ } => {
+                format!(
+                    "Expr{{type:{},kind:{}}}",
+                    format_optional_type(*type_, interner),
+                    kind.to_json_like_string(arena, interner)
+                )
+            }
+            NodeKind::Stmt { kind } => {
+                format!("Stmt{{kind:{}}}", kind.to_json_like_string(arena, interner))
+            }
+            NodeKind::Def { kind } => {
+                format!("Def{{kind:{}}}", kind.to_json_like_string(arena, interner))
+            }
+        }
+    }
+}
+
+impl Display for Node {
+    /// does not provide meaningful output
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let arena = Arena::new();
+        let interner = StringInterner::new();
+        write!(f, "{}", self.to_json_like_string(&arena, &interner))
+    }
+}
+
+impl ExprKind {
+    fn to_json_like_string(
+        &self,
+        arena: &Arena<Node>,
+        interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ) -> String {
         match self {
-            ExprKind::Literal(lit) => format!("Literal({:?})", lit),
+            ExprKind::Literal(lit) => format!("Literal{{value:{:?}}}", lit),
             ExprKind::Identifier(sym) => {
-                let name = interner.resolve(*sym).unwrap_or("<unknown>");
-                format!("Identifier({})", name)
+                format!("Identifier{{name:\"{}\"}}", format_symbol(*sym, interner))
             }
-            ExprKind::Assign { target, value } => {
-                format!("Assign(target: {:?}, value: {:?})", target, value)
-            }
+            ExprKind::Assign { target, value } => format!(
+                "Assign{{target:{},value:{}}}",
+                format_node_to_string(*target, arena, interner),
+                format_node_to_string(*value, arena, interner)
+            ),
             ExprKind::LetBinding {
                 name,
                 type_annotation,
                 value,
-            } => {
-                let n = interner.resolve(*name).unwrap_or("<unknown>");
-                format!(
-                    "LetBinding(name: {}, type: {:?}, value: {:?})",
-                    n, type_annotation, value
-                )
-            }
-            ExprKind::BinOp { left, right, op } => {
-                format!("BinOp({:?}, left: {:?}, right: {:?})", op, left, right)
-            }
-            ExprKind::Call { func, args } => {
-                format!("Call(func: {:?}, args: {:?})", func, args)
-            }
+            } => format!(
+                "LetBinding{{name:\"{}\",type_annotation:{},value:{}}}",
+                format_symbol(*name, interner),
+                format_optional_type(*type_annotation, interner),
+                format_node_to_string(*value, arena, interner)
+            ),
+            ExprKind::BinOp { left, right, op } => format!(
+                "BinOp{{op:\"{:?}\",left:{},right:{}}}",
+                op,
+                format_node_to_string(*left, arena, interner),
+                format_node_to_string(*right, arena, interner)
+            ),
+            ExprKind::Call { func, args } => format!(
+                "Call{{func:{},args:{}}}",
+                format_node_to_string(*func, arena, interner),
+                format_node_list_to_string(args, arena, interner)
+            ),
             ExprKind::Block { exprs } => {
-                format!("Block({} exprs)", exprs.len())
+                format!("Block{{exprs:{}}}", format_node_list_to_string(exprs, arena, interner))
             }
             ExprKind::ParenExpr { expr } => {
-                format!("ParenExpr(expr: {:?})", expr)
+                format!("ParenExpr{{expr:{}}}", format_node_to_string(*expr, arena, interner))
             }
             ExprKind::If {
                 cond,
                 then_block,
                 else_block,
-            } => {
-                format!("If(cond: {:?}, then: {:?}, else: {:?})", cond, then_block, else_block)
-            }
-            ExprKind::UnaryOp { op, expr } => {
-                format!("UnaryOp({:?}, expr: {:?})", op, expr)
-            }
-            ExprKind::Cast { expr, target_type } => {
-                format!("Cast(expr: {:?}, type: {:?})", expr, target_type)
-            }
+            } => format!(
+                "If{{cond:{},then:{},else:{}}}",
+                format_node_to_string(*cond, arena, interner),
+                format_node_to_string(*then_block, arena, interner),
+                format_optional_node_to_string(*else_block, arena, interner)
+            ),
+            ExprKind::UnaryOp { op, expr } => format!(
+                "UnaryOp{{op:\"{:?}\",expr:{}}}",
+                op,
+                format_node_to_string(*expr, arena, interner)
+            ),
+            ExprKind::Cast { expr, target_type } => format!(
+                "Cast{{expr:{},target_type:{}}}",
+                format_node_to_string(*expr, arena, interner),
+                format_type_val(target_type, interner)
+            ),
         }
-    }
-
-    fn display_expr_children(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-    ) -> String {
-        let mut s = String::new();
-        match self {
-            ExprKind::Assign { target, value } => {
-                if let Some(t) = arena.get(*target) {
-                    s.push('\n');
-                    s.push_str(&t.display_node_kind_recursive(arena, interner, indent));
-                }
-                if let Some(v) = arena.get(*value) {
-                    s.push('\n');
-                    s.push_str(&v.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::LetBinding { value, .. } => {
-                if let Some(v) = arena.get(*value) {
-                    s.push('\n');
-                    s.push_str(&v.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::BinOp { left, right, .. } => {
-                if let Some(l) = arena.get(*left) {
-                    s.push('\n');
-                    s.push_str(&l.display_node_kind_recursive(arena, interner, indent));
-                }
-                if let Some(r) = arena.get(*right) {
-                    s.push('\n');
-                    s.push_str(&r.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::Call { func, args } => {
-                if let Some(f) = arena.get(*func) {
-                    s.push('\n');
-                    s.push_str(&f.display_node_kind_recursive(arena, interner, indent));
-                }
-                for arg in args {
-                    if let Some(a) = arena.get(*arg) {
-                        s.push('\n');
-                        s.push_str(&a.display_node_kind_recursive(arena, interner, indent));
-                    }
-                }
-            }
-            ExprKind::Block { exprs } => {
-                for idx in exprs {
-                    if let Some(e) = arena.get(*idx) {
-                        s.push('\n');
-                        s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                    }
-                }
-            }
-            ExprKind::ParenExpr { expr } => {
-                if let Some(e) = arena.get(*expr) {
-                    s.push('\n');
-                    s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::If {
-                cond,
-                then_block,
-                else_block,
-            } => {
-                if let Some(c) = arena.get(*cond) {
-                    s.push('\n');
-                    s.push_str(&c.display_node_kind_recursive(arena, interner, indent));
-                }
-                if let Some(t) = arena.get(*then_block) {
-                    s.push('\n');
-                    s.push_str(&t.display_node_kind_recursive(arena, interner, indent));
-                }
-                if let Some(Some(e)) = else_block.as_ref().map(|idx| arena.get(*idx)) {
-                    s.push('\n');
-                    s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::UnaryOp { expr, .. } => {
-                if let Some(e) = arena.get(*expr) {
-                    s.push('\n');
-                    s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            ExprKind::Cast { expr, .. } => {
-                if let Some(e) = arena.get(*expr) {
-                    s.push('\n');
-                    s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            _ => {}
-        }
-        s
     }
 }
 
 impl StmtKind {
-    fn display_stmt_kind(
+    fn to_json_like_string(
         &self,
         arena: &Arena<Node>,
         interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        _indent: usize,
     ) -> String {
         match self {
-            StmtKind::Return { value } => format!("Return({:?})", value),
-            StmtKind::BlockReturn { value } => format!("BlockReturn({:?})", value),
-            StmtKind::Break => "Break".to_string(),
-            StmtKind::Loop { body } => format!("Loop(body: {:?})", body),
-            StmtKind::ExpressionStmt { expr } => format!("ExpressionStmt(expr: {:?})", expr),
-        }
-    }
-
-    fn display_stmt_children(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-    ) -> String {
-        let mut s = String::new();
-        match self {
-            StmtKind::Return { value } | StmtKind::BlockReturn { value } => {
-                if let Some(idx) = value {
-                    if let Some(n) = arena.get(*idx) {
-                        s.push('\n');
-                        s.push_str(&n.display_node_kind_recursive(arena, interner, indent));
-                    }
-                }
-            }
+            StmtKind::Return { value } => format!(
+                "Return{{value:{}}}",
+                format_optional_node_to_string(*value, arena, interner)
+            ),
+            StmtKind::BlockReturn { value } => format!(
+                "BlockReturn{{value:{}}}",
+                format_optional_node_to_string(*value, arena, interner)
+            ),
+            StmtKind::Break => "Break{}".to_string(),
             StmtKind::Loop { body } => {
-                if let Some(b) = arena.get(*body) {
-                    s.push('\n');
-                    s.push_str(&b.display_node_kind_recursive(arena, interner, indent));
-                }
+                format!("Loop{{body:{}}}", format_node_to_string(*body, arena, interner))
             }
-            StmtKind::ExpressionStmt { expr } => {
-                if let Some(e) = arena.get(*expr) {
-                    s.push('\n');
-                    s.push_str(&e.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            _ => {}
+            StmtKind::ExpressionStmt { expr } => format!(
+                "ExpressionStmt{{expr:{}}}",
+                format_node_to_string(*expr, arena, interner)
+            ),
         }
-        s
     }
 }
 
 impl DefKind {
-    fn display_def_kind(
+    fn to_json_like_string(
         &self,
-        _arena: &Arena<Node>,
+        arena: &Arena<Node>,
         interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        _indent: usize,
     ) -> String {
         match self {
             DefKind::Function {
@@ -473,51 +353,43 @@ impl DefKind {
                 body,
                 return_type,
             } => {
-                let n = interner.resolve(*name).unwrap_or("<unknown>");
                 let params_str = params
                     .iter()
-                    .map(|(n, t, _)| {
-                        let pname = interner.resolve(*n).unwrap_or("<unknown>");
-                        format!("{}: {:?}", pname, t)
+                    .map(|(p_name, p_type, _span)| {
+                        format!(
+                            "Param{{name:\"{}\",type:{}}}",
+                            format_symbol(*p_name, interner),
+                            format_type_val(p_type, interner)
+                        )
                     })
                     .collect::<Vec<_>>()
-                    .join(", ");
+                    .join(",");
                 format!(
-                    "Function(name: {}, params: [{}], body: {:?}, return_type: {:?})",
-                    n, params_str, body, return_type
+                    "Function{{name:\"{}\",params:[{}],body:{},return_type:{}}}",
+                    format_symbol(*name, interner),
+                    params_str,
+                    format_node_to_string(*body, arena, interner),
+                    format_type_val(return_type, interner)
                 )
             }
             DefKind::Struct { name, fields } => {
-                let n = interner.resolve(*name).unwrap_or("<unknown>");
                 let fields_str = fields
                     .iter()
-                    .map(|(n, t, _)| {
-                        let fname = interner.resolve(*n).unwrap_or("<unknown>");
-                        format!("{}: {:?}", fname, t)
+                    .map(|(f_name, f_type, _span)| {
+                        format!(
+                            "Field{{name:\"{}\",type:{}}}",
+                            format_symbol(*f_name, interner),
+                            format_type_val(f_type, interner)
+                        )
                     })
                     .collect::<Vec<_>>()
-                    .join(", ");
-                format!("Struct(name: {}, fields: [{}])", n, fields_str)
+                    .join(",");
+                format!(
+                    "Struct{{name:\"{}\",fields:[{}]}}",
+                    format_symbol(*name, interner),
+                    fields_str
+                )
             }
         }
-    }
-
-    fn display_def_children(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-        indent: usize,
-    ) -> String {
-        let mut s = String::new();
-        match self {
-            DefKind::Function { body, .. } => {
-                if let Some(b) = arena.get(*body) {
-                    s.push('\n');
-                    s.push_str(&b.display_node_kind_recursive(arena, interner, indent));
-                }
-            }
-            _ => {}
-        }
-        s
     }
 }

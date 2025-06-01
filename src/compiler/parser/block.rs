@@ -9,7 +9,7 @@ use super::{
 };
 
 impl Parser {
-    pub fn parse_block(&mut self) -> Result<Index, ParserError> {
+    pub fn parse_block_body(&mut self) -> Result<Index, ParserError> {
         let start_span = self.current().span;
         let mut nodes = Vec::new();
 

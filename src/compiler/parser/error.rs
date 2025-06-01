@@ -69,6 +69,9 @@ pub enum ParserError {
 
     #[error("Expression expected: {token}")]
     ExpressionExpected { token: Token },
+
+    #[error("Loop body expected: {token}")]
+    LoopBodyExpected { token: Token },
 }
 
 impl Display for Token {
