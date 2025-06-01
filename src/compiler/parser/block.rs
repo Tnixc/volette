@@ -11,14 +11,14 @@ use super::{
 impl Parser {
     pub fn parse_block(&mut self) -> Result<Index, ParserError> {
         let start_span = self.current().span;
-        let nodes = Vec::new();
+        let mut nodes = Vec::new();
 
         while self
             .advance()
             .is_some_and(|t| t.kind != TokenKind::Punctuation(Punctuation::CloseBrace))
         {
             let node = self.parse_expr()?;
-            println!("{:?}", node);
+            nodes.push(node);
         }
 
         match self.current().kind {

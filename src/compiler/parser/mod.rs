@@ -36,6 +36,7 @@ impl Parser {
     pub fn parse(&mut self) {
         let root = self.parse_root();
         println!("errors: {:?}", self.parse_errors);
+        root.print_tree(&self.tree, &self.interner);
         self.tree.insert(root);
     }
 
