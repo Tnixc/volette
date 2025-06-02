@@ -1,5 +1,6 @@
 use std::path::Path;
 
+pub mod codegen;
 pub mod lexer;
 pub mod parser;
 pub mod tokens;

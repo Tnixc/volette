@@ -1,5 +1,4 @@
 fn main() {
-  let x = 1;
+  let x = let y = 2;
 }
-
 
