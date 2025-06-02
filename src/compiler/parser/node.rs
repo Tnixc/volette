@@ -1,13 +1,26 @@
+use cranelift::prelude::types;
 use generational_arena::{Arena, Index};
 use std::fmt::{self, Display, Formatter};
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 
-use crate::compiler::tokens::{PrimitiveTypes, Span};
+use crate::compiler::{
+    codegen::PtrWidth,
+    tokens::{PrimitiveTypes, Span},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Type {
     Primitive(PrimitiveTypes),
     Custom(SymbolUsize),
+}
+
+impl Type {
+    pub fn to_clif(&self, ptr_bits: PtrWidth) -> types::Type {
+        match self {
+            Type::Primitive(pt) => pt.to_clif(ptr_bits),
+            Type::Custom(_) => todo!("Custom types are not supported in yet"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

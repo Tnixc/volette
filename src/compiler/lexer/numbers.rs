@@ -153,7 +153,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = "123 + 2 0xff 3.14 2.71 0 0o234";
-        let mut lexer = Lexer::new(contents, interner, file);
+        let mut lexer = Lexer::new(interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

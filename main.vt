@@ -1,4 +1,6 @@
 fn main() {
-  let x = let y = 2;
+  let x = let y = 2 == 2 && true;
 }
+
+
 

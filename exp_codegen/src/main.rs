@@ -22,22 +22,16 @@ fn main() {
     let isa_builder = isa::lookup(triple).unwrap();
     let target_isa = isa_builder.finish(flags).unwrap();
 
-    let builder =
-        cranelift_object::ObjectBuilder::new(target_isa, "name", default_libcall_names()).unwrap();
+    let builder = cranelift_object::ObjectBuilder::new(target_isa, "name", default_libcall_names()).unwrap();
     let mut module = ObjectModule::new(builder);
 
     let mut ctx = cranelift_codegen::Context::new();
 
     let mut fn_builder_ctx = FunctionBuilderContext::new();
 
-    let func_name = UserFuncName::User(UserExternalName {
-        namespace: 0,
-        index: 0,
-    });
+    let func_name = UserFuncName::User(UserExternalName { namespace: 0, index: 0 });
 
-    let func_id = module
-        .declare_function("add", Linkage::Export, &sig)
-        .unwrap();
+    let func_id = module.declare_function("add", Linkage::Export, &sig).unwrap();
     let mut func = Function::with_name_signature(func_name, sig);
     let mut fn_builder = FunctionBuilder::new(&mut func, &mut fn_builder_ctx);
     let entry = fn_builder.create_block();
@@ -56,12 +50,10 @@ fn main() {
     fn_builder.seal_block(entry);
     fn_builder.finalize();
 
-    let mut cp = ControlPlane::default();
     ctx.func = func;
+    println!("{}", ctx.func.display());
 
-    let r = ctx.compile(module.isa(), &mut cp).unwrap();
-    println!("{:#?}", r.vcode);
     module.define_function(func_id, &mut ctx).unwrap();
     let product = module.finish();
-    std::fs::write("identity.o", product.emit().unwrap()).unwrap();
+    std::fs::write("add.o", product.emit().unwrap()).unwrap();
 }

@@ -5,12 +5,12 @@ use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterne
 
 use super::tokens::{Token, TokenKind};
 
-mod block;
-mod definitions;
-mod error;
-mod expr;
-mod node;
-mod statements;
+pub mod block;
+pub mod definitions;
+pub mod error;
+pub mod expr;
+pub mod node;
+pub mod statements;
 
 pub struct Parser {
     tree: Arena<Node>,

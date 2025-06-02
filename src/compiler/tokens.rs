@@ -61,10 +61,12 @@ pub enum PrimitiveTypes {
     U16,
     U32,
     U64,
+    Usize,
     I8,
     I16,
     I32,
     I64,
+    Isize,
     F32,
     F64,
     Bool,
@@ -73,7 +75,6 @@ pub enum PrimitiveTypes {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(dead_code)]
 pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
@@ -149,6 +150,7 @@ pub enum TokenName {
     Keyword(Keyword),
     Punctuation(Punctuation),
     Identifier,
+    Bool,
 }
 
 #[derive(Debug, Clone)]

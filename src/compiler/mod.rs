@@ -16,7 +16,7 @@ pub fn build(file: &Path) {
     let contents = std::fs::read_to_string(file).unwrap_or_else(|_| panic!("Failed to read file: {:?}", file));
     let mut interner = Interner::new();
     let file_name = interner.get_or_intern(file.to_str().unwrap_or("<unknown>"));
-    let mut lexer = Lexer::new(&contents, interner, file_name);
+    let mut lexer = Lexer::new(interner, file_name);
 
     lexer.tokenize(contents.chars().collect());
     lexer.tokens.push(Token::new(

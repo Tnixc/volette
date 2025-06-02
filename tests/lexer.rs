@@ -49,7 +49,7 @@ pub fn max(a: i32, b: i32): i32 {
 fn test_lexer() {
     let mut interner = StringInterner::new();
     let s = interner.get_or_intern("test.vt");
-    let mut lexer = Lexer::new(CONTENTS, interner, s);
+    let mut lexer = Lexer::new(interner, s);
     lexer.tokenize(CONTENTS.chars().collect());
     let expected_tokens = vec![
         ("Keyword(Fn)", 1, (1, 2)),

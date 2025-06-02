@@ -61,6 +61,8 @@ impl Lexer {
         check_type!("u64", U64);
         check_type!("f32", F32);
         check_type!("f64", F64);
+        check_type!("usize", Usize);
+        check_type!("isize", Isize);
         check_type!("bool", Bool);
         check_type!("Nil", Nil);
 
@@ -81,7 +83,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool Nil"#;
-        let mut lexer = Lexer::new(contents, interner, file);
+        let mut lexer = Lexer::new(interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

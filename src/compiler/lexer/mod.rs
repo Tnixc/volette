@@ -5,6 +5,7 @@ use crate::compiler::tokens::TokenKind;
 use super::tokens::{Span, Token};
 mod error;
 use error::LexError;
+mod bool;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 mod keywords;
 mod numbers;
@@ -12,7 +13,6 @@ mod punctuation;
 mod type_literals;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(dead_code)]
 pub enum LexerState {
     Number(bool, numbers::NumberBase),
     String,
@@ -41,7 +41,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn new(str: &str, interner: StringInterner<BucketBackend<SymbolUsize>>, path: SymbolUsize) -> Self {
+    pub fn new(interner: StringInterner<BucketBackend<SymbolUsize>>, path: SymbolUsize) -> Self {
         Lexer {
             tokens: vec![Token::new(TokenKind::Start, Span::new(path, 0, 0, 0, 0))],
             state: LexerState::Normal,
@@ -113,6 +113,7 @@ impl Lexer {
                     self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));
                     if !self.check_punctuation()
                         && !self.check_type_literals()
+                        && !self.check_bool()
                         && !self.check_keywords()
                         && !c.is_valid_ident_char()
                         && !self.current_chars.is_empty()
@@ -239,7 +240,7 @@ mod tests {
         let mut interner = Interner::new();
         let f = interner.get_or_intern("");
         let contents = "let__ use some_ident normal";
-        let mut lexer = Lexer::new(contents, interner, f);
+        let mut lexer = Lexer::new(interner, f);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
