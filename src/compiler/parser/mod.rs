@@ -12,12 +12,12 @@ pub mod expr;
 pub mod node;
 
 pub struct Parser {
-    tree: Arena<Node>,
-    interner: StringInterner<BucketBackend<SymbolUsize>>,
-    tokens: Vec<Token>,
-    current_idx: usize,
-    current_token: Token,
-    parse_errors: Vec<ParserError>,
+    pub tree: Arena<Node>,
+    pub interner: StringInterner<BucketBackend<SymbolUsize>>,
+    pub tokens: Vec<Token>,
+    pub current_idx: usize,
+    pub current_token: Token,
+    pub parse_errors: Vec<ParserError>,
 }
 
 impl Parser {
@@ -32,11 +32,11 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) {
+    pub fn parse(&mut self) -> Node {
         let root = self.parse_root();
         println!("errors: {:?}", self.parse_errors);
         root.print_tree(&self.tree, &self.interner);
-        self.tree.insert(root);
+        root
     }
 
     pub fn parse_root(&mut self) -> Node {

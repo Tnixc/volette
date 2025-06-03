@@ -549,6 +549,7 @@ dependencies = [
  "generational-arena",
  "hashbrown 0.15.3",
  "string-interner",
+ "target-lexicon",
  "thiserror",
 ]
 

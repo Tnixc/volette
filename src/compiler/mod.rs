@@ -30,8 +30,17 @@ pub fn build(file: &Path) {
         ),
     ));
     println!("{:?}", lexer.format_tokens());
+
     lexer.print_errors();
 
     let mut parser = Parser::new(lexer.tokens, lexer.interner);
-    parser.parse();
+    let root = parser.parse();
+    if parser.parse_errors.is_empty() {
+        eprintln!(
+            "Codegen Errors: {:?}",
+            codegen::codegen(&root, &mut parser.tree, &mut parser.interner)
+        );
+    } else {
+        eprintln!("Errors: {:?}", parser.parse_errors);
+    }
 }

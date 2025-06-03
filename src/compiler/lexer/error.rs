@@ -133,7 +133,7 @@ impl LexError {
 impl Lexer {
     pub fn print_errors(&self) {
         for error in &self.errors {
-            println!("{}", error.span().format_error_display(format!("{}", error).as_str()));
+            eprintln!("{}", error.span().format_error_display(format!("{}", error).as_str()));
         }
         println!("{}", "-".repeat(50).dimmed());
         if !self.errors.is_empty() {

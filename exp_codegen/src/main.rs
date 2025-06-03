@@ -12,6 +12,7 @@ use cranelift_module::{default_libcall_names, Linkage, Module};
 use cranelift_object::ObjectModule;
 use target_lexicon::triple;
 
+
 fn main() {
     let mut sig = Signature::new(CallConv::SystemV);
     sig.returns.push(AbiParam::new(I32));

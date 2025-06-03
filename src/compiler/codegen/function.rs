@@ -1,4 +1,7 @@
-use crate::compiler::parser::node::{DefKind, ExprKind, Node, NodeKind};
+use crate::compiler::{
+    codegen::{block::lower_block, Info},
+    parser::node::{DefKind, ExprKind, Node, NodeKind},
+};
 use cranelift::{
     codegen::{
         ir::{Function, UserFuncName},
@@ -8,20 +11,12 @@ use cranelift::{
     object::ObjectModule,
     prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
-use generational_arena::Arena;
 use hashbrown::HashMap;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::symbol::SymbolUsize;
 
 use super::{error::TranslateError, BuildConfig};
 
-pub fn lower_fn(
-    node: &Node,
-    interner: StringInterner<BucketBackend<SymbolUsize>>,
-    ctx: &mut Context,
-    object: &mut ObjectModule,
-    build_config: &BuildConfig,
-    nodes: &Arena<Node>,
-) -> Result<(), TranslateError> {
+pub fn lower_fn(node: &Node, info: &mut Info) -> Result<(), TranslateError> {
     match &node.kind {
         NodeKind::Def {
             kind:
@@ -33,21 +28,23 @@ pub fn lower_fn(
                 },
         } => {
             // -- Setup --
-            let fn_name = interner
+            let fn_name = info
+                .interner
                 .resolve(*name)
                 .expect("Function name's string not found in interner");
 
-            let mut sig = Signature::new(build_config.call_conv);
+            let mut sig = Signature::new(info.build_config.call_conv);
             for param in params {
-                sig.params.push(AbiParam::new(param.1.to_clif(build_config.ptr_width)));
+                sig.params
+                    .push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
             }
 
             sig.returns
-                .push(AbiParam::new(return_type.to_clif(build_config.ptr_width)));
+                .push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
 
             println!("Function: {}", fn_name);
 
-            let func_id = object.declare_function(fn_name, Linkage::Export, &sig)?;
+            let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
 
             let dbg_fn_name = UserFuncName::testcase(fn_name);
             let mut func = Function::with_name_signature(dbg_fn_name, sig);
@@ -57,32 +54,21 @@ pub fn lower_fn(
 
             let entry = fn_builder.create_block();
 
-            let scopes: Vec<HashMap<SymbolUsize, Variable>> = vec![];
-
             fn_builder.switch_to_block(entry);
             fn_builder.append_block_params_for_function_params(entry);
 
             // -- Body --
-            let body_node = nodes.get(*body).expect("Body node not found in arena");
-            match &body_node.kind {
-                NodeKind::Expr { kind, type_ } => match kind {
-                    ExprKind::Block { exprs } => {
-                        for expr in exprs {
-                            let expr_node = nodes.get(*expr).expect("Expr node not found in arena");
-                        }
-                    }
-                    _ => {
-                        return Err(TranslateError::ExpectedBlockExpression {
-                            span: body_node.span.to_display(&interner),
-                        })
-                    }
-                },
-                _ => {
-                    return Err(TranslateError::ExpectedBlockExpression {
-                        span: body_node.span.to_display(&interner),
-                    })
-                }
-            }
+
+            let body_node = info.nodes.get(*body).expect("Body node not found in arena");
+
+            let mut scopes: Vec<HashMap<SymbolUsize, Variable>> = vec![]; // fresh scope for each function
+            lower_block(body_node, &mut fn_builder, info, &mut scopes)?;
+
+            // fn_builder.seal_block(entry);
+            // fn_builder.finalize();
+
+            // info.ctx.func = func;
+            // println!("{}", info.ctx.func.display());
 
             Ok(())
         }
