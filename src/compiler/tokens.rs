@@ -72,6 +72,7 @@ pub enum PrimitiveTypes {
     Bool,
     Unit,
     Nil,
+    Never,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

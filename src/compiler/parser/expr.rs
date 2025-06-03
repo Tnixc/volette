@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use super::{
     error::ParserError,
-    node::{BinOpKind, ExprKind, Literal, Node, NodeKind, StmtKind, Type},
+    node::{BinOpKind, ExprKind, Literal, Node, NodeKind, Type},
     Parser,
 };
 use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
@@ -12,7 +12,7 @@ use generational_arena::Index;
 #[repr(u32)]
 enum BindingPower {
     None = 0,
-    Assignment = 1,    // lowest precedence, right-associative (handled specially)
+    Assignment = 1,    // = (right-associative)
     LogicalOr = 2,     // ||
     LogicalAnd = 3,    // &&
     Equality = 4,      // == !=
@@ -63,10 +63,6 @@ impl Parser {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 left_expr_idx = self.parse_block_expr_nud(current_token)?;
             }
-            // TODO: add nud handlers for:
-            // - unary operators (e.g., '-', '!') -> self.parse_prefix_op_nud(current_token)?
-            // - block expressions '{ ... }' -> self.parse_block_expr_nud(current_token)?
-            // - if expressions 'if ...' -> self.parse_if_expr_nud(current_token)?
             _ => {
                 return Err(ParserError::ExpressionExpected { token: current_token });
             }
@@ -76,7 +72,7 @@ impl Parser {
         loop {
             let next_token = *self.current();
             let (left_bp, is_right_associative) = match next_token.kind {
-                TokenKind::Punctuation(Punctuation::Eq) => (BindingPower::Assignment, true), // Special: right-associative
+                TokenKind::Punctuation(Punctuation::Eq) => (BindingPower::Assignment, true),
 
                 TokenKind::Punctuation(Punctuation::Plus) | TokenKind::Punctuation(Punctuation::Minus) => {
                     (BindingPower::Term, false)
@@ -98,42 +94,11 @@ impl Parser {
                 TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false),
                 TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
 
-                TokenKind::Punctuation(Punctuation::Semicolon) => {
-                    // Only handle semicolons at the top level (min_bp == BindingPower::None)
-                    if min_bp == BindingPower::None {
-                        let semicolon_token = *self.current();
-                        self.advance();
-
-                        let expr_node = self
-                            .node(&left_expr_idx)
-                            .ok_or_else(|| {
-                                ParserError::InternalError("Expression node not found for statement".to_string())
-                            })?
-                            .clone();
-
-                        let stmt_span = expr_node.span.connect_new(&semicolon_token.span);
-                        left_expr_idx = self.push(Node::new(
-                            NodeKind::Stmt {
-                                kind: StmtKind::ExpressionStmt { expr: left_expr_idx },
-                            },
-                            stmt_span,
-                        ));
-                        continue;
-                    } else {
-                        // We're in the middle of parsing a higher-precedence expression
-                        // Don't handle the semicolon here, let the parent handle it
-                        (BindingPower::None, false)
-                    }
-                }
-
-                // TODO: add binding powers for:
-                // - Function call '(' -> (BindingPower::Call, false)
-                // - Field access '.' -> (BindingPower::MemberAccess, false)
-                _ => (BindingPower::None, false), // Not an operator or end of expression segment
+                _ => (BindingPower::None, false),
             };
 
             if left_bp < min_bp || left_bp == BindingPower::None {
-                break; // operator precedence is too low or not an operator
+                break;
             }
 
             self.advance();
@@ -159,10 +124,7 @@ impl Parser {
                         self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
                 }
 
-                // TODO: add LED handlers for calls, indexing, field access
-                // TokenKind::Punctuation(Punctuation::OpenParen) => self.parse_call_led(next_token, left_expr_idx)?
                 _ => {
-                    // should not happen if lbp was > None
                     return Err(ParserError::InternalError(format!(
                         "Unhandled LED token: {:?}",
                         next_token.kind
@@ -296,8 +258,9 @@ impl Parser {
         }
 
         Ok(self.push(Node::new(
-            NodeKind::Stmt {
-                kind: StmtKind::Return { value: value_idx_opt },
+            NodeKind::Expr {
+                kind: ExprKind::Return { value: value_idx_opt },
+                type_: None,
             },
             current_span,
         )))
@@ -307,7 +270,10 @@ impl Parser {
         self.advance();
 
         Ok(self.push(Node::new(
-            NodeKind::Stmt { kind: StmtKind::Break },
+            NodeKind::Expr {
+                kind: ExprKind::Break,
+                type_: None,
+            },
             break_keyword_token.span,
         )))
     }
@@ -326,8 +292,9 @@ impl Parser {
         let loop_span = loop_keyword_token.span.connect_new(&body_node.span);
 
         Ok(self.push(Node::new(
-            NodeKind::Stmt {
-                kind: StmtKind::Loop { body: body_idx },
+            NodeKind::Expr {
+                kind: ExprKind::Loop { body: body_idx },
+                type_: None,
             },
             loop_span,
         )))

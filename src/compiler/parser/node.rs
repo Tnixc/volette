@@ -39,9 +39,6 @@ pub enum NodeKind {
         kind: ExprKind,
         type_: Option<Type>, // This is NodeKind::Expr.type_
     },
-    Stmt {
-        kind: StmtKind,
-    },
     Def {
         kind: DefKind,
     },
@@ -83,6 +80,11 @@ pub enum Literal {
 pub enum ExprKind {
     Literal(Literal),
     Identifier(SymbolUsize),
+    BinOp {
+        left: Index,
+        right: Index,
+        op: BinOpKind,
+    },
     Assign {
         target: Index,
         value: Index,
@@ -92,17 +94,22 @@ pub enum ExprKind {
         type_annotation: Option<Type>,
         value: Index,
     },
-    BinOp {
-        left: Index,
-        right: Index,
-        op: BinOpKind,
-    },
     Call {
         func: Index,
         args: Vec<Index>,
     },
     Block {
         exprs: Vec<Index>,
+    },
+    Return {
+        value: Option<Index>,
+    },
+    Break,
+    Loop {
+        body: Index,
+    },
+    BlockReturn {
+        value: Option<Index>,
     },
     ParenExpr {
         expr: Index,
@@ -112,23 +119,14 @@ pub enum ExprKind {
         then_block: Index,
         else_block: Option<Index>,
     },
-    UnaryOp {
-        op: UnaryOpKind,
-        expr: Index,
-    },
     Cast {
         expr: Index,
         target_type: Type,
     },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum StmtKind {
-    Return { value: Option<Index> },
-    BlockReturn { value: Option<Index> },
-    Break,
-    Loop { body: Index },
-    ExpressionStmt { expr: Index },
+    UnaryOp {
+        op: UnaryOpKind,
+        expr: Index,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -240,9 +238,6 @@ impl Node {
                     kind.to_json_like_string(arena, interner)
                 )
             }
-            NodeKind::Stmt { kind } => {
-                format!("Stmt{{kind:{}}}", kind.to_json_like_string(arena, interner))
-            }
             NodeKind::Def { kind } => {
                 format!("Def{{kind:{}}}", kind.to_json_like_string(arena, interner))
             }
@@ -322,32 +317,15 @@ impl ExprKind {
                 format_node_to_string(*expr, arena, interner),
                 format_type_val(target_type, interner)
             ),
-        }
-    }
-}
-
-impl StmtKind {
-    fn to_json_like_string(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ) -> String {
-        match self {
-            StmtKind::Return { value } => format!(
+            ExprKind::Return { value } => format!(
                 "Return{{value:{}}}",
                 format_optional_node_to_string(*value, arena, interner)
             ),
-            StmtKind::BlockReturn { value } => format!(
+            ExprKind::Break => "Break{}".to_string(),
+            ExprKind::Loop { body } => format!("Loop{{body:{}}}", format_node_to_string(*body, arena, interner)),
+            ExprKind::BlockReturn { value } => format!(
                 "BlockReturn{{value:{}}}",
                 format_optional_node_to_string(*value, arena, interner)
-            ),
-            StmtKind::Break => "Break{}".to_string(),
-            StmtKind::Loop { body } => {
-                format!("Loop{{body:{}}}", format_node_to_string(*body, arena, interner))
-            }
-            StmtKind::ExpressionStmt { expr } => format!(
-                "ExpressionStmt{{expr:{}}}",
-                format_node_to_string(*expr, arena, interner)
             ),
         }
     }
