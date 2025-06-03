@@ -144,6 +144,7 @@ impl Parser {
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 let body = self.parse_block_body()?;
+                self.backtrack();
                 let node = Node::new(
                     NodeKind::Def {
                         kind: DefKind::Function {

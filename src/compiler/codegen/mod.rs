@@ -52,8 +52,8 @@ pub fn codegen(
     let target_isa = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
-    let mut module = ObjectModule::new(builder);
-    let mut ctx = Context::new();
+    let module = ObjectModule::new(builder);
+    let ctx = Context::new();
 
     let build_config = BuildConfig {
         ptr_width: PtrWidth::X64,
@@ -102,6 +102,6 @@ fn isa() -> Arc<dyn TargetIsa + 'static> {
     let flags = Flags::new(flag_builder);
 
     let isa_builder = isa::lookup(triple.clone()).unwrap();
-    let target_isa = isa_builder.finish(flags).unwrap();
-    target_isa
+
+    (isa_builder.finish(flags).unwrap()) as _
 }

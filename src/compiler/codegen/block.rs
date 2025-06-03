@@ -1,16 +1,9 @@
-use std::hash::Hash;
-
-use cranelift::{
-    codegen::Context,
-    object::ObjectModule,
-    prelude::{EntityRef, FunctionBuilder, Variable},
-};
-use generational_arena::Arena;
+use cranelift::prelude::{EntityRef, FunctionBuilder, Variable};
 use hashbrown::HashMap;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{error::TranslateError, expr::expr_to_val, BuildConfig, Info},
+    codegen::{error::TranslateError, expr::expr_to_val, Info},
     parser::node::{ExprKind, Node, NodeKind},
 };
 

@@ -1,7 +1,9 @@
+fn other() {
+  let HELLO = true;
+}
+
 fn main() {
   let x: i32 = 99999999999;
-  let y = true;
-  let z = 283.23898492;
 }
 
 

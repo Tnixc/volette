@@ -1,16 +1,10 @@
-use std::hash::Hash;
-
-use cranelift::{
-    codegen::Context,
-    object::ObjectModule,
-    prelude::{types, EntityRef, FunctionBuilder, InstBuilder, Value, Variable},
-};
-use generational_arena::{Arena, Index};
+use cranelift::prelude::{types, FunctionBuilder, InstBuilder, Value, Variable};
+use generational_arena::Index;
 use hashbrown::HashMap;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{error::TranslateError, BuildConfig, Info},
+    codegen::{error::TranslateError, Info},
     parser::node::{ExprKind, Literal, Node, NodeKind, Type},
     tokens::PrimitiveTypes,
 };
@@ -66,7 +60,7 @@ fn match_literal(
         Literal::Bool(v) => {
             if type_ != Type::Primitive(PrimitiveTypes::Bool) {
                 return Err(TranslateError::IncorrectTypeHint {
-                    type_: type_,
+                    type_,
                     node: node.clone(),
                 });
             }
@@ -80,7 +74,7 @@ fn match_literal(
             Type::Primitive(PrimitiveTypes::F64) => Ok(fn_builder.ins().f64const(f)),
             Type::Primitive(PrimitiveTypes::F32) => Ok(fn_builder.ins().f32const(f as f32)),
             _ => Err(TranslateError::IncorrectTypeHint {
-                type_: type_,
+                type_,
                 node: node.clone(),
             }),
         },
@@ -101,14 +95,14 @@ fn match_literal(
                 Ok(fn_builder.ins().iconst(types::I64, i)) // Assuming 64-bit target
             }
             _ => Err(TranslateError::IncorrectTypeHint {
-                type_: type_,
+                type_,
                 node: node.clone(),
             }),
         },
         Literal::Nil => {
             if type_ != Type::Primitive(PrimitiveTypes::Nil) {
                 return Err(TranslateError::IncorrectTypeHint {
-                    type_: type_,
+                    type_,
                     node: node.clone(),
                 });
             }

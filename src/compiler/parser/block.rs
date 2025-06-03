@@ -34,7 +34,6 @@ impl Parser {
 
         let end_span = self.current().span;
         self.advance(); // consume '}'
-
         let block_type = if let Some(&last_expr_idx) = expressions.last() {
             self.node(&last_expr_idx).and_then(|node| node.type_)
         } else {

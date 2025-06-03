@@ -1,20 +1,16 @@
 use crate::compiler::{
     codegen::{block::lower_block, Info},
-    parser::node::{DefKind, ExprKind, Node, NodeKind},
+    parser::node::{DefKind, Node, NodeKind},
 };
 use cranelift::{
-    codegen::{
-        ir::{Function, UserFuncName},
-        Context,
-    },
+    codegen::ir::{Function, UserFuncName},
     module::{Linkage, Module},
-    object::ObjectModule,
     prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
 use hashbrown::HashMap;
 use string_interner::symbol::SymbolUsize;
 
-use super::{error::TranslateError, BuildConfig};
+use super::error::TranslateError;
 
 pub fn lower_fn(node: &Node, info: &mut Info) -> Result<(), TranslateError> {
     match &node.kind {
