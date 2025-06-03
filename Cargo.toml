@@ -8,5 +8,6 @@ clap = { version = "4.0", features = ["derive"] }
 colored = "3.0.0"
 cranelift = { version = "0.116.1", features = ["core", "module", "native", "object"] }
 generational-arena = "0.2.9"
+hashbrown = "0.15.3"
 string-interner = "0.19.0"
 thiserror = "2.0.12"

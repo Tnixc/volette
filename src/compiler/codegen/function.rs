@@ -6,9 +6,10 @@ use cranelift::{
     },
     module::{Linkage, Module},
     object::ObjectModule,
-    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature},
+    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
 use generational_arena::Arena;
+use hashbrown::HashMap;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 
 use super::{error::TranslateError, BuildConfig};
@@ -55,6 +56,9 @@ pub fn lower_fn(
             let mut fn_builder = FunctionBuilder::new(&mut func, &mut fn_builder_ctx);
 
             let entry = fn_builder.create_block();
+
+            let scopes: Vec<HashMap<SymbolUsize, Variable>> = vec![];
+
             fn_builder.switch_to_block(entry);
             fn_builder.append_block_params_for_function_params(entry);
 

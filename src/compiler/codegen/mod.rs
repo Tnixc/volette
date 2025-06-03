@@ -1,5 +1,6 @@
 use cranelift::prelude::isa::CallConv;
 
+pub mod block;
 pub mod error;
 pub mod function;
 pub mod translate;
