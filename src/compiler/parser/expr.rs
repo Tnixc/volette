@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use super::{
     error::ParserError,
-    node::{BinOpKind, ExprKind, Literal, Node, NodeKind, Type},
+    node::{BinOpKind, ExprKind, Literal, Node, NodeKind, StmtKind, Type},
     Parser,
 };
 use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
@@ -48,8 +48,20 @@ impl Parser {
             TokenKind::Keyword(Keyword::Let) => {
                 left_expr_idx = self.parse_let_expr_nud(current_token)?;
             }
+            TokenKind::Keyword(Keyword::Return) => {
+                left_expr_idx = self.parse_return_expr_nud(current_token)?;
+            }
+            TokenKind::Keyword(Keyword::Break) => {
+                left_expr_idx = self.parse_break_expr_nud(current_token)?;
+            }
+            TokenKind::Keyword(Keyword::Loop) => {
+                left_expr_idx = self.parse_loop_expr_nud(current_token)?;
+            }
             TokenKind::Punctuation(Punctuation::OpenParen) => {
                 left_expr_idx = self.parse_paren_expr_nud(current_token)?;
+            }
+            TokenKind::Punctuation(Punctuation::OpenBrace) => {
+                left_expr_idx = self.parse_block_expr_nud(current_token)?;
             }
             // TODO: add nud handlers for:
             // - unary operators (e.g., '-', '!') -> self.parse_prefix_op_nud(current_token)?
@@ -85,6 +97,27 @@ impl Parser {
 
                 TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false),
                 TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
+
+                TokenKind::Punctuation(Punctuation::Semicolon) => {
+                    let semicolon_token = *self.current();
+                    self.advance();
+
+                    let expr_node = self
+                        .node(&left_expr_idx)
+                        .ok_or_else(|| {
+                            ParserError::InternalError("Expression node not found for statement".to_string())
+                        })?
+                        .clone();
+
+                    let stmt_span = expr_node.span.connect_new(&semicolon_token.span);
+                    left_expr_idx = self.push(Node::new(
+                        NodeKind::Stmt {
+                            kind: StmtKind::ExpressionStmt { expr: left_expr_idx },
+                        },
+                        stmt_span,
+                    ));
+                    continue;
+                }
 
                 // TODO: add binding powers for:
                 // - Function call '(' -> (BindingPower::Call, false)
@@ -239,6 +272,60 @@ impl Parser {
         )))
     }
 
+    fn parse_return_expr_nud(&mut self, return_keyword_token: Token) -> Result<Index, ParserError> {
+        self.advance();
+
+        let mut value_idx_opt = None;
+        let mut current_span = return_keyword_token.span;
+
+        if self.current().kind != TokenKind::Punctuation(Punctuation::Semicolon) {
+            let value_idx = self.pratt_parse_expression(BindingPower::None)?;
+            let value_node = self
+                .node(&value_idx)
+                .ok_or_else(|| ParserError::InternalError("Return value node not found".to_string()))?
+                .clone();
+            current_span.connect_mut(&value_node.span);
+            value_idx_opt = Some(value_idx);
+        }
+
+        Ok(self.push(Node::new(
+            NodeKind::Stmt {
+                kind: StmtKind::Return { value: value_idx_opt },
+            },
+            current_span,
+        )))
+    }
+
+    fn parse_break_expr_nud(&mut self, break_keyword_token: Token) -> Result<Index, ParserError> {
+        self.advance();
+
+        Ok(self.push(Node::new(
+            NodeKind::Stmt { kind: StmtKind::Break },
+            break_keyword_token.span,
+        )))
+    }
+
+    fn parse_loop_expr_nud(&mut self, loop_keyword_token: Token) -> Result<Index, ParserError> {
+        self.advance();
+
+        if self.current().kind != TokenKind::Punctuation(Punctuation::OpenBrace) {
+            return Err(ParserError::LoopBodyExpected { token: *self.current() });
+        }
+        let body_idx = self.parse_block_body()?;
+
+        let body_node = self
+            .node(&body_idx)
+            .ok_or_else(|| ParserError::InternalError("Loop body node not found".to_string()))?;
+        let loop_span = loop_keyword_token.span.connect_new(&body_node.span);
+
+        Ok(self.push(Node::new(
+            NodeKind::Stmt {
+                kind: StmtKind::Loop { body: body_idx },
+            },
+            loop_span,
+        )))
+    }
+
     fn parse_paren_expr_nud(&mut self, open_paren_token: Token) -> Result<Index, ParserError> {
         self.advance(); // consume '('
         let inner_expr_idx = self.pratt_parse_expression(BindingPower::None)?; // Parse expression inside parentheses
@@ -251,7 +338,10 @@ impl Parser {
 
         let full_span = open_paren_token.span.connect_new(&close_paren_token.span);
 
-        let actual_inner_node = self.tree.get_mut(inner_expr_idx).unwrap();
+        let actual_inner_node = self
+            .tree
+            .get_mut(inner_expr_idx)
+            .ok_or_else(|| ParserError::InternalError("Inner expression node not found in parentheses".to_string()))?;
         actual_inner_node.span = full_span; // Update span to include parentheses
         Ok(inner_expr_idx)
     }
@@ -261,8 +351,7 @@ impl Parser {
     }
 
     fn parse_block_expr_nud(&mut self, open_brace_token: Token) -> Result<Index, ParserError> {
-        // use self.parse_block()
-        todo!()
+        self.parse_block_body()
     }
 
     fn parse_if_expr_nud(&mut self, if_token: Token) -> Result<Index, ParserError> {
@@ -305,8 +394,14 @@ impl Parser {
         }; // Next level for left-assoc
         let right_idx = self.pratt_parse_expression(right_bp)?;
 
-        let left_node_cloned = self.node(&left_idx).unwrap().clone();
-        let right_node_cloned = self.node(&right_idx).unwrap().clone();
+        let left_node_cloned = self
+            .node(&left_idx)
+            .ok_or_else(|| ParserError::InternalError("Left operand node not found".to_string()))?
+            .clone();
+        let right_node_cloned = self
+            .node(&right_idx)
+            .ok_or_else(|| ParserError::InternalError("Right operand node not found".to_string()))?
+            .clone();
         let combined_span = left_node_cloned.span.connect_new(&right_node_cloned.span);
 
         Ok(self.push(Node::new(
@@ -349,7 +444,10 @@ impl Parser {
         // for right-associativity, parse rhs with the same binding power.
         let value_idx = self.pratt_parse_expression(BindingPower::Assignment)?;
 
-        let value_node_cloned = self.node(&value_idx).unwrap().clone();
+        let value_node_cloned = self
+            .node(&value_idx)
+            .ok_or_else(|| ParserError::InternalError("Value node not found for assignment".to_string()))?
+            .clone();
         let assignment_span = target_node_cloned.span.connect_new(&value_node_cloned.span);
 
         Ok(self.push(Node::new(

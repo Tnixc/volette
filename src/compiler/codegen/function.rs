@@ -1,4 +1,4 @@
-use crate::compiler::parser::node::{DefKind, Node, NodeKind};
+use crate::compiler::parser::node::{DefKind, ExprKind, Node, NodeKind};
 use cranelift::{
     codegen::{
         ir::{Function, UserFuncName},
@@ -8,9 +8,10 @@ use cranelift::{
     object::ObjectModule,
     prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature},
 };
+use generational_arena::Arena;
 use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
 
-use super::{error::CraneliftError, BuildConfig};
+use super::{error::TranslateError, BuildConfig};
 
 pub fn lower_fn(
     node: &Node,
@@ -18,7 +19,8 @@ pub fn lower_fn(
     ctx: &mut Context,
     object: &mut ObjectModule,
     build_config: &BuildConfig,
-) -> Result<(), CraneliftError> {
+    nodes: &Arena<Node>,
+) -> Result<(), TranslateError> {
     match &node.kind {
         NodeKind::Def {
             kind:
@@ -29,6 +31,7 @@ pub fn lower_fn(
                     return_type,
                 },
         } => {
+            // -- Setup --
             let fn_name = interner
                 .resolve(*name)
                 .expect("Function name's string not found in interner");
@@ -54,6 +57,28 @@ pub fn lower_fn(
             let entry = fn_builder.create_block();
             fn_builder.switch_to_block(entry);
             fn_builder.append_block_params_for_function_params(entry);
+
+            // -- Body --
+            let body_node = nodes.get(*body).expect("Body node not found in arena");
+            match &body_node.kind {
+                NodeKind::Expr { kind, type_ } => match kind {
+                    ExprKind::Block { exprs } => {
+                        for expr in exprs {
+                            let expr_node = nodes.get(*expr).expect("Expr node not found in arena");
+                        }
+                    }
+                    _ => {
+                        return Err(TranslateError::ExpectedBlockExpression {
+                            span: body_node.span.to_display(&interner),
+                        })
+                    }
+                },
+                _ => {
+                    return Err(TranslateError::ExpectedBlockExpression {
+                        span: body_node.span.to_display(&interner),
+                    })
+                }
+            }
 
             Ok(())
         }

@@ -10,7 +10,6 @@ pub mod definitions;
 pub mod error;
 pub mod expr;
 pub mod node;
-pub mod statements;
 
 pub struct Parser {
     tree: Arena<Node>,
@@ -27,7 +26,7 @@ impl Parser {
             tree: Arena::with_capacity(tokens.len()),
             interner,
             current_idx: 0,
-            current_token: *tokens.first().unwrap(), // FIXME in lexer -> parser stage
+            current_token: *tokens.first().unwrap(),
             tokens,
             parse_errors: Vec::new(),
         }
