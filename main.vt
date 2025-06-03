@@ -1,5 +1,5 @@
 fn main(a: i32, b: i32) {
-  let x = let y = 2;
+  let x = 2 + 3;
 }
 
 

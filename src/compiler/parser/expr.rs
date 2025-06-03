@@ -99,24 +99,31 @@ impl Parser {
                 TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
 
                 TokenKind::Punctuation(Punctuation::Semicolon) => {
-                    let semicolon_token = *self.current();
-                    self.advance();
+                    // Only handle semicolons at the top level (min_bp == BindingPower::None)
+                    if min_bp == BindingPower::None {
+                        let semicolon_token = *self.current();
+                        self.advance();
 
-                    let expr_node = self
-                        .node(&left_expr_idx)
-                        .ok_or_else(|| {
-                            ParserError::InternalError("Expression node not found for statement".to_string())
-                        })?
-                        .clone();
+                        let expr_node = self
+                            .node(&left_expr_idx)
+                            .ok_or_else(|| {
+                                ParserError::InternalError("Expression node not found for statement".to_string())
+                            })?
+                            .clone();
 
-                    let stmt_span = expr_node.span.connect_new(&semicolon_token.span);
-                    left_expr_idx = self.push(Node::new(
-                        NodeKind::Stmt {
-                            kind: StmtKind::ExpressionStmt { expr: left_expr_idx },
-                        },
-                        stmt_span,
-                    ));
-                    continue;
+                        let stmt_span = expr_node.span.connect_new(&semicolon_token.span);
+                        left_expr_idx = self.push(Node::new(
+                            NodeKind::Stmt {
+                                kind: StmtKind::ExpressionStmt { expr: left_expr_idx },
+                            },
+                            stmt_span,
+                        ));
+                        continue;
+                    } else {
+                        // We're in the middle of parsing a higher-precedence expression
+                        // Don't handle the semicolon here, let the parent handle it
+                        (BindingPower::None, false)
+                    }
                 }
 
                 // TODO: add binding powers for:
