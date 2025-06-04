@@ -7,6 +7,8 @@ use crate::compiler::{
     parser::node::{ExprKind, Node, NodeKind},
 };
 
+// TODO: generalize all expressions to be lowered as a expression
+
 pub fn lower_block(
     node: &Node,
     fn_builder: &mut FunctionBuilder,

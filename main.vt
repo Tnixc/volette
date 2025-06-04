@@ -1,10 +1,7 @@
-fn other() {
-  let HELLO = true;
+fn s() {
+  return 0;
 }
 
-fn main() {
-  let x: i32 = 99999999999;
-}
 
 
 

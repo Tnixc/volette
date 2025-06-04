@@ -27,7 +27,6 @@ impl Type {
 pub struct Node {
     pub span: Span,
     pub kind: NodeKind,
-    pub type_: Option<Type>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -201,11 +200,7 @@ fn format_node_list_to_string(
 
 impl Node {
     pub fn new(kind: NodeKind, span: Span) -> Self {
-        Self {
-            kind,
-            span,
-            type_: None,
-        }
+        Self { kind, span }
     }
 
     pub fn print_tree(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) {

@@ -217,15 +217,12 @@ impl Parser {
 
         // The value is an expression, parse it with full precedence.
         let value_expr_idx = self.pratt_parse_expression(BindingPower::None)?;
-        let value_expr_node_cloned = self
-            .node(&value_expr_idx)
-            .ok_or_else(|| {
-                ParserError::InternalError(format!(
-                    "Node not found for let binding value at {:?}",
-                    self.current().span
-                ))
-            })?
-            .clone();
+        let value_expr_node_cloned = self.node(&value_expr_idx).ok_or_else(|| {
+            ParserError::InternalError(format!(
+                "Node not found for let binding value at {:?}",
+                self.current().span
+            ))
+        })?;
         current_span.connect_mut(&value_expr_node_cloned.span);
 
         Ok(self.push(Node::new(
@@ -235,7 +232,7 @@ impl Parser {
                     type_annotation,
                     value: value_expr_idx,
                 },
-                type_: value_expr_node_cloned.type_,
+                type_: None,
             },
             current_span,
         )))
@@ -420,8 +417,7 @@ impl Parser {
 
         let value_node_cloned = self
             .node(&value_idx)
-            .ok_or_else(|| ParserError::InternalError("Value node not found for assignment".to_string()))?
-            .clone();
+            .ok_or_else(|| ParserError::InternalError("Value node not found for assignment".to_string()))?;
         let assignment_span = target_node_cloned.span.connect_new(&value_node_cloned.span);
 
         Ok(self.push(Node::new(
@@ -430,7 +426,7 @@ impl Parser {
                     target: target_idx,
                     value: value_idx,
                 },
-                type_: value_node_cloned.type_, // Assignment expr type is value's type
+                type_: None,
             },
             assignment_span,
         )))

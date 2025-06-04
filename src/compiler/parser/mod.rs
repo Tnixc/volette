@@ -57,7 +57,6 @@ impl Parser {
         Node {
             kind: NodeKind::Root { defs },
             span,
-            type_: None,
         }
     }
 

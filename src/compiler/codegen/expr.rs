@@ -41,12 +41,29 @@ pub fn expr_to_val(
 
             let value = match kind {
                 ExprKind::Literal(literal) => match_literal(*literal, expected_type, node, fn_builder)?,
+                ExprKind::Return { value: ret_val } => expr_return(*ret_val, fn_builder, scopes, info)?,
                 _ => todo!(),
             };
 
             Ok((value, expected_type))
         }
         _ => todo!(),
+    }
+}
+
+fn expr_return(
+    ret_val: Option<Index>,
+    fn_builder: &mut FunctionBuilder,
+    scopes: &mut Vec<HashMap<SymbolUsize, Variable>>,
+    info: &mut Info,
+) -> Result<Value, TranslateError> {
+    if let Some(ret_val) = ret_val {
+        let (value, _) = expr_to_val(ret_val, fn_builder, scopes, None, info)?;
+        fn_builder.ins().return_(&[value]);
+        Ok(value)
+    } else {
+        fn_builder.ins().return_(&[]);
+        Ok(Value::from_u32(0)) // TODO: implement proper never type
     }
 }
 

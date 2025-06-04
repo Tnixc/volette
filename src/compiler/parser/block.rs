@@ -34,18 +34,11 @@ impl Parser {
 
         let end_span = self.current().span;
         self.advance(); // consume '}'
-        let block_type = if let Some(&last_expr_idx) = expressions.last() {
-            self.node(&last_expr_idx).and_then(|node| node.type_)
-        } else {
-            Some(crate::compiler::parser::node::Type::Primitive(
-                crate::compiler::tokens::PrimitiveTypes::Unit,
-            ))
-        };
 
         Ok(self.push(Node::new(
             NodeKind::Expr {
                 kind: ExprKind::Block { exprs: expressions },
-                type_: block_type,
+                type_: None,
             },
             start_span.connect_new(&end_span),
         )))
