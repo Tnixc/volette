@@ -23,7 +23,7 @@ pub enum TranslateError {
     ObjectWriteError(#[from] object::object::write::Error),
 
     #[error("Incorrect type hit. Expected {type_} but got {node}, which cannot be coerced into {type_}.")]
-    IncorrectTypeHint { type_: Type, node: Node },
+    IncorrectTypeAnalysis { type_: Type, node: Node },
 }
 
 impl Display for Type {

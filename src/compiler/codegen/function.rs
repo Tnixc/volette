@@ -7,7 +7,7 @@ use cranelift::{
     module::{Linkage, Module},
     prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
-use hashbrown::HashMap;
+use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use super::error::TranslateError;

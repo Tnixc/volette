@@ -1,5 +1,5 @@
 use cranelift::prelude::{EntityRef, FunctionBuilder, Variable};
-use hashbrown::HashMap;
+use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{

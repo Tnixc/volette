@@ -1,6 +1,6 @@
 use cranelift::prelude::{types, FunctionBuilder, InstBuilder, Value, Variable};
 use generational_arena::Index;
-use hashbrown::HashMap;
+use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
@@ -31,7 +31,7 @@ pub fn expr_to_val(
                     ExprKind::Literal(Literal::Bool(_)) => Type::Primitive(PrimitiveTypes::Bool),
                     ExprKind::Literal(Literal::Nil) => Type::Primitive(PrimitiveTypes::Nil),
                     _ => {
-                        return Err(TranslateError::IncorrectTypeHint {
+                        return Err(TranslateError::IncorrectTypeAnalysis {
                             type_: Type::Primitive(PrimitiveTypes::Unit),
                             node: node.clone(),
                         })
@@ -76,7 +76,7 @@ fn match_literal(
     match literal {
         Literal::Bool(v) => {
             if type_ != Type::Primitive(PrimitiveTypes::Bool) {
-                return Err(TranslateError::IncorrectTypeHint {
+                return Err(TranslateError::IncorrectTypeAnalysis {
                     type_,
                     node: node.clone(),
                 });
@@ -90,7 +90,7 @@ fn match_literal(
         Literal::Float(f) => match type_ {
             Type::Primitive(PrimitiveTypes::F64) => Ok(fn_builder.ins().f64const(f)),
             Type::Primitive(PrimitiveTypes::F32) => Ok(fn_builder.ins().f32const(f as f32)),
-            _ => Err(TranslateError::IncorrectTypeHint {
+            _ => Err(TranslateError::IncorrectTypeAnalysis {
                 type_,
                 node: node.clone(),
             }),
@@ -111,14 +111,14 @@ fn match_literal(
             Type::Primitive(PrimitiveTypes::Isize) | Type::Primitive(PrimitiveTypes::Usize) => {
                 Ok(fn_builder.ins().iconst(types::I64, i)) // Assuming 64-bit target
             }
-            _ => Err(TranslateError::IncorrectTypeHint {
+            _ => Err(TranslateError::IncorrectTypeAnalysis {
                 type_,
                 node: node.clone(),
             }),
         },
         Literal::Nil => {
             if type_ != Type::Primitive(PrimitiveTypes::Nil) {
-                return Err(TranslateError::IncorrectTypeHint {
+                return Err(TranslateError::IncorrectTypeAnalysis {
                     type_,
                     node: node.clone(),
                 });

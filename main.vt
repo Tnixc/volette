@@ -1,4 +1,4 @@
-fn s() {
+fn s(): i32 {
   return 0;
 }
 
