@@ -7,9 +7,9 @@ use crate::compiler::{
 };
 
 use super::{
+    Parser,
     error::ParserError,
     node::{DefKind, Node, NodeKind},
-    Parser,
 };
 
 impl Parser {

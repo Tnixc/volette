@@ -1,6 +1,6 @@
 use crate::compiler::tokens::{Token, TokenKind};
 
-use super::{error::LexError, Lexer, LexerState};
+use super::{Lexer, LexerState, error::LexError};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberBase {
@@ -145,7 +145,7 @@ mod tests {
     use super::*;
     use crate::compiler::tokens::Punctuation::*;
     use crate::compiler::tokens::TokenKind::*;
-    use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+    use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
     type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
     #[test]

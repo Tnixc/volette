@@ -73,7 +73,7 @@ impl Lexer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+    use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
     type Interner = StringInterner<BucketBackend<SymbolUsize>>;
     use crate::compiler::tokens::PrimitiveTypes::*;
     use crate::compiler::tokens::TokenKind::*;

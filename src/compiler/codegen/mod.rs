@@ -10,7 +10,7 @@ use cranelift::{
     },
 };
 use generational_arena::Arena;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use target_lexicon::Triple;
 
 use crate::compiler::{

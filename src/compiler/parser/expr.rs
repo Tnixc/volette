@@ -1,9 +1,9 @@
 use std::ops::Add;
 
 use super::{
+    Parser,
     error::ParserError,
     node::{BinOpKind, ExprKind, Literal, Node, NodeKind, Type},
-    Parser,
 };
 use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
 use generational_arena::Index;
@@ -137,13 +137,13 @@ impl Parser {
 
     fn parse_literal_nud(&mut self, literal_token: Token) -> Result<Index, ParserError> {
         let literal_kind = match literal_token.kind {
-            TokenKind::IntLiteral(i) => (Literal::Int(i), Some(Type::Primitive(PrimitiveTypes::I64))),
-            TokenKind::FloatLiteral(f) => (Literal::Float(f), Some(Type::Primitive(PrimitiveTypes::F64))),
-            TokenKind::BoolLiteral(b) => (Literal::Bool(b), Some(Type::Primitive(PrimitiveTypes::Bool))),
+            TokenKind::IntLiteral(i) => Literal::Int(i),
+            TokenKind::FloatLiteral(f) => Literal::Float(f),
+            TokenKind::BoolLiteral(b) => Literal::Bool(b),
             _ => {
                 return Err(ParserError::InternalError(
                     "Not a literal token in parse_literal_nud".into(),
-                ))
+                ));
             }
         };
 
@@ -151,8 +151,8 @@ impl Parser {
 
         Ok(self.push(Node::new(
             NodeKind::Expr {
-                kind: ExprKind::Literal(literal_kind.0),
-                type_: literal_kind.1,
+                kind: ExprKind::Literal(literal_kind),
+                type_: None,
             },
             literal_token.span,
         )))
@@ -164,7 +164,7 @@ impl Parser {
             _ => {
                 return Err(ParserError::InternalError(
                     "Not an identifier token in parse_identifier_nud".into(),
-                ))
+                ));
             }
         };
 
@@ -354,7 +354,7 @@ impl Parser {
                 return Err(ParserError::InternalError(format!(
                     "Not a binary infix operator: {:?}",
                     op_token.kind
-                )))
+                )));
             }
         };
 
@@ -408,7 +408,7 @@ impl Parser {
             _ => {
                 return Err(ParserError::InvalidLHSInAssignment {
                     span: target_node_cloned.span.to_display(&self.interner),
-                })
+                });
             }
         }
 

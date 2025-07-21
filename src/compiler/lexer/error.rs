@@ -4,7 +4,7 @@ use std::fs;
 use thiserror::Error;
 
 use crate::compiler::tokens::DisplaySpan;
-use crate::compiler::{tokens::Span, Interner};
+use crate::compiler::{Interner, tokens::Span};
 
 use super::Lexer;
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{error::TranslateError, expr::expr_to_val, Info},
+    codegen::{Info, error::TranslateError, expr::expr_to_val},
     parser::node::{ExprKind, Node, NodeKind},
 };
 

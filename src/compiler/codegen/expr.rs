@@ -1,10 +1,10 @@
-use cranelift::prelude::{types, FunctionBuilder, InstBuilder, Value, Variable};
+use cranelift::prelude::{FunctionBuilder, InstBuilder, Value, Variable, types};
 use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{error::TranslateError, Info},
+    codegen::{Info, error::TranslateError},
     parser::node::{ExprKind, Literal, Node, NodeKind, Type},
     tokens::PrimitiveTypes,
 };
@@ -34,7 +34,7 @@ pub fn expr_to_val(
                         return Err(TranslateError::IncorrectTypeAnalysis {
                             type_: Type::Primitive(PrimitiveTypes::Unit),
                             node: node.clone(),
-                        })
+                        });
                     }
                 },
             };

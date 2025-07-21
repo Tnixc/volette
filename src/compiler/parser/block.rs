@@ -3,9 +3,9 @@ use generational_arena::Index;
 use crate::compiler::tokens::{Punctuation, TokenKind};
 
 use super::{
+    Parser,
     error::ParserError,
     node::{ExprKind, Node, NodeKind},
-    Parser,
 };
 
 impl Parser {

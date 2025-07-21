@@ -1,12 +1,13 @@
 use error::ParserError;
 use generational_arena::{Arena, Index};
 use node::{Node, NodeKind};
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use super::tokens::{Token, TokenKind};
 
 pub mod block;
 pub mod definitions;
+pub mod display;
 pub mod error;
 pub mod expr;
 pub mod node;

@@ -6,9 +6,10 @@ pub mod lexer;
 pub mod parser;
 pub mod tokens;
 
+use analysis::analysis_pass;
 use lexer::Lexer;
 use parser::Parser;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use tokens::{Span, Token, TokenKind};
 
 type Interner = StringInterner<BucketBackend<SymbolUsize>>;
@@ -36,12 +37,16 @@ pub fn build(file: &Path) {
 
     let mut parser = Parser::new(lexer.tokens, lexer.interner);
     let root = parser.parse();
-    if parser.parse_errors.is_empty() {
-        eprintln!(
-            "Codegen Errors: {:?}",
-            codegen::codegen(&root, &mut parser.tree, &mut parser.interner)
-        );
-    } else {
-        eprintln!("Errors: {:?}", parser.parse_errors);
-    }
+
+    analysis_pass(&root, &parser.interner, &mut parser.tree);
+    println!("After analysis");
+    root.print_tree(&parser.tree, &parser.interner);
+    // if parser.parse_errors.is_empty() {
+    //     eprintln!(
+    //         "Codegen Errors: {:?}",
+    //         codegen::codegen(&root, &parser.tree, &mut parser.interner)
+    //     );
+    // } else {
+    //     eprintln!("Errors: {:?}", parser.parse_errors);
+    // }
 }

@@ -1,5 +1,5 @@
 use crate::compiler::{
-    codegen::{block::lower_block, Info},
+    codegen::{Info, block::lower_block},
     parser::node::{DefKind, Node, NodeKind},
 };
 use cranelift::{

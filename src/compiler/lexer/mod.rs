@@ -6,7 +6,7 @@ use super::tokens::{Span, Token};
 mod error;
 use error::LexError;
 mod bool;
-use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 mod keywords;
 mod numbers;
 mod punctuation;
@@ -232,7 +232,7 @@ impl Lexer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string_interner::{backend::BucketBackend, symbol::SymbolUsize, StringInterner};
+    use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
     type Interner = StringInterner<BucketBackend<SymbolUsize>>;
 
     #[test]
