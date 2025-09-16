@@ -24,6 +24,9 @@ pub enum TranslateError {
 
     #[error("Incorrect type hit. Expected {type_} but got {node}, which cannot be coerced into {type_}.")]
     IncorrectTypeAnalysis { type_: Type, node: Node },
+
+    #[error("No type information available for {node}")]
+    UntypedExpr { node: Node },
 }
 
 impl Display for Type {

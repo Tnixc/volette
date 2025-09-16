@@ -34,8 +34,7 @@ pub fn lower_block(
                                 if layer_scope.get(name).is_none() {
                                     let var = Variable::new(layer_scope.len());
 
-                                    let (var_val, actual_type) =
-                                        expr_to_val(*value, fn_builder, scopes, *type_annotation, info)?;
+                                    let (var_val, actual_type) = expr_to_val(*value, fn_builder, scopes, info)?;
 
                                     let ty = actual_type.to_clif(info.build_config.ptr_width);
 

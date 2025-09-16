@@ -11,13 +11,16 @@ use crate::compiler::{
 use super::error::AnalysisError;
 
 pub fn type_check_root(root: &Node, interner: &StringInterner<BucketBackend<SymbolUsize>>, nodes: &mut Arena<Node>) {
-    let mut ident_types: HashMap<SymbolUsize, Type> = HashMap::new();
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {
             let node = nodes.get(*idx).expect("[!] Node not found");
             if let NodeKind::Def { kind } = &node.kind {
                 // TODO: check return types
-                if let DefKind::Function { body, return_type, .. } = kind {
+                if let DefKind::Function { body, params, .. } = kind {
+                    let mut ident_types: HashMap<SymbolUsize, Type> = HashMap::new();
+                    params.iter().for_each(|param| {
+                        ident_types.insert(param.0, param.1);
+                    });
                     let body_node = nodes.get(*body).expect("Node not found").clone();
                     if let NodeKind::Expr { kind, .. } = &body_node.kind {
                         if let ExprKind::Block { exprs } = kind {
