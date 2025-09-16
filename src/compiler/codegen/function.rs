@@ -1,18 +1,18 @@
 use crate::compiler::{
-    codegen::{Info, block::lower_block},
-    parser::node::{DefKind, Node, NodeKind},
+    codegen::{Info, expr::expr_to_val},
+    parser::node::{DefKind, Node, NodeKind, Type},
 };
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
-    module::{Linkage, Module},
-    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
+    module::{FuncId, Linkage, Module},
+    prelude::{AbiParam, EntityRef, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use super::error::TranslateError;
 
-pub fn lower_fn(node: &Node, info: &mut Info) -> Result<(), TranslateError> {
+pub fn lower_fn(node: &Node, info: &mut Info) -> Result<FuncId, TranslateError> {
     match &node.kind {
         NodeKind::Def {
             kind:
@@ -24,19 +24,14 @@ pub fn lower_fn(node: &Node, info: &mut Info) -> Result<(), TranslateError> {
                 },
         } => {
             // -- Setup --
-            let fn_name = info
-                .interner
-                .resolve(*name)
-                .expect("Function name's string not found in interner");
+            let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
 
             let mut sig = Signature::new(info.build_config.call_conv);
             for param in params {
-                sig.params
-                    .push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
+                sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
             }
 
-            sig.returns
-                .push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+            sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
 
             println!("Function: {}", fn_name);
 
@@ -54,20 +49,31 @@ pub fn lower_fn(node: &Node, info: &mut Info) -> Result<(), TranslateError> {
             fn_builder.append_block_params_for_function_params(entry);
 
             // -- Body --
+            let mut scopes: Vec<HashMap<SymbolUsize, (Type, Variable)>> = vec![HashMap::new()]; // New scope for the function
 
-            let body_node = info.nodes.get(*body).expect("Body node not found in arena");
+            // Collect block parameters into a vector to avoid borrowing conflicts
+            let block_params: Vec<_> = fn_builder.block_params(entry).to_vec();
 
-            let mut scopes: Vec<HashMap<SymbolUsize, Variable>> = vec![]; // fresh scope for each function
-            lower_block(body_node, &mut fn_builder, info, &mut scopes)?;
+            for (i, param) in params.iter().enumerate() {
+                let val = block_params[i];
+                let var = Variable::new(i);
+                let ty = param.1.to_clif(info.build_config.ptr_width);
 
-            // fn_builder.seal_block(entry);
-            // fn_builder.finalize();
+                fn_builder.declare_var(var, ty);
+                fn_builder.def_var(var, val);
+                scopes.last_mut().unwrap().insert(param.0, (param.1, var));
+            }
 
-            // info.ctx.func = func;
-            // println!("{}", info.ctx.func.display());
+            expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
 
-            Ok(())
+            fn_builder.seal_block(entry);
+            fn_builder.finalize();
+
+            info.ctx.func = func;
+            println!("{}", info.ctx.func.display());
+
+            Ok(func_id)
         }
-        _ => Ok(()),
+        _ => todo!(),
     }
 }

@@ -16,9 +16,7 @@ impl Parser {
 
         let mut expressions = Vec::new();
 
-        while self.current().kind != TokenKind::Punctuation(Punctuation::CloseBrace)
-            && self.current().kind != TokenKind::Eof
-        {
+        while self.current().kind != TokenKind::Punctuation(Punctuation::CloseBrace) && self.current().kind != TokenKind::Eof {
             let expr = self.parse_expr()?;
             expressions.push(expr);
 

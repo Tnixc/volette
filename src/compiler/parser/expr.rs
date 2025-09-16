@@ -74,17 +74,13 @@ impl Parser {
             let (left_bp, is_right_associative) = match next_token.kind {
                 TokenKind::Punctuation(Punctuation::Eq) => (BindingPower::Assignment, true),
 
-                TokenKind::Punctuation(Punctuation::Plus) | TokenKind::Punctuation(Punctuation::Minus) => {
-                    (BindingPower::Term, false)
-                }
+                TokenKind::Punctuation(Punctuation::Plus) | TokenKind::Punctuation(Punctuation::Minus) => (BindingPower::Term, false),
 
                 TokenKind::Punctuation(Punctuation::Star)
                 | TokenKind::Punctuation(Punctuation::Slash)
                 | TokenKind::Punctuation(Punctuation::Percent) => (BindingPower::Factor, false),
 
-                TokenKind::Punctuation(Punctuation::EqEq) | TokenKind::Punctuation(Punctuation::NotEq) => {
-                    (BindingPower::Equality, false)
-                }
+                TokenKind::Punctuation(Punctuation::EqEq) | TokenKind::Punctuation(Punctuation::NotEq) => (BindingPower::Equality, false),
 
                 TokenKind::Punctuation(Punctuation::LessThan)
                 | TokenKind::Punctuation(Punctuation::LessThanOrEq)
@@ -120,15 +116,11 @@ impl Parser {
                 | TokenKind::Punctuation(Punctuation::GreaterThanOrEq)
                 | TokenKind::Punctuation(Punctuation::AmpAmp)
                 | TokenKind::Punctuation(Punctuation::PipePipe) => {
-                    left_expr_idx =
-                        self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
+                    left_expr_idx = self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
                 }
 
                 _ => {
-                    return Err(ParserError::InternalError(format!(
-                        "Unhandled LED token: {:?}",
-                        next_token.kind
-                    )));
+                    return Err(ParserError::InternalError(format!("Unhandled LED token: {:?}", next_token.kind)));
                 }
             }
         }
@@ -141,9 +133,7 @@ impl Parser {
             TokenKind::FloatLiteral(f) => Literal::Float(f),
             TokenKind::BoolLiteral(b) => Literal::Bool(b),
             _ => {
-                return Err(ParserError::InternalError(
-                    "Not a literal token in parse_literal_nud".into(),
-                ));
+                return Err(ParserError::InternalError("Not a literal token in parse_literal_nud".into()));
             }
         };
 
@@ -162,9 +152,7 @@ impl Parser {
         let name_symbol = match ident_token.kind {
             TokenKind::Identifier(s) => s,
             _ => {
-                return Err(ParserError::InternalError(
-                    "Not an identifier token in parse_identifier_nud".into(),
-                ));
+                return Err(ParserError::InternalError("Not an identifier token in parse_identifier_nud".into()));
             }
         };
 
@@ -217,12 +205,9 @@ impl Parser {
 
         // The value is an expression, parse it with full precedence.
         let value_expr_idx = self.pratt_parse_expression(BindingPower::None)?;
-        let value_expr_node_cloned = self.node(&value_expr_idx).ok_or_else(|| {
-            ParserError::InternalError(format!(
-                "Node not found for let binding value at {:?}",
-                self.current().span
-            ))
-        })?;
+        let value_expr_node_cloned = self
+            .node(&value_expr_idx)
+            .ok_or_else(|| ParserError::InternalError(format!("Node not found for let binding value at {:?}", self.current().span)))?;
         current_span.connect_mut(&value_expr_node_cloned.span);
 
         Ok(self.push(Node::new(
@@ -358,11 +343,7 @@ impl Parser {
             }
         };
 
-        let right_bp = if is_right_assoc {
-            op_bp
-        } else {
-            op_bp + BindingPower::from(1)
-        }; // Next level for left-assoc
+        let right_bp = if is_right_assoc { op_bp } else { op_bp + BindingPower::from(1) }; // Next level for left-assoc
         let right_idx = self.pratt_parse_expression(right_bp)?;
 
         let left_node_cloned = self

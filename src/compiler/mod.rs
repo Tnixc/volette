@@ -42,10 +42,7 @@ pub fn build(file: &Path) {
     println!("After analysis");
     root.print_tree(&parser.tree, &parser.interner);
     if parser.parse_errors.is_empty() {
-        eprintln!(
-            "Codegen Errors: {:?}",
-            codegen::codegen(&root, &parser.tree, &mut parser.interner)
-        );
+        eprintln!("Codegen Errors: {:?}", codegen::codegen(&root, &parser.tree, &mut parser.interner));
     } else {
         eprintln!("Errors: {:?}", parser.parse_errors);
     }

@@ -67,15 +67,13 @@ fn resolve_expr_type(
 
     let inferred_type = match kind {
         NodeKind::Expr { kind, .. } => match kind {
-            ExprKind::Identifier(symbol) => {
-                ident_types
-                    .get(&symbol)
-                    .copied()
-                    .ok_or_else(|| AnalysisError::UnresolvedIdentifier {
-                        name: interner.resolve(symbol).unwrap_or("").to_string(),
-                        span: span.to_display(interner),
-                    })
-            }
+            ExprKind::Identifier(symbol) => ident_types
+                .get(&symbol)
+                .copied()
+                .ok_or_else(|| AnalysisError::UnresolvedIdentifier {
+                    name: interner.resolve(symbol).unwrap_or("").to_string(),
+                    span: span.to_display(interner),
+                }),
             ExprKind::LetBinding {
                 name,
                 type_annotation,
@@ -88,7 +86,20 @@ fn resolve_expr_type(
             }
             ExprKind::Literal(v) => resolve_literal(span, interner, expected, v),
             ExprKind::BinOp { left, right, op } => resolve_binop(left, right, op, nodes, interner, ident_types),
-            ExprKind::Return { .. } => Ok(Type::Primitive(PrimitiveTypes::Never)),
+            ExprKind::Return { value } => {
+                if let Some(v) = value {
+                    resolve_expr_type(v, expected, nodes, interner, ident_types)?;
+                }
+                Ok(Type::Primitive(PrimitiveTypes::Never))
+            }
+            ExprKind::Block { exprs } => {
+                let mut last_expr_type = Type::Primitive(PrimitiveTypes::Nil);
+                for &expr_idx in &exprs {
+                    last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types)?;
+                }
+                println!("Last expr type: {}", last_expr_type);
+                Ok(last_expr_type)
+            }
             _ => todo!(),
         },
         _ => unreachable!(),
@@ -107,11 +118,10 @@ fn resolve_expr_type(
     }
 
     // update the node with the resolved type
-    nodes
-        .get_mut(target_idx)
-        .expect("Node not found")
-        .set_type(inferred_type);
+    nodes.get_mut(target_idx).expect("Node not found").set_type(inferred_type);
 
+    println!("Resolved type: {}", inferred_type);
+    println!("Node: {:?}", nodes.get(target_idx));
     Ok(inferred_type)
 }
 

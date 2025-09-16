@@ -124,25 +124,16 @@ impl Lexer {
 
                         let ident_chars: Vec<_> = ident_range.clone().map(|i| self.current_chars[i]).collect();
 
-                        if ident_chars
-                            .iter()
-                            .all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace())
-                        {
-                            let identifier: String = ident_chars
-                                .iter()
-                                .map(|(_, ch)| *ch)
-                                .filter(|ch| !ch.is_whitespace())
-                                .collect();
+                        if ident_chars.iter().all(|&(_, ch)| ch.is_valid_ident_char() || ch.is_whitespace()) {
+                            let identifier: String = ident_chars.iter().map(|(_, ch)| *ch).filter(|ch| !ch.is_whitespace()).collect();
 
                             if !identifier.is_empty() {
                                 let start_pos = ident_chars[0].0;
                                 let end_pos = ident_chars[ident_chars.len() - 1].0;
                                 let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
-                                self.tokens.push(Token::new(
-                                    TokenKind::Identifier(self.interner.get_or_intern(&identifier)),
-                                    span,
-                                ));
+                                self.tokens
+                                    .push(Token::new(TokenKind::Identifier(self.interner.get_or_intern(&identifier)), span));
                             }
 
                             let current_char = self.current_chars.pop_back();
@@ -214,10 +205,7 @@ impl Lexer {
             .map(|t| {
                 (
                     if let TokenKind::Identifier(identifier) = t.kind {
-                        format!(
-                            "Identifier({})",
-                            self.interner.resolve(identifier).unwrap_or("<unknown>")
-                        )
+                        format!("Identifier({})", self.interner.resolve(identifier).unwrap_or("<unknown>"))
                     } else {
                         format!("{:?}", t.kind)
                     },

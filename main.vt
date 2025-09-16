@@ -1,9 +1,4 @@
-fn s(): i32 {
-    let x: i32 = 10;
-    let y: i32 = 20;
-    x + y;
+fn world(the_number: i32): i32 {
+    let x: i32 = 10 + 20;
+    return x + the_number * 4;
 }
-
-
-
-

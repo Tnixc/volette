@@ -49,11 +49,7 @@ fn format_optional_type(opt_type: Option<Type>, interner: &StringInterner<Bucket
         .unwrap_or_else(|| "∅".to_string())
 }
 
-fn format_node_to_string(
-    idx: Index,
-    arena: &Arena<Node>,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-) -> String {
+fn format_node_to_string(idx: Index, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
     arena
         .get(idx)
         .map(|node| node.to_json_like_string(arena, interner))
@@ -70,11 +66,7 @@ fn format_optional_node_to_string(
         .unwrap_or_else(|| "null".to_string())
 }
 
-fn format_node_list_to_string(
-    indices: &[Index],
-    arena: &Arena<Node>,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-) -> String {
+fn format_node_list_to_string(indices: &[Index], arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
     let items = indices
         .iter()
         .map(|idx| format_node_to_string(*idx, arena, interner))
@@ -102,11 +94,7 @@ impl Node {
         writeln!(out, "{}", self.to_json_like_string(arena, interner))
     }
 
-    pub fn to_json_like_string(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ) -> String {
+    pub fn to_json_like_string(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
         match &self.kind {
             NodeKind::Root { defs } => {
                 format!("Root{{defs:{}}}", format_node_list_to_string(defs, arena, interner))
@@ -135,11 +123,7 @@ impl Display for Node {
 }
 
 impl ExprKind {
-    fn to_json_like_string(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ) -> String {
+    fn to_json_like_string(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
         match self {
             ExprKind::Literal(lit) => format!("Literal{{value:{:?}}}", lit),
             ExprKind::Identifier(sym) => {
@@ -187,36 +171,22 @@ impl ExprKind {
                 format_node_to_string(*then_block, arena, interner),
                 format_optional_node_to_string(*else_block, arena, interner)
             ),
-            ExprKind::UnaryOp { op, expr } => format!(
-                "UnaryOp{{op:\"{:?}\",expr:{}}}",
-                op,
-                format_node_to_string(*expr, arena, interner)
-            ),
+            ExprKind::UnaryOp { op, expr } => format!("UnaryOp{{op:\"{:?}\",expr:{}}}", op, format_node_to_string(*expr, arena, interner)),
             ExprKind::Cast { expr, target_type } => format!(
                 "Cast{{expr:{},target_type:{}}}",
                 format_node_to_string(*expr, arena, interner),
                 format_type_val(target_type, interner)
             ),
-            ExprKind::Return { value } => format!(
-                "Return{{value:{}}}",
-                format_optional_node_to_string(*value, arena, interner)
-            ),
+            ExprKind::Return { value } => format!("Return{{value:{}}}", format_optional_node_to_string(*value, arena, interner)),
             ExprKind::Break => "Break{}".to_string(),
             ExprKind::Loop { body } => format!("Loop{{body:{}}}", format_node_to_string(*body, arena, interner)),
-            ExprKind::BlockReturn { value } => format!(
-                "BlockReturn{{value:{}}}",
-                format_optional_node_to_string(*value, arena, interner)
-            ),
+            ExprKind::BlockReturn { value } => format!("BlockReturn{{value:{}}}", format_optional_node_to_string(*value, arena, interner)),
         }
     }
 }
 
 impl DefKind {
-    fn to_json_like_string(
-        &self,
-        arena: &Arena<Node>,
-        interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ) -> String {
+    fn to_json_like_string(&self, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
         match self {
             DefKind::Function {
                 name,
@@ -255,11 +225,7 @@ impl DefKind {
                     })
                     .collect::<Vec<_>>()
                     .join(",");
-                format!(
-                    "Struct{{name:\"{}\",fields:[{}]}}",
-                    format_symbol(*name, interner),
-                    fields_str
-                )
+                format!("Struct{{name:\"{}\",fields:[{}]}}", format_symbol(*name, interner), fields_str)
             }
         }
     }

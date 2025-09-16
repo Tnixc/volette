@@ -59,8 +59,7 @@ impl Parser {
                         mode = ParamMode::Colon;
                     }
                     _ => {
-                        self.parse_errors
-                            .push(ParserError::FnParamNameExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::FnParamNameExpected { token: *self.current() });
                         mode = ParamMode::Colon;
                         self.backtrack();
                     }
@@ -73,8 +72,7 @@ impl Parser {
                         }
                     }
                     _ => {
-                        self.parse_errors
-                            .push(ParserError::FnParamTypeExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::FnParamTypeExpected { token: *self.current() });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
@@ -93,8 +91,7 @@ impl Parser {
                         mode = ParamMode::Comma;
                     }
                     _ => {
-                        self.parse_errors
-                            .push(ParserError::FnParamTypeExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::FnParamTypeExpected { token: *self.current() });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
@@ -104,8 +101,7 @@ impl Parser {
                         mode = ParamMode::Name;
                     }
                     _ => {
-                        self.parse_errors
-                            .push(ParserError::FnParamCommaExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::FnParamCommaExpected { token: *self.current() });
                         mode = ParamMode::Name;
                         self.backtrack();
                     }

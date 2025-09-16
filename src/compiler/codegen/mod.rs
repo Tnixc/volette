@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use cranelift::{
     codegen::Context,
-    module::default_libcall_names,
+    module::{FuncId, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
         isa::{self, CallConv, TargetIsa},
@@ -18,7 +18,6 @@ use crate::compiler::{
     parser::node::{DefKind, Node, NodeKind},
 };
 
-pub mod block;
 pub mod error;
 pub mod expr;
 pub mod function;
@@ -44,11 +43,7 @@ pub struct Info<'a> {
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
 }
 
-pub fn codegen(
-    root: &Node,
-    nodes: &Arena<Node>,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-) -> Result<(), TranslateError> {
+pub fn codegen(root: &Node, nodes: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> Result<(), TranslateError> {
     let target_isa = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
@@ -67,7 +62,6 @@ pub fn codegen(
         nodes,
         interner,
     };
-
     match &root.kind {
         NodeKind::Root { defs } => {
             for def in defs {
@@ -75,7 +69,8 @@ pub fn codegen(
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
                         DefKind::Function { .. } => {
-                            lower_fn(def_node, &mut info)?;
+                            let id = lower_fn(def_node, &mut info)?;
+                            info.module.define_function(id, &mut info.ctx)?;
                         }
                         _ => todo!("only functions are supported rn"),
                     },

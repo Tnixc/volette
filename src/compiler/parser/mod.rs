@@ -63,10 +63,7 @@ impl Parser {
 
     pub fn advance_unchecked(&mut self) -> Token {
         self.current_idx += 1;
-        self.current_token = *self
-            .tokens
-            .get(self.current_idx)
-            .expect("No next token but advanced anyway");
+        self.current_token = *self.tokens.get(self.current_idx).expect("No next token but advanced anyway");
         self.current_token
     }
 
@@ -81,10 +78,7 @@ impl Parser {
 
     pub fn backtrack_unchecked(&mut self) {
         self.current_idx -= 1;
-        self.current_token = *self
-            .tokens
-            .get(self.current_idx)
-            .expect("No previous token but backtracked anyway");
+        self.current_token = *self.tokens.get(self.current_idx).expect("No previous token but backtracked anyway");
     }
 
     pub fn backtrack(&mut self) {
