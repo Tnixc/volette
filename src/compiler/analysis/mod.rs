@@ -5,7 +5,6 @@ use generational_arena::Arena;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use crate::compiler::{
-    analysis::error::AnalysisError,
     parser::node::{Literal, Node, Type},
     tokens::PrimitiveTypes,
 };

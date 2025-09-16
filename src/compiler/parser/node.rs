@@ -1,7 +1,6 @@
 use cranelift::prelude::types;
-use generational_arena::{Arena, Index};
-use std::fmt::{self, Display, Formatter};
-use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
+use generational_arena::Index;
+use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
     codegen::PtrWidth,

@@ -2,7 +2,7 @@ use std::{str::FromStr, sync::Arc};
 
 use cranelift::{
     codegen::Context,
-    module::{FuncId, Module, default_libcall_names},
+    module::{Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
         isa::{self, CallConv, TargetIsa},

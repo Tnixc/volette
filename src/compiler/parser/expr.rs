@@ -5,7 +5,7 @@ use super::{
     error::ParserError,
     node::{BinOpKind, ExprKind, Literal, Node, NodeKind, Type},
 };
-use crate::compiler::tokens::{Keyword, PrimitiveTypes, Punctuation, Token, TokenKind};
+use crate::compiler::tokens::{Keyword, Punctuation, Token, TokenKind};
 use generational_arena::Index;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -90,6 +90,8 @@ impl Parser {
                 TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false),
                 TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
 
+                TokenKind::Punctuation(Punctuation::OpenParen) => (BindingPower::Call, false),
+
                 _ => (BindingPower::None, false),
             };
 
@@ -117,6 +119,9 @@ impl Parser {
                 | TokenKind::Punctuation(Punctuation::AmpAmp)
                 | TokenKind::Punctuation(Punctuation::PipePipe) => {
                     left_expr_idx = self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
+                }
+                TokenKind::Punctuation(Punctuation::OpenParen) => {
+                    left_expr_idx = self.parse_call_led(next_token, left_expr_idx)?;
                 }
 
                 _ => {
@@ -158,13 +163,18 @@ impl Parser {
 
         self.advance(); // consume the identifier token
 
-        Ok(self.push(Node::new(
-            NodeKind::Expr {
-                kind: ExprKind::Identifier(name_symbol),
-                type_: None,
-            },
-            ident_token.span,
-        )))
+        // Check if this is a function call
+        if self.current().kind == TokenKind::Punctuation(Punctuation::OpenParen) {
+            self.parse_function_call(ident_token, name_symbol)
+        } else {
+            Ok(self.push(Node::new(
+                NodeKind::Expr {
+                    kind: ExprKind::Identifier(name_symbol),
+                    type_: None,
+                },
+                ident_token.span,
+            )))
+        }
     }
 
     /// Parses `let name [: type] = value` as an expression (NUD for 'let' keyword)
@@ -302,15 +312,15 @@ impl Parser {
         Ok(inner_expr_idx)
     }
 
-    fn parse_prefix_op_nud(&mut self, op_token: Token) -> Result<Index, ParserError> {
+    fn parse_prefix_op_nud(&mut self, _op_token: Token) -> Result<Index, ParserError> {
         todo!()
     }
 
-    fn parse_block_expr_nud(&mut self, open_brace_token: Token) -> Result<Index, ParserError> {
+    fn parse_block_expr_nud(&mut self, _open_brace_token: Token) -> Result<Index, ParserError> {
         self.parse_block_body()
     }
 
-    fn parse_if_expr_nud(&mut self, if_token: Token) -> Result<Index, ParserError> {
+    fn parse_if_expr_nud(&mut self, _if_token: Token) -> Result<Index, ParserError> {
         todo!()
     }
 
@@ -371,9 +381,9 @@ impl Parser {
 
     fn parse_assignment_led(
         &mut self,
-        eq_token: Token,
+        _eq_token: Token,
         target_idx: Index,
-        is_right_assoc: bool, /* should be true */
+        _is_right_assoc: bool, /* should be true */
     ) -> Result<Index, ParserError> {
         // L-value check (target must be assignable)
         let target_node_cloned = self
@@ -413,7 +423,110 @@ impl Parser {
         )))
     }
 
-    // TODO: fn parse_call_led(&mut self, open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError>
+    fn parse_function_call(&mut self, ident_token: Token, name_symbol: string_interner::symbol::SymbolUsize) -> Result<Index, ParserError> {
+        let mut call_span = ident_token.span;
+
+        // We know current token is '('
+        self.advance(); // consume '('
+
+        let mut args = Vec::new();
+
+        // Handle empty argument list
+        if self.current().kind == TokenKind::Punctuation(Punctuation::CloseParen) {
+            let close_paren_token = *self.current();
+            call_span.connect_mut(&close_paren_token.span);
+            self.advance(); // consume ')'
+        } else {
+            // Parse arguments
+            loop {
+                let arg_expr = self.pratt_parse_expression(BindingPower::None)?;
+                args.push(arg_expr);
+
+                match self.current().kind {
+                    TokenKind::Punctuation(Punctuation::Comma) => {
+                        self.advance(); // consume ','
+                        continue;
+                    }
+                    TokenKind::Punctuation(Punctuation::CloseParen) => {
+                        let close_paren_token = *self.current();
+                        call_span.connect_mut(&close_paren_token.span);
+                        self.advance(); // consume ')'
+                        break;
+                    }
+                    _ => {
+                        return Err(ParserError::CloseParenExpected { token: *self.current() });
+                    }
+                }
+            }
+        }
+
+        // Create function identifier node
+        let func_node = Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Identifier(name_symbol),
+                type_: None,
+            },
+            ident_token.span,
+        );
+        let func_idx = self.push(func_node);
+
+        // Create function call node
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Call { func: func_idx, args },
+                type_: None,
+            },
+            call_span,
+        )))
+    }
+
+    fn parse_call_led(&mut self, _open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError> {
+        let func_node = self
+            .node(&func_idx)
+            .ok_or_else(|| ParserError::InternalError("Function node not found for call".to_string()))?
+            .clone();
+        let mut call_span = func_node.span;
+
+        let mut args = Vec::new();
+
+        // Handle empty argument list
+        if self.current().kind == TokenKind::Punctuation(Punctuation::CloseParen) {
+            let close_paren_token = *self.current();
+            call_span.connect_mut(&close_paren_token.span);
+            self.advance(); // consume ')'
+        } else {
+            // Parse arguments
+            loop {
+                let arg_expr = self.pratt_parse_expression(BindingPower::None)?;
+                args.push(arg_expr);
+
+                match self.current().kind {
+                    TokenKind::Punctuation(Punctuation::Comma) => {
+                        self.advance(); // consume ','
+                        continue;
+                    }
+                    TokenKind::Punctuation(Punctuation::CloseParen) => {
+                        let close_paren_token = *self.current();
+                        call_span.connect_mut(&close_paren_token.span);
+                        self.advance(); // consume ')'
+                        break;
+                    }
+                    _ => {
+                        return Err(ParserError::CloseParenExpected { token: *self.current() });
+                    }
+                }
+            }
+        }
+
+        // Create function call node
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Call { func: func_idx, args },
+                type_: None,
+            },
+            call_span,
+        )))
+    }
     // TODO: fn parse_index_led(&mut self, open_bracket_token: Token, array_idx: Index) -> Result<Index, ParserError>
     // TODO: fn parse_field_access_led(&mut self, dot_token: Token, object_idx: Index) -> Result<Index, ParserError>
 }
