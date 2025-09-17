@@ -180,4 +180,53 @@ mod tests {
             assert_eq!(token, &expected_tokens[i]);
         }
     }
+
+    #[test]
+    fn test_lex_simple_float() {
+        let mut interner = Interner::new();
+        let file = interner.get_or_intern("");
+        let contents = "1.0";
+        let mut lexer = Lexer::new(interner, file);
+
+        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+        lexer.tokenize(chars);
+
+        let expected_tokens = vec![
+            ("FloatLiteral(1.0)".to_string(), 1, (1, 3)),
+        ];
+
+        let tokens = lexer.format_tokens();
+        println!("Simple float tokens: {:?}", tokens);
+        assert_eq!(tokens.len() - 1, expected_tokens.len());
+
+        for (i, token) in tokens.iter().skip(1).enumerate() {
+            assert_eq!(token, &expected_tokens[i], "Token {} mismatch", i);
+        }
+    }
+
+    #[test]
+    fn test_lex_float_in_function_call() {
+        let mut interner = Interner::new();
+        let file = interner.get_or_intern("");
+        let contents = "test(1.0)";
+        let mut lexer = Lexer::new(interner, file);
+
+        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+        lexer.tokenize(chars);
+
+        let expected_tokens = vec![
+            ("Identifier(test)".to_string(), 1, (1, 4)),
+            ("Punctuation(OpenParen)".to_string(), 1, (5, 5)),
+            ("FloatLiteral(1.0)".to_string(), 1, (6, 8)),
+            ("Punctuation(CloseParen)".to_string(), 1, (9, 9)),
+        ];
+
+        let tokens = lexer.format_tokens();
+        println!("Actual tokens: {:?}", tokens);
+        assert_eq!(tokens.len() - 1, expected_tokens.len());
+
+        for (i, token) in tokens.iter().skip(1).enumerate() {
+            assert_eq!(token, &expected_tokens[i], "Token {} mismatch", i);
+        }
+    }
 }

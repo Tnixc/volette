@@ -10,7 +10,12 @@ use crate::compiler::{
 
 use super::error::AnalysisError;
 
-pub fn type_check_root(root: &Node, interner: &StringInterner<BucketBackend<SymbolUsize>>, nodes: &mut Arena<Node>) {
+pub fn type_check_root(
+    root: &Node,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    nodes: &mut Arena<Node>,
+    fn_table: HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
+) {
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {
             let node = nodes.get(*idx).expect("[!] Node not found");
@@ -25,7 +30,7 @@ pub fn type_check_root(root: &Node, interner: &StringInterner<BucketBackend<Symb
                     if let NodeKind::Expr { kind, .. } = &body_node.kind {
                         if let ExprKind::Block { exprs } = kind {
                             for &expr_idx in exprs {
-                                if let Err(e) = resolve_expr_type(expr_idx, None, nodes, interner, &mut ident_types) {
+                                if let Err(e) = resolve_expr_type(expr_idx, None, nodes, interner, &mut ident_types, &fn_table) {
                                     eprintln!("Type Error: {:?}", e);
                                 }
                             }
@@ -46,6 +51,7 @@ fn resolve_expr_type(
     nodes: &mut Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, Type>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) -> Result<Type, AnalysisError> {
     let (kind, span) = {
         let target_node = nodes.get(target_idx).expect("node not found");
@@ -79,26 +85,56 @@ fn resolve_expr_type(
                 type_annotation,
                 value,
             } => {
-                let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types)?;
+                let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table)?;
                 println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type);
                 Ok(value_type)
             }
             ExprKind::Literal(v) => resolve_literal(span, interner, expected, v),
-            ExprKind::BinOp { left, right, op } => resolve_binop(left, right, op, nodes, interner, ident_types),
+            ExprKind::BinOp { left, right, op } => resolve_binop(left, right, op, nodes, interner, ident_types, fn_table),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
-                    resolve_expr_type(v, expected, nodes, interner, ident_types)?;
+                    resolve_expr_type(v, expected, nodes, interner, ident_types, fn_table)?;
                 }
                 Ok(Type::Primitive(PrimitiveTypes::Never))
             }
             ExprKind::Block { exprs } => {
                 let mut last_expr_type = Type::Primitive(PrimitiveTypes::Nil);
                 for &expr_idx in &exprs {
-                    last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types)?;
+                    last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
                 }
                 println!("Last expr type: {}", last_expr_type);
                 Ok(last_expr_type)
+            }
+            ExprKind::Call { func, args } => {
+                let func_name = match &nodes.get(func).expect("Undeclared function").kind {
+                    NodeKind::Expr { kind, .. } => match kind {
+                        ExprKind::Identifier(name) => name,
+                        _ => unreachable!(),
+                    },
+                    _ => unreachable!(),
+                };
+
+                let rest = fn_table.get(&func_name).unwrap();
+
+                for (a, b) in args.iter().zip(rest.0.iter()) {
+                    // function def expected types
+                    let a_ty = match &nodes.get(*a).unwrap().kind {
+                        NodeKind::Expr { type_, .. } => type_,
+                        _ => unreachable!(),
+                    };
+                    if let Some(a_ty) = a_ty {
+                        if a_ty != b {
+                            let span = nodes.get(*a).unwrap().span;
+                            return Err(AnalysisError::TypeMismatch {
+                                expected: *a_ty,
+                                got: *b,
+                                span: span.to_display(interner),
+                            });
+                        }
+                    }
+                }
+                Ok(rest.1)
             }
             _ => todo!(),
         },
@@ -159,9 +195,10 @@ fn resolve_binop(
     nodes: &mut Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, Type>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) -> Result<Type, AnalysisError> {
-    let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types)?;
-    let right_ty = resolve_expr_type(right, Some(left_ty), nodes, interner, ident_types)?;
+    let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table)?;
+    let right_ty = resolve_expr_type(right, Some(left_ty), nodes, interner, ident_types, fn_table)?;
 
     if left_ty != right_ty {
         return Err(AnalysisError::TypeMismatch {

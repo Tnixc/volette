@@ -3,6 +3,5 @@ fn add_10(x: i32): i32 {
 }
 
 fn world(the_number: i32): i32 {
-    let double = the_number * 2;
-    return add_10(double);
+    return add_10(2.0);
 }

@@ -426,18 +426,17 @@ impl Parser {
     fn parse_function_call(&mut self, ident_token: Token, name_symbol: string_interner::symbol::SymbolUsize) -> Result<Index, ParserError> {
         let mut call_span = ident_token.span;
 
-        // We know current token is '('
         self.advance(); // consume '('
 
         let mut args = Vec::new();
 
-        // Handle empty argument list
+        // handle empty argument list
         if self.current().kind == TokenKind::Punctuation(Punctuation::CloseParen) {
             let close_paren_token = *self.current();
             call_span.connect_mut(&close_paren_token.span);
             self.advance(); // consume ')'
         } else {
-            // Parse arguments
+            // parse arguments
             loop {
                 let arg_expr = self.pratt_parse_expression(BindingPower::None)?;
                 args.push(arg_expr);
@@ -460,7 +459,6 @@ impl Parser {
             }
         }
 
-        // Create function identifier node
         let func_node = Node::new(
             NodeKind::Expr {
                 kind: ExprKind::Identifier(name_symbol),
@@ -470,7 +468,6 @@ impl Parser {
         );
         let func_idx = self.push(func_node);
 
-        // Create function call node
         Ok(self.push(Node::new(
             NodeKind::Expr {
                 kind: ExprKind::Call { func: func_idx, args },
