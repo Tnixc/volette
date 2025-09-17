@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use generational_arena::Arena;
-use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
+use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::parser::node::{DefKind, Node, NodeKind, Type};
 

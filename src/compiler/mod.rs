@@ -38,11 +38,11 @@ pub fn build(file: &Path) {
     let mut parser = Parser::new(lexer.tokens, lexer.interner);
     let root = parser.parse();
 
-    analysis_pass(&root, &parser.interner, &mut parser.tree);
+    let fn_table = analysis_pass(&root, &parser.interner, &mut parser.tree);
     println!("After analysis");
     root.print_tree(&parser.tree, &parser.interner);
     if parser.parse_errors.is_empty() {
-        eprintln!("Codegen Errors: {:?}", codegen::codegen(&root, &parser.tree, &mut parser.interner));
+        eprintln!("Codegen Errors: {:?}", codegen::codegen(&root, &parser.tree, &mut parser.interner, &fn_table));
     } else {
         eprintln!("Errors: {:?}", parser.parse_errors);
     }

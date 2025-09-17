@@ -312,17 +312,17 @@ impl Parser {
         Ok(inner_expr_idx)
     }
 
-    fn parse_prefix_op_nud(&mut self, _op_token: Token) -> Result<Index, ParserError> {
-        todo!()
-    }
+    // fn parse_prefix_op_nud(&mut self, _op_token: Token) -> Result<Index, ParserError> {
+    //     todo!()
+    // }
 
     fn parse_block_expr_nud(&mut self, _open_brace_token: Token) -> Result<Index, ParserError> {
         self.parse_block_body()
     }
 
-    fn parse_if_expr_nud(&mut self, _if_token: Token) -> Result<Index, ParserError> {
-        todo!()
-    }
+    // fn parse_if_expr_nud(&mut self, _if_token: Token) -> Result<Index, ParserError> {
+    //     todo!()
+    // }
 
     fn parse_binary_infix_op_led(
         &mut self,

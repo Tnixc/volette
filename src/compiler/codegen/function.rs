@@ -4,7 +4,7 @@ use crate::compiler::{
 };
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
-    module::{FuncId, Linkage, Module},
+    module::FuncId,
     prelude::{AbiParam, EntityRef, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
 };
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use string_interner::symbol::SymbolUsize;
 
 use super::error::TranslateError;
 
-pub fn lower_fn(node: &Node, info: &mut Info) -> Result<FuncId, TranslateError> {
+pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), TranslateError> {
     match &node.kind {
         NodeKind::Def {
             kind:
@@ -26,16 +26,14 @@ pub fn lower_fn(node: &Node, info: &mut Info) -> Result<FuncId, TranslateError> 
             // -- Setup --
             let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
 
+            println!("Function: {}", fn_name);
+
+            // make the signature again
             let mut sig = Signature::new(info.build_config.call_conv);
             for param in params {
                 sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
             }
-
             sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
-
-            println!("Function: {}", fn_name);
-
-            let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
 
             let dbg_fn_name = UserFuncName::testcase(fn_name);
             let mut func = Function::with_name_signature(dbg_fn_name, sig);
@@ -72,7 +70,7 @@ pub fn lower_fn(node: &Node, info: &mut Info) -> Result<FuncId, TranslateError> 
             info.ctx.func = func;
             println!("{}", info.ctx.func.display());
 
-            Ok(func_id)
+            Ok(())
         }
         _ => todo!(),
     }

@@ -14,7 +14,7 @@ pub fn type_check_root(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut Arena<Node>,
-    fn_table: HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) {
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {

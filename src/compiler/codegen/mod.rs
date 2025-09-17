@@ -1,12 +1,13 @@
-use std::{str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use cranelift::{
     codegen::Context,
-    module::{Module, default_libcall_names},
+    module::{Module, default_libcall_names, Linkage},
     object::{self, ObjectModule},
     prelude::{
         isa::{self, CallConv, TargetIsa},
         settings::{self, Flags},
+        AbiParam, Signature,
     },
 };
 use generational_arena::Arena;
@@ -15,7 +16,7 @@ use target_lexicon::Triple;
 
 use crate::compiler::{
     codegen::{error::TranslateError, function::lower_fn},
-    parser::node::{DefKind, Node, NodeKind},
+    parser::node::{DefKind, Node, NodeKind, Type},
 };
 
 pub mod error;
@@ -43,7 +44,12 @@ pub struct Info<'a> {
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
 }
 
-pub fn codegen(root: &Node, nodes: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> Result<(), TranslateError> {
+pub fn codegen(
+    root: &Node,
+    nodes: &Arena<Node>,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    _fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
+) -> Result<(), TranslateError> {
     let target_isa = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
@@ -62,15 +68,46 @@ pub fn codegen(root: &Node, nodes: &Arena<Node>, interner: &StringInterner<Bucke
         nodes,
         interner,
     };
+        
+    
+    
+    
+    
     match &root.kind {
         NodeKind::Root { defs } => {
+            // declare all functions first
+            let mut func_ids = Vec::new();
             for def in defs {
-                let def_node = nodes.get(*def).expect("A defintion node was not found");
+                let def_node = nodes.get(*def).expect("A definition node was not found");
+                match &def_node.kind {
+                    NodeKind::Def { kind } => match kind {
+                        DefKind::Function { name, params, return_type, .. } => {
+                            let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
+                            
+                            let mut sig = Signature::new(info.build_config.call_conv);
+                            for param in params {
+                                sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
+                            }
+                            sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+                            
+                            let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
+                            func_ids.push(func_id);
+                        }
+                        _ => todo!("only functions are supported rn"),
+                    },
+                    _ => todo!("only functions are supported rn"),
+                }
+            }
+            
+            // define function bodies
+            for (i, def) in defs.iter().enumerate() {
+                let def_node = nodes.get(*def).expect("A definition node was not found");
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
                         DefKind::Function { .. } => {
-                            let id = lower_fn(def_node, &mut info)?;
-                            info.module.define_function(id, &mut info.ctx)?;
+                            let func_id = func_ids[i];
+                            lower_fn(def_node, &mut info, func_id)?;
+                            info.module.define_function(func_id, &mut info.ctx)?;
                         }
                         _ => todo!("only functions are supported rn"),
                     },

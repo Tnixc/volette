@@ -17,5 +17,5 @@ pub enum AnalysisError {
     Internal(String),
 
     #[error("Invalid binary operation at {span}: {op}")]
-    InvalidBinOp { op: BinOpKind, ty: Type, span: DisplaySpan },
+    _InvalidBinOp { op: BinOpKind, ty: Type, span: DisplaySpan },
 }

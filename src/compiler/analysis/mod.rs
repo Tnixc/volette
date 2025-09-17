@@ -2,6 +2,8 @@ mod error;
 mod function_table;
 mod type_check;
 
+use std::collections::HashMap;
+
 use generational_arena::Arena;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
@@ -10,9 +12,14 @@ use crate::compiler::{
     tokens::PrimitiveTypes,
 };
 
-pub fn analysis_pass(root: &Node, interner: &StringInterner<BucketBackend<SymbolUsize>>, mut nodes: &mut Arena<Node>) {
+pub fn analysis_pass(
+    root: &Node,
+    interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    mut nodes: &mut Arena<Node>,
+) -> HashMap<SymbolUsize, (Box<Vec<Type>>, Type)> {
     let function_table = function_table::generate_function_table(&mut nodes);
-    type_check::type_check_root(root, &interner, &mut nodes, function_table);
+    type_check::type_check_root(root, &interner, &mut nodes, &function_table);
+    return function_table;
 }
 
 pub fn literal_default_types(literal: Literal) -> Type {
