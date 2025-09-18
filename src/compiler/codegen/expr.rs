@@ -40,9 +40,7 @@ pub fn expr_to_val(
 
                     scopes.last_mut().unwrap().insert(*name, (actual_type, var));
 
-                    // A let binding's value is nil
-                    // TODO: implement nil
-                    fn_builder.ins().iconst(types::I32, 0)
+                    var_val
                 }
                 ExprKind::Identifier(sym) => {
                     let var = scopes.iter().rev().find_map(|scope| scope.get(sym)).expect("Identifier not found");

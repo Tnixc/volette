@@ -1,7 +1,18 @@
-fn add_10(x: i32): i32 {
-    return x + 10;
+fn test_let(): i32 {
+    let x = let y = 10;
+    return x;
 }
 
-fn world(the_number: i32): i32 {
-    return add_10(2);
+fn test_nested_let(): i32 {
+    let a = let b = let c = 42;
+    return a;
+}
+
+fn test_let_with_expression(): i32 {
+    let result = let temp = 5 + 3;
+    return result;
+}
+
+fn main(): i32 {
+    return test_let_with_expression();
 }
