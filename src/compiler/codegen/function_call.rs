@@ -4,9 +4,12 @@ use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    codegen::{Info, error::TranslateError},
-    parser::node::{ExprKind, NodeKind, Type},
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{Info, error::TranslateError},
+        parser::node::{ExprKind, NodeKind, Type},
+    },
 };
 
 use super::expr::expr_to_val;
@@ -18,7 +21,7 @@ pub fn expr_call(
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
-    let func_node = info.nodes.get(func).expect("[Function call] Function node not found in arena");
+    let func_node = info.nodes.get(func).safe();
 
     let func_name = match &func_node.kind {
         NodeKind::Expr {
@@ -28,7 +31,7 @@ pub fn expr_call(
         _ => panic!("Function call target must be an identifier"),
     };
 
-    let func_id = *info.func_table.get(&func_name).expect("Function not found in function table");
+    let func_id = *info.func_table.get(&func_name).safe();
 
     let mut arg_values = Vec::new();
     for arg in args {

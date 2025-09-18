@@ -3,9 +3,12 @@ use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    codegen::{Info, error::TranslateError},
-    parser::node::Type,
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{Info, error::TranslateError},
+        parser::node::Type,
+    },
 };
 
 use super::expr::expr_to_val;
@@ -26,7 +29,7 @@ pub fn expr_let_binding(
     fn_builder.declare_var(var, ty);
     fn_builder.def_var(var, var_val);
 
-    scopes.last_mut().unwrap().insert(name, (actual_type, var));
+    scopes.last_mut().safe().insert(name, (actual_type, var));
 
     Ok(var_val)
 }
@@ -36,7 +39,7 @@ pub fn expr_identifier(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
 ) -> Value {
-    let var = scopes.iter().rev().find_map(|scope| scope.get(&sym)).expect("Identifier not found");
+    let var = scopes.iter().rev().find_map(|scope| scope.get(&sym)).safe();
     println!("Variable: {:?}", var);
     fn_builder.use_var(var.1)
 }

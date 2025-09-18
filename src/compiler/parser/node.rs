@@ -17,7 +17,7 @@ impl Type {
     pub fn to_clif(&self, ptr_bits: PtrWidth) -> types::Type {
         match self {
             Type::Primitive(pt) => pt.to_clif(ptr_bits),
-            Type::Custom(_) => todo!("Custom types are not supported in yet"),
+            Type::Custom(_) => panic!("Custom types are not yet supported in codegen"),
         }
     }
 }

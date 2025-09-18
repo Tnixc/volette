@@ -1,9 +1,12 @@
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    parser::node::Type,
-    tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
+use crate::{
+    SafeConvert,
+    compiler::{
+        parser::node::Type,
+        tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
+    },
 };
 
 use super::{
@@ -82,11 +85,7 @@ impl Parser {
                         if let Some(span) = param.2.as_mut() {
                             span.connect_mut(&self.current().span);
                         }
-                        params.push((
-                            param.0.expect("[!] name should be Some"),
-                            Type::Primitive(ty),
-                            param.2.expect("[!] span should be Some"),
-                        ));
+                        params.push((param.0.safe(), Type::Primitive(ty), param.2.safe()));
                         param = (None, None, None);
                         mode = ParamMode::Comma;
                     }

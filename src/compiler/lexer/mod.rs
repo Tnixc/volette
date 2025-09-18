@@ -180,7 +180,13 @@ impl Lexer {
                     self.cursor.col = 0;
                 }
             }
-            _ => todo!(),
+            LexerState::String => {
+                // TODO: Implement string literal lexing
+                self.state = LexerState::Normal;
+            }
+            LexerState::End => {
+                return;
+            }
         }
     }
 

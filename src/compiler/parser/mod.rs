@@ -4,6 +4,7 @@ use node::{Node, NodeKind};
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use super::tokens::{Token, TokenKind};
+use crate::SafeConvert;
 
 pub mod assignment;
 pub mod binary_ops;
@@ -34,7 +35,7 @@ impl Parser {
             tree: Arena::with_capacity(tokens.len()),
             interner,
             current_idx: 0,
-            current_token: *tokens.first().unwrap(),
+            current_token: *tokens.first().safe(),
             tokens,
             parse_errors: Vec::new(),
         }
@@ -70,7 +71,7 @@ impl Parser {
 
     pub fn advance_unchecked(&mut self) -> Token {
         self.current_idx += 1;
-        self.current_token = *self.tokens.get(self.current_idx).expect("No next token but advanced anyway");
+        self.current_token = *self.tokens.get(self.current_idx).safe();
         self.current_token
     }
 
@@ -85,7 +86,7 @@ impl Parser {
 
     pub fn backtrack_unchecked(&mut self) {
         self.current_idx -= 1;
-        self.current_token = *self.tokens.get(self.current_idx).expect("No previous token but backtracked anyway");
+        self.current_token = *self.tokens.get(self.current_idx).safe();
     }
 
     pub fn backtrack(&mut self) {

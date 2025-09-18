@@ -35,7 +35,8 @@ pub fn match_literal(literal: Literal, type_: Type, node: &Node, fn_builder: &mu
             if type_ != Type::Primitive(PrimitiveTypes::Nil) {
                 return Err(TranslateError::IncorrectTypeAnalysis { type_, node: node.clone() });
             }
-            todo!("Nil literal not implemented");
+            // Nil is represented as a null pointer (0)
+            Ok(fn_builder.ins().iconst(types::I64, 0))
         }
     }
 }

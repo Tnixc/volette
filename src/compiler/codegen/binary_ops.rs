@@ -38,7 +38,7 @@ pub fn expr_binop(
                 BinOpKind::GreaterThanOrEq => fn_builder.ins().fcmp(FloatCC::GreaterThanOrEqual, left_value, right_value),
                 BinOpKind::LessThan => fn_builder.ins().fcmp(FloatCC::LessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().fcmp(FloatCC::LessThanOrEqual, left_value, right_value),
-                _ => todo!(),
+                _ => return Err(TranslateError::Internal("Unsupported float binary operation".to_string())),
             }
         }
         (Type::Primitive(PrimitiveTypes::I32), Type::Primitive(PrimitiveTypes::I32))
@@ -56,11 +56,15 @@ pub fn expr_binop(
                 BinOpKind::LessThan => fn_builder.ins().icmp(IntCC::SignedLessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().icmp(IntCC::SignedLessThanOrEqual, left_value, right_value),
                 BinOpKind::Mod => fn_builder.ins().srem(left_value, right_value),
-                _ => todo!(),
+                _ => return Err(TranslateError::Internal("Unsupported integer binary operation".to_string())),
             }
         }
 
-        _ => todo!(),
+        _ => {
+            return Err(TranslateError::Internal(
+                "Unsupported type combination for binary operation".to_string(),
+            ));
+        }
     };
 
     Ok(val)

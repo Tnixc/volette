@@ -1,6 +1,9 @@
-use crate::compiler::{
-    codegen::{Info, expr::expr_to_val},
-    parser::node::{DefKind, Node, NodeKind, Type},
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{Info, expr::expr_to_val},
+        parser::node::{DefKind, Node, NodeKind, Type},
+    },
 };
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
@@ -24,7 +27,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                 },
         } => {
             // -- Setup --
-            let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
+            let fn_name = info.interner.resolve(*name).safe();
 
             println!("Function: {}", fn_name);
 
@@ -59,7 +62,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
 
                 fn_builder.declare_var(var, ty);
                 fn_builder.def_var(var, val);
-                scopes.last_mut().unwrap().insert(param.0, (param.1, var));
+                scopes.last_mut().safe().insert(param.0, (param.1, var));
             }
 
             expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
@@ -72,6 +75,10 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
 
             Ok(())
         }
-        _ => todo!(),
+        _ => {
+            return Err(TranslateError::Internal(
+                "Only function definitions are currently supported".to_string(),
+            ));
+        }
     }
 }

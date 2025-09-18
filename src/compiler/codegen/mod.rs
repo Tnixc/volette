@@ -14,9 +14,12 @@ use generational_arena::Arena;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use target_lexicon::Triple;
 
-use crate::compiler::{
-    codegen::{error::TranslateError, function::lower_fn},
-    parser::node::{DefKind, Node, NodeKind, Type},
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{error::TranslateError, function::lower_fn},
+        parser::node::{DefKind, Node, NodeKind, Type},
+    },
 };
 
 pub mod binary_ops;
@@ -82,13 +85,13 @@ pub fn codegen(
             // declare all functions first
             let mut func_ids = Vec::new();
             for def in defs {
-                let def_node = nodes.get(*def).expect("A definition node was not found");
+                let def_node = nodes.get(*def).safe();
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
                         DefKind::Function {
                             name, params, return_type, ..
                         } => {
-                            let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
+                            let fn_name = info.interner.resolve(*name).safe();
 
                             let mut sig = Signature::new(info.build_config.call_conv);
                             for param in params {
@@ -100,15 +103,23 @@ pub fn codegen(
                             func_ids.push(func_id);
                             info.func_table.insert(*name, func_id);
                         }
-                        _ => todo!("only functions are supported rn"),
+                        _ => {
+                            return Err(TranslateError::Internal(
+                                "Only function definitions are currently supported".to_string(),
+                            ));
+                        }
                     },
-                    _ => todo!("only functions are supported rn"),
+                    _ => {
+                        return Err(TranslateError::Internal(
+                            "Only definition nodes are currently supported".to_string(),
+                        ));
+                    }
                 }
             }
 
             // define function bodies
             for (i, def) in defs.iter().enumerate() {
-                let def_node = nodes.get(*def).expect("A definition node was not found");
+                let def_node = nodes.get(*def).safe();
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
                         DefKind::Function { .. } => {
@@ -116,13 +127,21 @@ pub fn codegen(
                             lower_fn(def_node, &mut info, func_id)?;
                             info.module.define_function(func_id, &mut info.ctx)?;
                         }
-                        _ => todo!("only functions are supported rn"),
+                        _ => {
+                            return Err(TranslateError::Internal(
+                                "Only function definitions are currently supported".to_string(),
+                            ));
+                        }
                     },
-                    _ => todo!("only functions are supported rn"),
+                    _ => {
+                        return Err(TranslateError::Internal(
+                            "Only definition nodes are currently supported".to_string(),
+                        ));
+                    }
                 }
             }
         }
-        _ => unreachable!(),
+        _ => return Err(TranslateError::Internal("Expected root node in codegen".to_string())),
     }
 
     let product = info.module.finish();
@@ -135,12 +154,12 @@ pub fn codegen(
 
 fn isa() -> Arc<dyn TargetIsa + 'static> {
     let triple_str = "aarch64-apple-darwin";
-    let triple = Triple::from_str(triple_str).unwrap();
+    let triple = Triple::from_str(triple_str).safe();
 
     let flag_builder = settings::builder();
     let flags = Flags::new(flag_builder);
 
-    let isa_builder = isa::lookup(triple.clone()).unwrap();
+    let isa_builder = isa::lookup(triple.clone()).safe();
 
-    (isa_builder.finish(flags).unwrap()) as _
+    (isa_builder.finish(flags).safe()) as _
 }

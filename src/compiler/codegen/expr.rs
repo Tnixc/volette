@@ -3,11 +3,14 @@ use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    analysis::literal_default_types,
-    codegen::{Info, error::TranslateError},
-    parser::node::{ExprKind, NodeKind, Type},
-    tokens::PrimitiveTypes,
+use crate::{
+    SafeConvert,
+    compiler::{
+        analysis::literal_default_types,
+        codegen::{Info, error::TranslateError},
+        parser::node::{ExprKind, NodeKind, Type},
+        tokens::PrimitiveTypes,
+    },
 };
 
 use super::{
@@ -25,7 +28,7 @@ pub fn expr_to_val(
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
     info: &mut Info,
 ) -> Result<(Value, Type), TranslateError> {
-    let node = info.nodes.get(node).expect("[Expr to val] Node index not found in arena");
+    let node = info.nodes.get(node).safe();
     match &node.kind {
         NodeKind::Expr { kind, type_ } => {
             let value = match kind {
@@ -41,7 +44,7 @@ pub fn expr_to_val(
                 ExprKind::Call { func, args } => expr_call(*func, args, fn_builder, scopes, info)?,
                 _ => {
                     println!("valBefore: {:?} ||| {:?}", kind, type_);
-                    todo!()
+                    return Err(TranslateError::Internal(format!("Unsupported expression kind: {:?}", kind)));
                 }
             };
 
@@ -49,6 +52,6 @@ pub fn expr_to_val(
             Ok((value, type_.unwrap_or(Type::Primitive(PrimitiveTypes::Never))))
             // TODO: Make the blocks accept -> statements like returns and eval its type instead of defaulting to Never
         }
-        _ => todo!(),
+        _ => return Err(TranslateError::Internal("Expected expression node in expr_to_val".to_string())),
     }
 }

@@ -27,6 +27,9 @@ pub enum TranslateError {
 
     #[error("No type information available for {node}")]
     UntypedExpr { node: Node },
+
+    #[error("Internal error: {0}")]
+    Internal(String),
 }
 
 impl Display for Type {

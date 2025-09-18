@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use generational_arena::{Arena, Index};
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
-use crate::compiler::{
-    parser::node::{BinOpKind, DefKind, ExprKind, Literal, Node, NodeKind, Type},
-    tokens::PrimitiveTypes,
+use crate::{
+    SafeConvert,
+    compiler::{
+        parser::node::{BinOpKind, DefKind, ExprKind, Literal, Node, NodeKind, Type},
+        tokens::PrimitiveTypes,
+    },
 };
 
 use super::error::AnalysisError;
@@ -18,7 +21,7 @@ pub fn type_check_root(
 ) {
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {
-            let node = nodes.get(*idx).expect("[!] Node not found");
+            let node = nodes.get(*idx).safe();
             if let NodeKind::Def { kind } = &node.kind {
                 // TODO: check return types
                 if let DefKind::Function { body, params, .. } = kind {
@@ -26,7 +29,7 @@ pub fn type_check_root(
                     params.iter().for_each(|param| {
                         ident_types.insert(param.0, param.1);
                     });
-                    let body_node = nodes.get(*body).expect("Node not found").clone();
+                    let body_node = nodes.get(*body).safe().clone();
                     if let NodeKind::Expr { kind, .. } = &body_node.kind {
                         if let ExprKind::Block { exprs } = kind {
                             for &expr_idx in exprs {
@@ -54,7 +57,7 @@ fn resolve_expr_type(
     fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) -> Result<Type, AnalysisError> {
     let (kind, span) = {
-        let target_node = nodes.get(target_idx).expect("node not found");
+        let target_node = nodes.get(target_idx).safe();
         // if type is already resolved, return it and check if it matches expectations
         if let NodeKind::Expr { type_: Some(ty), .. } = target_node.kind {
             if let Some(expected_ty) = expected {
@@ -77,7 +80,7 @@ fn resolve_expr_type(
                 .get(&symbol)
                 .copied()
                 .ok_or_else(|| AnalysisError::UnresolvedIdentifier {
-                    name: interner.resolve(symbol).unwrap_or("").to_string(),
+                    name: interner.resolve(symbol).safe().to_string(),
                     span: span.to_display(interner),
                 }),
             ExprKind::LetBinding {
@@ -107,25 +110,29 @@ fn resolve_expr_type(
                 Ok(last_expr_type)
             }
             ExprKind::Call { func, args } => {
-                let func_name = match &nodes.get(func).expect("Undeclared function").kind {
-                    NodeKind::Expr { kind, .. } => match kind {
-                        ExprKind::Identifier(name) => name,
-                        _ => unreachable!(),
-                    },
-                    _ => unreachable!(),
+                let func_name = match &nodes.get(func).safe().kind {
+                    NodeKind::Expr {
+                        kind: ExprKind::Identifier(name),
+                        ..
+                    } => name,
+                    _ => return Err(AnalysisError::Internal("Function call target must be an identifier".to_string())),
                 };
 
-                let rest = fn_table.get(&func_name).unwrap();
+                let rest = fn_table.get(&func_name).safe();
 
                 for (a, b) in args.iter().zip(rest.0.iter()) {
                     // function def expected types
-                    let a_ty = match &nodes.get(*a).unwrap().kind {
+                    let a_ty = match &nodes.get(*a).safe().kind {
                         NodeKind::Expr { type_, .. } => type_,
-                        _ => unreachable!(),
+                        _ => {
+                            return Err(AnalysisError::Internal(
+                                "Expected expression node for function argument".to_string(),
+                            ));
+                        }
                     };
                     if let Some(a_ty) = a_ty {
                         if a_ty != b {
-                            let span = nodes.get(*a).unwrap().span;
+                            let span = nodes.get(*a).safe().span;
                             return Err(AnalysisError::TypeMismatch {
                                 expected: *a_ty,
                                 got: *b,
@@ -136,9 +143,13 @@ fn resolve_expr_type(
                 }
                 Ok(rest.1)
             }
-            _ => todo!(),
+            _ => {
+                return Err(AnalysisError::Internal(
+                    "Unsupported expression kind for type resolution".to_string(),
+                ));
+            }
         },
-        _ => unreachable!(),
+        _ => return Err(AnalysisError::Internal("Expected expression node for type resolution".to_string())),
     }?;
 
     // if an expected type was provided, check if the inferred type matches
@@ -154,7 +165,7 @@ fn resolve_expr_type(
     }
 
     // update the node with the resolved type
-    nodes.get_mut(target_idx).expect("Node not found").set_type(inferred_type);
+    nodes.get_mut(target_idx).safe().set_type(inferred_type);
 
     println!("Resolved type: {}", inferred_type);
     println!("Node: {:?}", nodes.get(target_idx));
@@ -204,7 +215,7 @@ fn resolve_binop(
         return Err(AnalysisError::TypeMismatch {
             expected: left_ty,
             got: right_ty,
-            span: nodes.get(right).unwrap().span.to_display(interner),
+            span: nodes.get(right).safe().span.to_display(interner),
         });
     }
 
