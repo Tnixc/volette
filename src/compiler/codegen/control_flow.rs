@@ -23,5 +23,5 @@ pub fn expr_return(
     } else {
         fn_builder.ins().return_(&[]);
         Ok(Value::from_u32(0)) // TODO: implement proper never type
-        }
+    }
 }

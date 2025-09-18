@@ -2,12 +2,12 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use cranelift::{
     codegen::Context,
-    module::{Module, default_libcall_names, Linkage},
+    module::{Linkage, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
+        AbiParam, Signature,
         isa::{self, CallConv, TargetIsa},
         settings::{self, Flags},
-        AbiParam, Signature,
     },
 };
 use generational_arena::Arena;
@@ -76,11 +76,7 @@ pub fn codegen(
         interner,
         func_table: HashMap::new(),
     };
-        
-    
-    
-    
-    
+
     match &root.kind {
         NodeKind::Root { defs } => {
             // declare all functions first
@@ -89,15 +85,17 @@ pub fn codegen(
                 let def_node = nodes.get(*def).expect("A definition node was not found");
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
-                        DefKind::Function { name, params, return_type, .. } => {
+                        DefKind::Function {
+                            name, params, return_type, ..
+                        } => {
                             let fn_name = info.interner.resolve(*name).expect("Function name's string not found in interner");
-                            
+
                             let mut sig = Signature::new(info.build_config.call_conv);
                             for param in params {
                                 sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
                             }
                             sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
-                            
+
                             let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
                             func_ids.push(func_id);
                             info.func_table.insert(*name, func_id);
@@ -107,7 +105,7 @@ pub fn codegen(
                     _ => todo!("only functions are supported rn"),
                 }
             }
-            
+
             // define function bodies
             for (i, def) in defs.iter().enumerate() {
                 let def_node = nodes.get(*def).expect("A definition node was not found");

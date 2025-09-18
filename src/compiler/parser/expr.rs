@@ -1,8 +1,4 @@
-use super::{
-    Parser,
-    error::ParserError,
-    precedence::BindingPower,
-};
+use super::{Parser, error::ParserError, precedence::BindingPower};
 use crate::compiler::tokens::{Keyword, Punctuation, TokenKind};
 use generational_arena::Index;
 

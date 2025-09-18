@@ -2,11 +2,7 @@ use generational_arena::Index;
 
 use crate::compiler::tokens::{Punctuation, Token, TokenKind};
 
-use super::{
-    Parser,
-    error::ParserError,
-    precedence::BindingPower,
-};
+use super::{Parser, error::ParserError, precedence::BindingPower};
 
 impl Parser {
     pub fn parse_paren_expr_nud(&mut self, open_paren_token: Token) -> Result<Index, ParserError> {

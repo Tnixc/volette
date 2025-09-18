@@ -191,9 +191,7 @@ mod tests {
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
 
-        let expected_tokens = vec![
-            ("FloatLiteral(1.0)".to_string(), 1, (1, 3)),
-        ];
+        let expected_tokens = vec![("FloatLiteral(1.0)".to_string(), 1, (1, 3))];
 
         let tokens = lexer.format_tokens();
         println!("Simple float tokens: {:?}", tokens);

@@ -13,6 +13,6 @@ fn test_let_with_expression(): i32 {
     return result;
 }
 
-fn main(): i32 {
+fn world(): i32 {
     return test_let_with_expression();
 }

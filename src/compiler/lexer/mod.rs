@@ -102,8 +102,9 @@ impl Lexer {
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric() && (self.current_chars.is_empty() || 
-                    (self.current_chars.len() == 1 && !self.current_chars[0].1.is_alphanumeric())) {
+                if c.is_numeric()
+                    && (self.current_chars.is_empty() || (self.current_chars.len() == 1 && !self.current_chars[0].1.is_alphanumeric()))
+                {
                     // if current_chars has a single non-alphanumeric character (like punctuation),
                     // process it first, then start number parsing
                     if !self.current_chars.is_empty() {

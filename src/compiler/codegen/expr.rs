@@ -11,12 +11,12 @@ use crate::compiler::{
 };
 
 use super::{
-    literal::match_literal,
     binary_ops::expr_binop,
-    control_flow::expr_return,
     block::expr_block,
+    control_flow::expr_return,
     function_call::expr_call,
-    variable::{expr_let_binding, expr_identifier},
+    literal::match_literal,
+    variable::{expr_identifier, expr_let_binding},
 };
 
 pub fn expr_to_val(
@@ -36,15 +36,9 @@ pub fn expr_to_val(
                     let (val, _) = expr_block(exprs, fn_builder, scopes, info)?;
                     val
                 }
-                ExprKind::LetBinding { name, value, .. } => {
-                    expr_let_binding(*name, *value, fn_builder, scopes, info)?
-                }
-                ExprKind::Identifier(sym) => {
-                    expr_identifier(*sym, fn_builder, scopes)
-                }
-                ExprKind::Call { func, args } => {
-                    expr_call(*func, args, fn_builder, scopes, info)?
-                }
+                ExprKind::LetBinding { name, value, .. } => expr_let_binding(*name, *value, fn_builder, scopes, info)?,
+                ExprKind::Identifier(sym) => expr_identifier(*sym, fn_builder, scopes),
+                ExprKind::Call { func, args } => expr_call(*func, args, fn_builder, scopes, info)?,
                 _ => {
                     println!("valBefore: {:?} ||| {:?}", kind, type_);
                     todo!()
