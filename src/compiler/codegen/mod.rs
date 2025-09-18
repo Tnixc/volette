@@ -19,10 +19,16 @@ use crate::compiler::{
     parser::node::{DefKind, Node, NodeKind, Type},
 };
 
+pub mod binary_ops;
+pub mod block;
+pub mod control_flow;
 pub mod error;
 pub mod expr;
 pub mod function;
+pub mod function_call;
+pub mod literal;
 pub mod translate;
+pub mod variable;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PtrWidth {

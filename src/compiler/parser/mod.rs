@@ -5,12 +5,19 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 
 use super::tokens::{Token, TokenKind};
 
+pub mod assignment;
+pub mod binary_ops;
 pub mod block;
+pub mod control_flow;
 pub mod definitions;
 pub mod display;
 pub mod error;
 pub mod expr;
+pub mod identifier;
+pub mod literal;
 pub mod node;
+pub mod paren_block;
+pub mod precedence;
 
 pub struct Parser {
     pub tree: Arena<Node>,
