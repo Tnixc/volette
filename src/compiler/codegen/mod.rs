@@ -42,6 +42,7 @@ pub struct Info<'a> {
     pub build_config: BuildConfig,
     pub nodes: &'a Arena<Node>,
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
+    pub func_table: HashMap<SymbolUsize, cranelift::module::FuncId>,
 }
 
 pub fn codegen(
@@ -67,6 +68,7 @@ pub fn codegen(
         build_config,
         nodes,
         interner,
+        func_table: HashMap::new(),
     };
         
     
@@ -92,6 +94,7 @@ pub fn codegen(
                             
                             let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
                             func_ids.push(func_id);
+                            info.func_table.insert(*name, func_id);
                         }
                         _ => todo!("only functions are supported rn"),
                     },

@@ -3,5 +3,5 @@ fn add_10(x: i32): i32 {
 }
 
 fn world(the_number: i32): i32 {
-    return add_10(2.0);
+    return add_10(2);
 }
