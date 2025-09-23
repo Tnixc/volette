@@ -29,8 +29,6 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             // -- Setup --
             let fn_name = info.interner.resolve(*name).safe();
 
-            println!("Function: {}", fn_name);
-
             // make the signature again
             let mut sig = Signature::new(info.build_config.call_conv);
             for param in params {

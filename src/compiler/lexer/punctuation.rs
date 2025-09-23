@@ -2,7 +2,7 @@ use crate::compiler::tokens::Token;
 
 use super::Lexer;
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     fn push_punctuation(&mut self, punct: crate::compiler::tokens::Punctuation, chars_consumed: usize) {
         if chars_consumed == 0 || self.current_chars.is_empty() {
             return;
@@ -99,7 +99,7 @@ mod tests {
     {   }  [  ]   , .  :
 ;   /   %   +   -
 =>"#;
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

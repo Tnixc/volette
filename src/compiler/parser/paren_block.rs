@@ -4,7 +4,7 @@ use crate::compiler::tokens::{Punctuation, Token, TokenKind};
 
 use super::{Parser, error::ParserError, precedence::BindingPower};
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_paren_expr_nud(&mut self, open_paren_token: Token) -> Result<Index, ParserError> {
         self.advance(); // consume '('
         let inner_expr_idx = self.pratt_parse_expression(BindingPower::None)?; // Parse expression inside parentheses

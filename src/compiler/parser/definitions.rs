@@ -15,7 +15,7 @@ use super::{
     node::{DefKind, Node, NodeKind},
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_def(&mut self) -> Result<Index, ParserError> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),

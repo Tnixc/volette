@@ -10,7 +10,7 @@ pub enum NumberBase {
     Octal,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn lex_number(&mut self, c: char, float: bool, base: NumberBase) -> bool {
         let current_string = self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>();
 
@@ -153,7 +153,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = "123 + 2 0xff 3.14 2.71 0 0o234";
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
@@ -186,7 +186,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = "1.0";
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);
@@ -207,7 +207,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = "test(1.0)";
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

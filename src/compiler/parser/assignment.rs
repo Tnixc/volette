@@ -9,7 +9,7 @@ use super::{
     precedence::BindingPower,
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_assignment_led(
         &mut self,
         _eq_token: Token,

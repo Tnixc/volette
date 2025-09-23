@@ -9,7 +9,7 @@ use super::{
     precedence::BindingPower,
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_binary_infix_op_led(
         &mut self,
         op_token: Token,

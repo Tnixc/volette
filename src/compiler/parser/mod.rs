@@ -20,17 +20,17 @@ pub mod node;
 pub mod paren_block;
 pub mod precedence;
 
-pub struct Parser {
+pub struct Parser<'a> {
     pub tree: Arena<Node>,
-    pub interner: StringInterner<BucketBackend<SymbolUsize>>,
+    pub interner: &'a mut StringInterner<BucketBackend<SymbolUsize>>,
     pub tokens: Vec<Token>,
     pub current_idx: usize,
     pub current_token: Token,
     pub parse_errors: Vec<ParserError>,
 }
 
-impl Parser {
-    pub fn new(tokens: Vec<Token>, interner: StringInterner<BucketBackend<SymbolUsize>>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: Vec<Token>, interner: &'a mut StringInterner<BucketBackend<SymbolUsize>>) -> Self {
         Self {
             tree: Arena::with_capacity(tokens.len()),
             interner,
@@ -43,8 +43,8 @@ impl Parser {
 
     pub fn parse(&mut self) -> Node {
         let root = self.parse_root();
-        println!("errors: {:?}", self.parse_errors);
-        root.print_tree(&self.tree, &self.interner);
+        // println!("errors: {:?}", self.parse_errors);
+        // root.print_tree(&self.tree, self.interner);
         root
     }
 

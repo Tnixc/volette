@@ -3,7 +3,7 @@ use crate::compiler::tokens::Token;
 use super::Lexer;
 use crate::compiler::lexer::LexedChar;
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     fn push_keyword(&mut self, keyword: crate::compiler::tokens::Keyword, chars_consumed: usize) {
         if chars_consumed == 0 || self.current_chars.is_empty() {
             return;
@@ -85,7 +85,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = r#"fn use const let loop break return struct alloc free pub local self as in"#;
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

@@ -38,8 +38,11 @@ pub fn expr_identifier(
     sym: SymbolUsize,
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
-) -> Value {
-    let var = scopes.iter().rev().find_map(|scope| scope.get(&sym)).safe();
-    println!("Variable: {:?}", var);
-    fn_builder.use_var(var.1)
+) -> Result<Value, TranslateError> {
+    let var = scopes.iter().rev().find_map(|scope| scope.get(&sym));
+
+    match var {
+        Some((_, variable)) => Ok(fn_builder.use_var(*variable)),
+        None => Err(TranslateError::UndeclaredIdentifier(format!("Identifier {:?}", sym))),
+    }
 }

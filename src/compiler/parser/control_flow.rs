@@ -9,7 +9,7 @@ use super::{
     precedence::BindingPower,
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     /// parses `let name [: type] = value` as an expression (nud for 'let' keyword)
     pub fn parse_let_expr_nud(&mut self, let_keyword_token: Token) -> Result<Index, ParserError> {
         self.advance(); // consume 'let'

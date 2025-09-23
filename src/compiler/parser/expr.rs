@@ -2,7 +2,7 @@ use super::{Parser, error::ParserError, precedence::BindingPower};
 use crate::compiler::tokens::{Keyword, Punctuation, TokenKind};
 use generational_arena::Index;
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_expr(&mut self) -> Result<Index, ParserError> {
         self.pratt_parse_expression(BindingPower::None)
     }

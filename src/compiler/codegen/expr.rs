@@ -40,15 +40,13 @@ pub fn expr_to_val(
                     val
                 }
                 ExprKind::LetBinding { name, value, .. } => expr_let_binding(*name, *value, fn_builder, scopes, info)?,
-                ExprKind::Identifier(sym) => expr_identifier(*sym, fn_builder, scopes),
+                ExprKind::Identifier(sym) => expr_identifier(*sym, fn_builder, scopes)?,
                 ExprKind::Call { func, args } => expr_call(*func, args, fn_builder, scopes, info)?,
                 _ => {
-                    println!("valBefore: {:?} ||| {:?}", kind, type_);
                     return Err(TranslateError::Internal(format!("Unsupported expression kind: {:?}", kind)));
                 }
             };
 
-            println!("val: {:?} ||| {:?}", kind, type_);
             Ok((value, type_.unwrap_or(Type::Primitive(PrimitiveTypes::Never))))
             // TODO: Make the blocks accept -> statements like returns and eval its type instead of defaulting to Never
         }

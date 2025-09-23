@@ -6,6 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
+        error::{CompilerError, DiagnosticCollection},
         parser::node::{BinOpKind, DefKind, ExprKind, Literal, Node, NodeKind, Type},
         tokens::PrimitiveTypes,
     },
@@ -18,7 +19,9 @@ pub fn type_check_root(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut Arena<Node>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
-) {
+) -> Result<(), DiagnosticCollection> {
+    let mut diagnostics = DiagnosticCollection::new();
+
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {
             let node = nodes.get(*idx).safe();
@@ -34,7 +37,7 @@ pub fn type_check_root(
                         if let ExprKind::Block { exprs } = kind {
                             for &expr_idx in exprs {
                                 if let Err(e) = resolve_expr_type(expr_idx, None, nodes, interner, &mut ident_types, &fn_table) {
-                                    eprintln!("Type Error: {:?}", e);
+                                    diagnostics.add_error(CompilerError::Analysis(e));
                                 }
                             }
                         }
@@ -43,6 +46,8 @@ pub fn type_check_root(
             }
         }
     }
+
+    if diagnostics.has_errors() { Err(diagnostics) } else { Ok(()) }
 }
 
 /// resolves the type of an expression.
@@ -80,7 +85,7 @@ fn resolve_expr_type(
                 .get(&symbol)
                 .copied()
                 .ok_or_else(|| AnalysisError::UnresolvedIdentifier {
-                    name: interner.resolve(symbol).safe().to_string(),
+                    name: interner.resolve(symbol).unwrap_or("<unknown>").to_string(),
                     span: span.to_display(interner),
                 }),
             ExprKind::LetBinding {
@@ -89,7 +94,7 @@ fn resolve_expr_type(
                 value,
             } => {
                 let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table)?;
-                println!("Value type: {}", value_type);
+                // println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type);
                 Ok(value_type)
             }
@@ -106,7 +111,7 @@ fn resolve_expr_type(
                 for &expr_idx in &exprs {
                     last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
                 }
-                println!("Last expr type: {}", last_expr_type);
+                // println!("Last expr type: {}", last_expr_type);
                 Ok(last_expr_type)
             }
             ExprKind::Call { func, args } => {
@@ -118,30 +123,39 @@ fn resolve_expr_type(
                     _ => return Err(AnalysisError::Internal("Function call target must be an identifier".to_string())),
                 };
 
-                let rest = fn_table.get(&func_name).safe();
-
-                for (a, b) in args.iter().zip(rest.0.iter()) {
-                    // function def expected types
-                    let a_ty = match &nodes.get(*a).safe().kind {
-                        NodeKind::Expr { type_, .. } => type_,
-                        _ => {
-                            return Err(AnalysisError::Internal(
-                                "Expected expression node for function argument".to_string(),
-                            ));
+                let rest = fn_table.get(&func_name);
+                match rest {
+                    Some(rest) => {
+                        for (a, b) in args.iter().zip(rest.0.iter()) {
+                            // function def expected types
+                            let a_ty = match &nodes.get(*a).safe().kind {
+                                NodeKind::Expr { type_, .. } => type_,
+                                _ => {
+                                    return Err(AnalysisError::Internal(
+                                        "Expected expression node for function argument".to_string(),
+                                    ));
+                                }
+                            };
+                            if let Some(a_ty) = a_ty {
+                                if a_ty != b {
+                                    let span = nodes.get(*a).safe().span;
+                                    return Err(AnalysisError::TypeMismatch {
+                                        expected: *a_ty,
+                                        got: *b,
+                                        span: span.to_display(interner),
+                                    });
+                                }
+                            }
                         }
-                    };
-                    if let Some(a_ty) = a_ty {
-                        if a_ty != b {
-                            let span = nodes.get(*a).safe().span;
-                            return Err(AnalysisError::TypeMismatch {
-                                expected: *a_ty,
-                                got: *b,
-                                span: span.to_display(interner),
-                            });
-                        }
+                        Ok(rest.1)
+                    }
+                    None => {
+                        return Err(AnalysisError::UndeclaredFunction {
+                            name: interner.resolve(*func_name).safe().to_string(),
+                            span: span.to_display(interner),
+                        });
                     }
                 }
-                Ok(rest.1)
             }
             _ => {
                 return Err(AnalysisError::Internal(
@@ -167,8 +181,8 @@ fn resolve_expr_type(
     // update the node with the resolved type
     nodes.get_mut(target_idx).safe().set_type(inferred_type);
 
-    println!("Resolved type: {}", inferred_type);
-    println!("Node: {:?}", nodes.get(target_idx));
+    // println!("Resolved type: {}", inferred_type);
+    // println!("Node: {:?}", nodes.get(target_idx));
     Ok(inferred_type)
 }
 

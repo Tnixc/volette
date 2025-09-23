@@ -8,7 +8,7 @@ use super::{
     node::{ExprKind, Node, NodeKind},
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_block_body(&mut self) -> Result<Index, ParserError> {
         let start_span = self.current().span;
 

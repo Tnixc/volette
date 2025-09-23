@@ -8,7 +8,7 @@ use super::{
     node::{ExprKind, Literal, Node, NodeKind},
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_literal_nud(&mut self, literal_token: Token) -> Result<Index, ParserError> {
         let literal_kind = match literal_token.kind {
             TokenKind::IntLiteral(i) => Literal::Int(i),

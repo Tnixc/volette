@@ -1,10 +1,13 @@
 use colored::Colorize;
 use std::fmt::{self, Display};
 use std::fs;
+use string_interner::StringInterner;
+use string_interner::backend::BucketBackend;
+use string_interner::symbol::SymbolUsize;
 use thiserror::Error;
 
 use crate::compiler::tokens::DisplaySpan;
-use crate::compiler::{Interner, tokens::Span};
+use crate::compiler::tokens::Span;
 
 use super::Lexer;
 
@@ -40,7 +43,7 @@ pub enum LexError {
 }
 
 impl Span {
-    pub fn to_display(&self, interner: &Interner) -> DisplaySpan {
+    pub fn to_display(&self, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> DisplaySpan {
         DisplaySpan {
             file: interner.resolve(self.file).unwrap_or("<unknown>").to_string(),
             start: self.start,
@@ -130,7 +133,7 @@ impl LexError {
     }
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn print_errors(&self) {
         for error in &self.errors {
             eprintln!("{}", error.span().format_error_display(format!("{}", error).as_str()));

@@ -1,18 +1,29 @@
-fn test_let(): i32 {
-    let x = let y = 10;
-    return x;
+fn add(x: i32, y: i32): i32 {
+    return x + y +;
 }
 
-fn test_nested_let(): i32 {
-    let a = let b = let c = 42;
-    return a;
+fn test_undefined_vars(): i32 {
+    let a = undefined_variable;
+    let b = another_undefined_var;
+    return a + b;
 }
 
-fn test_let_with_expression(): i32 {
-    let result = let temp = 5 + 3;
-    return result;
+fn test_type_mismatch(): i32 {
+    let num = 42;
+    let float_num = 3.14;
+    return num + float_num;
 }
 
-fn world(): i32 {
-    return test_let_with_expression();
+fn test_function_calls(): i32 {
+    let result1 = add(5);
+    let result2 = add(1, 2, 3);
+    let result3 = nonexistent_function(10);
+    return result1;
+}
+
+fn main(): i32 {
+    let x = 10;
+    let y = 20;
+    let sum = add(x, y);
+    return sum;
 }

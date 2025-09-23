@@ -3,7 +3,7 @@ use crate::compiler::tokens::{Token, TokenKind};
 use super::Lexer;
 use crate::compiler::lexer::LexedChar;
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     fn push_type_literal(&mut self, type_literal: crate::compiler::tokens::PrimitiveTypes, chars_consumed: usize) {
         if chars_consumed == 0 || self.current_chars.is_empty() {
             return;
@@ -83,7 +83,7 @@ mod tests {
         let mut interner = Interner::new();
         let file = interner.get_or_intern("");
         let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool Nil"#;
-        let mut lexer = Lexer::new(interner, file);
+        let mut lexer = Lexer::new(&mut interner, file);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

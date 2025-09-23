@@ -10,7 +10,7 @@ use super::{
     precedence::BindingPower,
 };
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn parse_identifier_nud(&mut self, ident_token: Token) -> Result<Index, ParserError> {
         let name_symbol = match ident_token.kind {
             TokenKind::Identifier(s) => s,

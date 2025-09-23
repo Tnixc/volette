@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use crate::compiler::tokens::TokenKind;
 
 use super::tokens::{Span, Token};
-mod error;
+pub mod error;
 use error::LexError;
 mod bool;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
@@ -30,18 +30,18 @@ pub struct Cursor {
 }
 
 #[derive(Debug)]
-pub struct Lexer {
+pub struct Lexer<'a> {
     pub tokens: Vec<Token>,
     pub state: LexerState,
     pub errors: Vec<LexError>,
     pub cursor: Cursor,
-    pub interner: StringInterner<BucketBackend<SymbolUsize>>,
+    pub interner: &'a mut StringInterner<BucketBackend<SymbolUsize>>,
     pub newline: bool,
     pub current_chars: VecDeque<((usize, usize), char)>,
 }
 
-impl Lexer {
-    pub fn new(interner: StringInterner<BucketBackend<SymbolUsize>>, path: SymbolUsize) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(interner: &'a mut StringInterner<BucketBackend<SymbolUsize>>, path: SymbolUsize) -> Self {
         Lexer {
             tokens: vec![Token::new(TokenKind::Start, Span::new(path, 0, 0, 0, 0))],
             state: LexerState::Normal,
@@ -138,7 +138,6 @@ impl Lexer {
                                 let start_pos = ident_chars[0].0;
                                 let end_pos = ident_chars[ident_chars.len() - 1].0;
                                 let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
-
                                 self.tokens
                                     .push(Token::new(TokenKind::Identifier(self.interner.get_or_intern(&identifier)), span));
                             }
@@ -211,7 +210,7 @@ impl LexedChar for char {
     }
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn format_tokens(&self) -> Vec<(String, usize, (usize, usize))> {
         self.tokens
             .iter()
@@ -241,7 +240,7 @@ mod tests {
         let mut interner = Interner::new();
         let f = interner.get_or_intern("");
         let contents = "let__ use some_ident normal";
-        let mut lexer = Lexer::new(interner, f);
+        let mut lexer = Lexer::new(&mut interner, f);
 
         let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
         lexer.tokenize(chars);

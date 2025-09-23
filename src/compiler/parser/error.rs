@@ -74,8 +74,19 @@ pub enum ParserError {
     LoopBodyExpected { token: Token },
 }
 
+impl ParserError {
+    pub fn span(&self) -> Option<&DisplaySpan> {
+        match self {
+            ParserError::InvalidLHSInAssignment { span } => Some(span),
+            ParserError::ExpectedNode { span } => Some(span),
+            ParserError::InternalError(_) => None,
+            _ => None,
+        }
+    }
+}
+
 impl Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} at {:?}", self.kind, self.span) // More informative display
+        write!(f, "{:?} at {:?}", self.kind, self.span)
     }
 }
