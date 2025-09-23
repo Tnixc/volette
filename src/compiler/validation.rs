@@ -339,14 +339,13 @@ impl<'a> AstValidator<'a> {
     }
 
     fn is_identifier_in_scope(&self, _symbol: SymbolUsize) -> bool {
-        // This is a simplified check. In a real implementation, we'd track
-        // the current scope chain and check if the identifier is declared.
-        // For now, we'll assume it's valid since the analysis phase should catch this.
+        // TODO: rn we assume it's valid since the analysis phase should catch this.
         true
+        // ???
     }
 
     fn check_unused_functions(&mut self) {
-        // For now, just check if main exists
+        // for now, just check if main exists
         let main_symbol = self.interner.get("main");
         if let Some(main_sym) = main_symbol {
             if !self.declared_functions.contains_key(&main_sym) {
@@ -360,6 +359,7 @@ impl<'a> AstValidator<'a> {
                 );
             }
         }
+        // TODO: reachability analysis
     }
 
     fn add_error(&mut self, message: String, span: DisplaySpan) {

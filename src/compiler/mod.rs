@@ -72,19 +72,19 @@ pub fn build(file: &Path) {
     all_diagnostics.extend(analysis_result.diagnostics);
     let fn_table = analysis_result.value;
 
-    // Validation phase
+    // validation phase
     println!("{}", "=== Validation Phase ===".bright_blue());
     if let Err(diagnostics) = validation_phase(&root, &tree, &interner) {
         all_diagnostics.extend(diagnostics);
     }
 
-    // Stop if we have any errors
+    // stop if we have any errors
     if all_diagnostics.has_errors() {
         all_diagnostics.print_all();
         return;
     }
 
-    // Code generation phase
+    // codegen phase
     println!("{}", "=== Code Generation Phase ===".bright_blue());
     root.print_tree(&tree, &interner);
 

@@ -33,6 +33,9 @@ impl<'a> Parser<'a> {
             TokenKind::Keyword(Keyword::Loop) => {
                 left_expr_idx = self.parse_loop_expr_nud(current_token)?;
             }
+            TokenKind::Keyword(Keyword::If) => {
+                todo!("IFFFFF")
+            }
             TokenKind::Punctuation(Punctuation::OpenParen) => {
                 left_expr_idx = self.parse_paren_expr_nud(current_token)?;
             }

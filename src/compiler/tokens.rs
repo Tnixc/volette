@@ -17,6 +17,8 @@ pub enum Keyword {
     Self_,
     As,
     In,
+    If,
+    Else
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

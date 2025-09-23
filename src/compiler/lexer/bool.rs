@@ -21,36 +21,29 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn check_bool(&mut self) -> bool {
-        macro_rules! check_bool {
-            ($str:expr, $bool:expr) => {{
-                let str_chars: Vec<char> = $str.chars().collect();
+        const PATTERNS: &[(&str, bool)] = &[("true", true), ("false", false)];
 
-                if self.current_chars.len() > str_chars.len() {
-                    let matches = self
-                        .current_chars
-                        .iter()
-                        .take(str_chars.len())
-                        .zip(str_chars.iter())
-                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
+        for &(pattern, value) in PATTERNS {
+            let pattern_len = pattern.len();
 
-                    let has_valid_boundary = if self.current_chars.len() > str_chars.len() {
-                        !self.current_chars[str_chars.len()].1.is_valid_ident_char()
-                    } else {
-                        true
-                    };
+            if self.current_chars.len() >= pattern_len {
+                let matches = pattern
+                    .bytes()
+                    .enumerate()
+                    .all(|(i, expected)| self.current_chars[i].1 as u8 == expected);
 
-                    if matches && has_valid_boundary {
-                        self.push_bool($bool, str_chars.len());
-                        self.current_chars.drain(..str_chars.len());
+                if matches {
+                    let has_valid_boundary =
+                        self.current_chars.len() == pattern_len || !self.current_chars[pattern_len].1.is_valid_ident_char();
+
+                    if has_valid_boundary {
+                        self.push_bool(value, pattern_len);
+                        self.current_chars.drain(..pattern_len);
                         return true;
                     }
                 }
-                false
-            }};
+            }
         }
-
-        check_bool!("true", true);
-        check_bool!("false", false);
 
         false
     }

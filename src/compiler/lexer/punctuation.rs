@@ -23,59 +23,57 @@ impl<'a> Lexer<'a> {
     pub fn check_punctuation(&mut self) -> bool {
         use crate::compiler::tokens::Punctuation::*;
 
-        macro_rules! check_punct {
-            ($str:expr, $punct:expr, $chars_consumed:expr) => {{
-                let str_chars: Vec<char> = $str.chars().collect();
+        const PATTERNS: &[(&str, crate::compiler::tokens::Punctuation, usize)] = &[
+            // 2-char ops (checked first)
+            ("&&", AmpAmp, 2),
+            ("!=", NotEq, 2),
+            ("**", StarStar, 2),
+            ("==", EqEq, 2),
+            ("<=", LessThanOrEq, 2),
+            (">=", GreaterThanOrEq, 2),
+            ("||", PipePipe, 2),
+            ("=>", FatArrow, 2),
+            // 1-char ops that require 2 chars (for precedence)
+            ("&", Amp, 2),
+            ("!", Bang, 2),
+            ("*", Star, 2),
+            ("=", Eq, 2),
+            ("<", LessThan, 2),
+            (">", GreaterThan, 2),
+            ("|", Pipe, 2),
+            // 1-char ops that only require 1 char
+            (")", CloseParen, 1),
+            ("(", OpenParen, 1),
+            ("{", OpenBrace, 1),
+            ("}", CloseBrace, 1),
+            ("[", OpenBracket, 1),
+            ("]", CloseBracket, 1),
+            (",", Comma, 1),
+            (".", Dot, 1),
+            (":", Colon, 1),
+            (";", Semicolon, 1),
+            ("/", Slash, 1),
+            ("%", Percent, 1),
+            ("+", Plus, 1),
+            ("-", Minus, 1),
+        ];
 
-                if self.current_chars.len() >= $chars_consumed {
-                    let matches = self
-                        .current_chars
-                        .iter()
-                        .take(str_chars.len())
-                        .zip(str_chars.iter())
-                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
+        for &(pattern, punctuation, min_chars) in PATTERNS {
+            let pattern_len = pattern.len();
 
-                    if matches {
-                        self.push_punctuation($punct, str_chars.len());
-                        self.current_chars.drain(..str_chars.len());
-                        return true;
-                    }
+            if self.current_chars.len() >= min_chars {
+                let matches = pattern
+                    .bytes()
+                    .enumerate()
+                    .all(|(i, expected)| self.current_chars[i].1 as u8 == expected);
+
+                if matches {
+                    self.push_punctuation(punctuation, pattern_len);
+                    self.current_chars.drain(..pattern_len);
+                    return true;
                 }
-                false
-            }};
+            }
         }
-
-        check_punct!("&&", AmpAmp, 2);
-        check_punct!("!=", NotEq, 2);
-        check_punct!("**", StarStar, 2);
-        check_punct!("==", EqEq, 2);
-        check_punct!("<=", LessThanOrEq, 2);
-        check_punct!(">=", GreaterThanOrEq, 2);
-        check_punct!("||", PipePipe, 2);
-        check_punct!("=>", FatArrow, 2);
-
-        check_punct!("&", Amp, 2);
-        check_punct!("!", Bang, 2);
-        check_punct!("*", Star, 2);
-        check_punct!("=", Eq, 2);
-        check_punct!("<", LessThan, 2);
-        check_punct!(">", GreaterThan, 2);
-        check_punct!("|", Pipe, 2);
-
-        check_punct!(")", CloseParen, 1);
-        check_punct!("(", OpenParen, 1);
-        check_punct!("{", OpenBrace, 1);
-        check_punct!("}", CloseBrace, 1);
-        check_punct!("[", OpenBracket, 1);
-        check_punct!("]", CloseBracket, 1);
-        check_punct!(",", Comma, 1);
-        check_punct!(".", Dot, 1);
-        check_punct!(":", Colon, 1);
-        check_punct!(";", Semicolon, 1);
-        check_punct!("/", Slash, 1);
-        check_punct!("%", Percent, 1);
-        check_punct!("+", Plus, 1);
-        check_punct!("-", Minus, 1);
 
         false
     }

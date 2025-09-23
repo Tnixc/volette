@@ -1,29 +1,7 @@
-fn add(x: i32, y: i32): i32 {
-    return x + y +;
-}
-
-fn test_undefined_vars(): i32 {
-    let a = undefined_variable;
-    let b = another_undefined_var;
-    return a + b;
-}
-
-fn test_type_mismatch(): i32 {
-    let num = 42;
-    let float_num = 3.14;
-    return num + float_num;
-}
-
-fn test_function_calls(): i32 {
-    let result1 = add(5);
-    let result2 = add(1, 2, 3);
-    let result3 = nonexistent_function(10);
-    return result1;
-}
-
-fn main(): i32 {
-    let x = 10;
-    let y = 20;
-    let sum = add(x, y);
-    return sum;
+fn main(): i32{
+    if (true){
+        return 1;
+    } else {
+        return 2;
+    }
 }

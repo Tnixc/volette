@@ -23,48 +23,47 @@ impl<'a> Lexer<'a> {
     pub fn check_type_literals(&mut self) -> bool {
         use crate::compiler::tokens::PrimitiveTypes::*;
 
-        macro_rules! check_type {
-            ($str:expr, $keyword:expr) => {{
-                let str_chars: Vec<char> = $str.chars().collect();
+        const PATTERNS: &[(&str, crate::compiler::tokens::PrimitiveTypes)] = &[
+            ("usize", Usize),
+            ("isize", Isize),
+            ("bool", Bool),
+            ("i16", I16),
+            ("i32", I32),
+            ("i64", I64),
+            ("u16", U16),
+            ("u32", U32),
+            ("u64", U64),
+            ("f32", F32),
+            ("f64", F64),
+            ("Nil", Nil),
+            ("i8", I8),
+            ("u8", U8),
+        ];
 
-                if self.current_chars.len() >= str_chars.len()
-                    && self
-                        .current_chars
-                        .iter()
-                        .take(str_chars.len())
-                        .zip(str_chars.iter())
-                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char)
-                {
-                    let has_valid_boundary = if self.current_chars.len() > str_chars.len() {
-                        !self.current_chars[str_chars.len()].1.is_valid_ident_char()
+        for &(pattern, type_literal) in PATTERNS {
+            let pattern_len = pattern.len();
+
+            if self.current_chars.len() >= pattern_len {
+                let matches = pattern
+                    .bytes()
+                    .enumerate()
+                    .all(|(i, expected)| self.current_chars[i].1 as u8 == expected);
+
+                if matches {
+                    let has_valid_boundary = if self.current_chars.len() > pattern_len {
+                        !self.current_chars[pattern_len].1.is_valid_ident_char()
                     } else {
                         true
                     };
 
                     if has_valid_boundary {
-                        self.push_type_literal($keyword, str_chars.len());
-                        self.current_chars.drain(..str_chars.len());
+                        self.push_type_literal(type_literal, pattern_len);
+                        self.current_chars.drain(..pattern_len);
                         return true;
                     }
                 }
-                false
-            }};
+            }
         }
-
-        check_type!("i8", I8);
-        check_type!("i16", I16);
-        check_type!("i32", I32);
-        check_type!("i64", I64);
-        check_type!("u8", U8);
-        check_type!("u16", U16);
-        check_type!("u32", U32);
-        check_type!("u64", U64);
-        check_type!("f32", F32);
-        check_type!("f64", F64);
-        check_type!("usize", Usize);
-        check_type!("isize", Isize);
-        check_type!("bool", Bool);
-        check_type!("Nil", Nil);
 
         false
     }

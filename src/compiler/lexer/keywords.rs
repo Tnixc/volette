@@ -24,49 +24,50 @@ impl<'a> Lexer<'a> {
     pub fn check_keywords(&mut self) -> bool {
         use crate::compiler::tokens::Keyword::*;
 
-        macro_rules! check_keyword {
-            ($str:expr, $keyword:expr) => {{
-                let str_chars: Vec<char> = $str.chars().collect();
+        const PATTERNS: &[(&str, crate::compiler::tokens::Keyword)] = &[
+            ("return", Return),
+            ("struct", Struct),
+            ("const", Const),
+            ("break", Break),
+            ("local", Local),
+            ("alloc", Alloc),
+            ("else", Else),
+            ("loop", Loop),
+            ("free", Free),
+            ("self", Self_),
+            ("pub", Pub),
+            ("use", Use),
+            ("let", Let),
+            ("fn", Fn),
+            ("as", As),
+            ("in", In),
+            ("if", If),
+        ];
 
-                if self.current_chars.len() > str_chars.len() {
-                    let matches = self
-                        .current_chars
-                        .iter()
-                        .take(str_chars.len())
-                        .zip(str_chars.iter())
-                        .all(|((_, char_from_input), &expected_char)| *char_from_input == expected_char);
+        for &(pattern, keyword) in PATTERNS {
+            let pattern_len = pattern.len();
 
-                    let has_valid_boundary = if self.current_chars.len() > str_chars.len() {
-                        !self.current_chars[str_chars.len()].1.is_valid_ident_char()
+            if self.current_chars.len() > pattern_len {
+                let matches = pattern
+                    .bytes()
+                    .enumerate()
+                    .all(|(i, expected)| self.current_chars[i].1 as u8 == expected);
+
+                if matches {
+                    let has_valid_boundary = if self.current_chars.len() > pattern_len {
+                        !self.current_chars[pattern_len].1.is_valid_ident_char()
                     } else {
                         true
                     };
 
-                    if matches && has_valid_boundary {
-                        self.push_keyword($keyword, str_chars.len());
-                        self.current_chars.drain(..str_chars.len());
+                    if has_valid_boundary {
+                        self.push_keyword(keyword, pattern_len);
+                        self.current_chars.drain(..pattern_len);
                         return true;
                     }
                 }
-                false
-            }};
+            }
         }
-
-        check_keyword!("fn", Fn);
-        check_keyword!("use", Use);
-        check_keyword!("const", Const);
-        check_keyword!("let", Let);
-        check_keyword!("loop", Loop);
-        check_keyword!("break", Break);
-        check_keyword!("return", Return);
-        check_keyword!("struct", Struct);
-        check_keyword!("alloc", Alloc);
-        check_keyword!("free", Free);
-        check_keyword!("pub", Pub);
-        check_keyword!("local", Local);
-        check_keyword!("self", Self_);
-        check_keyword!("as", As);
-        check_keyword!("in", In);
 
         false
     }
