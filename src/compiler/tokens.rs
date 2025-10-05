@@ -18,7 +18,7 @@ pub enum Keyword {
     As,
     In,
     If,
-    Else
+    Else,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

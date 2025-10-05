@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::{
+    SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{error::TranslateError, variable::expr_assign, Info},
+        codegen::{Info, error::TranslateError, variable::expr_assign},
         parser::node::{ExprKind, NodeKind, Type},
-        tokens::PrimitiveTypes,
-    }, SafeConvert
+    },
 };
 
 use super::{

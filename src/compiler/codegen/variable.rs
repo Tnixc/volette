@@ -64,7 +64,7 @@ pub fn expr_assign(
     fn_builder.def_var(var, var_val);
     let symbol = match &info.nodes.get(target).safe().kind {
         NodeKind::Expr { kind, .. } => match kind {
-            ExprKind::Identifier(K) => K,
+            ExprKind::Identifier(k) => k,
             _ => unreachable!(),
         },
         _ => unreachable!(),

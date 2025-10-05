@@ -39,8 +39,8 @@ pub fn expr_binop(
                 BinOpKind::LessThan => fn_builder.ins().fcmp(FloatCC::LessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().fcmp(FloatCC::LessThanOrEqual, left_value, right_value),
                 _ => return Err(TranslateError::Internal("Unsupported float binary operation".to_string())),
-        }
             }
+        }
         (Type::Primitive(PrimitiveTypes::I32), Type::Primitive(PrimitiveTypes::I32))
         | (Type::Primitive(PrimitiveTypes::I64), Type::Primitive(PrimitiveTypes::I64)) => {
             use cranelift::codegen::ir::condcodes::IntCC;

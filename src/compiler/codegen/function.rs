@@ -50,7 +50,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
 
             // -- Body --
             let mut scopes: Vec<HashMap<SymbolUsize, (Type, Variable)>> = vec![HashMap::new()];
-            
+
             // collect block parameters into a vector to avoid borrowing conflicts
             let block_params: Vec<_> = fn_builder.block_params(entry).to_vec();
 
@@ -63,7 +63,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                 fn_builder.def_var(var, val);
                 scopes.last_mut().safe().insert(param.0, (param.1, var));
             }
-            
+
             let (body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
 
             // add implicit return if the body doesn't diverge (never type)
