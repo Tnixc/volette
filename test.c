@@ -1,6 +1,6 @@
 #include <stdio.h>
-extern int world();
+extern long w();
 int main() {
-  printf("hello_world = %d\n", world(20));
+  printf("hello_world = %ld\n", w(20));
   return 0;
 }

@@ -26,20 +26,30 @@ pub fn type_check_root(
         for idx in defs {
             let node = nodes.get(*idx).safe();
             if let NodeKind::Def { kind } = &node.kind {
-                // TODO: check return types
-                if let DefKind::Function { body, params, .. } = kind {
+                if let DefKind::Function { body, params, return_type, .. } = kind {
+                    let body_idx = *body;
+                    let return_type = *return_type;
+                    
                     let mut ident_types: HashMap<SymbolUsize, Type> = HashMap::new();
                     params.iter().for_each(|param| {
                         ident_types.insert(param.0, param.1);
                     });
-                    let body_node = nodes.get(*body).safe().clone();
-                    if let NodeKind::Expr { kind, .. } = &body_node.kind {
-                        if let ExprKind::Block { exprs } = kind {
-                            for &expr_idx in exprs {
-                                if let Err(e) = resolve_expr_type(expr_idx, None, nodes, interner, &mut ident_types, &fn_table) {
-                                    diagnostics.add_error(CompilerError::Analysis(e));
-                                }
-                            }
+                    
+                    // type check the function body
+                    // the body is a block expression that should ultimately return the declared return_type
+                    if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table) {
+                        diagnostics.add_error(CompilerError::Analysis(e));
+                    }
+                    
+                    // a body with type never is compatible with any return type
+                    let body_node = nodes.get(body_idx).safe();
+                    if let NodeKind::Expr { type_: Some(body_type), .. } = &body_node.kind {
+                        if *body_type != Type::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
+                            diagnostics.add_error(CompilerError::Analysis(AnalysisError::TypeMismatch {
+                                expected: return_type,
+                                got: *body_type,
+                                span: body_node.span.to_display(interner),
+                            }));
                         }
                     }
                 }
@@ -107,12 +117,53 @@ fn resolve_expr_type(
                 Ok(Type::Primitive(PrimitiveTypes::Never))
             }
             ExprKind::Block { exprs } => {
-                let mut last_expr_type = Type::Primitive(PrimitiveTypes::Nil);
-                for &expr_idx in &exprs {
-                    last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
+                if exprs.is_empty() {
+                    Ok(Type::Primitive(PrimitiveTypes::Nil))
+                } else {
+                    let mut last_expr_type = Type::Primitive(PrimitiveTypes::Nil);
+                    for &expr_idx in &exprs {
+                        last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
+                    }
+                    
+                    // the block type is the type of its last expression (??)
+                    Ok(last_expr_type)
                 }
-                // println!("Last expr type: {}", last_expr_type);
-                Ok(last_expr_type)
+            }
+            ExprKind::If {
+                cond,
+                then_block,
+                else_block,
+            } => {
+                resolve_expr_type(
+                    cond,
+                    Some(Type::Primitive(PrimitiveTypes::Bool)),
+                    nodes,
+                    interner,
+                    ident_types,
+                    fn_table,
+                )?;
+                let then_type = resolve_expr_type(then_block, None, nodes, interner, ident_types, fn_table)?;
+                if let Some(else_block) = else_block {
+                    let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table)?;
+                    
+                    // if both branches diverge (never), the if-expression diverges
+                    if then_type == Type::Primitive(PrimitiveTypes::Never) 
+                        && else_type == Type::Primitive(PrimitiveTypes::Never) {
+                        Ok(Type::Primitive(PrimitiveTypes::Never))
+                    } else if then_type == else_type {
+                        Ok(then_type)
+                    } else {
+                        Err(AnalysisError::TypeMismatch {
+                            expected: then_type,
+                            got: else_type,
+                            span: nodes.get(else_block).safe().span.to_display(interner),
+                        })
+                    }
+                } else {
+                    // if without else should return nil when condition is false
+                    // but we'll just use the then branch type for now (TODO)
+                    Ok(then_type)
+                }
             }
             ExprKind::Call { func, args } => {
                 let func_name = match &nodes.get(func).safe().kind {
@@ -126,25 +177,15 @@ fn resolve_expr_type(
                 let rest = fn_table.get(&func_name);
                 match rest {
                     Some(rest) => {
-                        for (a, b) in args.iter().zip(rest.0.iter()) {
-                            // function def expected types
-                            let a_ty = match &nodes.get(*a).safe().kind {
-                                NodeKind::Expr { type_, .. } => type_,
-                                _ => {
-                                    return Err(AnalysisError::Internal(
-                                        "Expected expression node for function argument".to_string(),
-                                    ));
-                                }
-                            };
-                            if let Some(a_ty) = a_ty {
-                                if a_ty != b {
-                                    let span = nodes.get(*a).safe().span;
-                                    return Err(AnalysisError::TypeMismatch {
-                                        expected: *a_ty,
-                                        got: *b,
-                                        span: span.to_display(interner),
-                                    });
-                                }
+                        for (arg_idx, expected_type) in args.iter().zip(rest.0.iter()) {
+                            let arg_type = resolve_expr_type(*arg_idx, Some(*expected_type), nodes, interner, ident_types, fn_table)?;
+                            if arg_type != *expected_type {
+                                let span = nodes.get(*arg_idx).safe().span;
+                                return Err(AnalysisError::TypeMismatch {
+                                    expected: *expected_type,
+                                    got: arg_type,
+                                    span: span.to_display(interner),
+                                });
                             }
                         }
                         Ok(rest.1)
@@ -181,8 +222,6 @@ fn resolve_expr_type(
     // update the node with the resolved type
     nodes.get_mut(target_idx).safe().set_type(inferred_type);
 
-    // println!("Resolved type: {}", inferred_type);
-    // println!("Node: {:?}", nodes.get(target_idx));
     Ok(inferred_type)
 }
 

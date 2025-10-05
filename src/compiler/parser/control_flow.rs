@@ -1,6 +1,6 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Punctuation, Token, TokenKind};
+use crate::compiler::tokens::{Keyword::Else, Punctuation, Token, TokenKind};
 
 use super::{
     Parser,
@@ -122,6 +122,41 @@ impl<'a> Parser<'a> {
                 type_: None,
             },
             loop_span,
+        )))
+    }
+
+    pub fn parse_if_expr_nud(&mut self, if_keyword_token: Token) -> Result<Index, ParserError> {
+        self.advance(); // consume 'if'
+
+        let condition_idx = self.pratt_parse_expression(BindingPower::None)?;
+
+        let then_block_idx = self.parse_block_body()?;
+        let then_block_node = self
+            .node(&then_block_idx)
+            .ok_or_else(|| ParserError::InternalError("If body node not found".to_string()))?;
+        let mut span = if_keyword_token.span.connect_new(&then_block_node.span);
+
+        let mut else_block_idx_opt = None;
+        if self.current().kind == TokenKind::Keyword(Else) {
+            self.advance(); // consume 'else'
+            let else_block_idx = self.parse_block_body()?;
+            let else_block_node = self
+                .node(&else_block_idx)
+                .ok_or_else(|| ParserError::InternalError("Else body node not found".to_string()))?;
+            span.connect_mut(&else_block_node.span);
+            else_block_idx_opt = Some(else_block_idx);
+        }
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::If {
+                    cond: condition_idx,
+                    then_block: then_block_idx,
+                    else_block: else_block_idx_opt,
+                },
+                type_: None,
+            },
+            span,
         )))
     }
 }

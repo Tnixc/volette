@@ -1,7 +1,8 @@
-fn main(): i32{
-    if (true){
+fn w(x: i32): i32{
+    if x == 1 {
         return 1;
     } else {
-        return 2;
+        return x * w(x - 1);
     }
 }
+
