@@ -16,7 +16,7 @@ pub fn expr_block(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
     info: &mut Info,
-) -> Result<(Value, Type), TranslateError> {
+) -> Result<Value, TranslateError> {
     scopes.push(HashMap::new());
     let mut last_res: Option<(Value, Type)> = None;
     for expr in exprs {
@@ -24,5 +24,7 @@ pub fn expr_block(
     }
     scopes.pop();
 
-    Ok(last_res.unwrap_or_else(|| (fn_builder.ins().iconst(types::I32, 0), Type::Primitive(PrimitiveTypes::Nil))))
+    Ok(last_res
+        .unwrap_or_else(|| (fn_builder.ins().iconst(types::I32, 0), Type::Primitive(PrimitiveTypes::I32)))
+        .0)
 }

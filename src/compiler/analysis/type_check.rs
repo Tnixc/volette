@@ -26,24 +26,30 @@ pub fn type_check_root(
         for idx in defs {
             let node = nodes.get(*idx).safe();
             if let NodeKind::Def { kind } = &node.kind {
-                if let DefKind::Function { body, params, return_type, .. } = kind {
+                if let DefKind::Function {
+                    body, params, return_type, ..
+                } = kind
+                {
                     let body_idx = *body;
                     let return_type = *return_type;
-                    
+
                     let mut ident_types: HashMap<SymbolUsize, Type> = HashMap::new();
                     params.iter().for_each(|param| {
                         ident_types.insert(param.0, param.1);
                     });
-                    
+
                     // type check the function body
                     // the body is a block expression that should ultimately return the declared return_type
                     if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table) {
                         diagnostics.add_error(CompilerError::Analysis(e));
                     }
-                    
+
                     // a body with type never is compatible with any return type
                     let body_node = nodes.get(body_idx).safe();
-                    if let NodeKind::Expr { type_: Some(body_type), .. } = &body_node.kind {
+                    if let NodeKind::Expr {
+                        type_: Some(body_type), ..
+                    } = &body_node.kind
+                    {
                         if *body_type != Type::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
                             diagnostics.add_error(CompilerError::Analysis(AnalysisError::TypeMismatch {
                                 expected: return_type,
@@ -106,9 +112,23 @@ fn resolve_expr_type(
                 let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table)?;
                 // println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type);
-                Ok(value_type)
+                // Let bindings are statements that return Nil/unit type
+                Ok(Type::Primitive(PrimitiveTypes::Nil))
             }
             ExprKind::Literal(v) => resolve_literal(span, interner, expected, v),
+            ExprKind::Assign { target, value } => {
+                let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table)?;
+                let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table)?;
+                if target_type != value_type {
+                    Err(AnalysisError::TypeMismatch {
+                        expected: target_type,
+                        got: value_type,
+                        span: span.to_display(interner),
+                    })
+                } else {
+                    Ok(target_type)
+                }
+            }
             ExprKind::BinOp { left, right, op } => resolve_binop(left, right, op, nodes, interner, ident_types, fn_table),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
@@ -124,7 +144,7 @@ fn resolve_expr_type(
                     for &expr_idx in &exprs {
                         last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
                     }
-                    
+
                     // the block type is the type of its last expression (??)
                     Ok(last_expr_type)
                 }
@@ -145,10 +165,9 @@ fn resolve_expr_type(
                 let then_type = resolve_expr_type(then_block, None, nodes, interner, ident_types, fn_table)?;
                 if let Some(else_block) = else_block {
                     let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table)?;
-                    
+
                     // if both branches diverge (never), the if-expression diverges
-                    if then_type == Type::Primitive(PrimitiveTypes::Never) 
-                        && else_type == Type::Primitive(PrimitiveTypes::Never) {
+                    if then_type == Type::Primitive(PrimitiveTypes::Never) && else_type == Type::Primitive(PrimitiveTypes::Never) {
                         Ok(Type::Primitive(PrimitiveTypes::Never))
                     } else if then_type == else_type {
                         Ok(then_type)

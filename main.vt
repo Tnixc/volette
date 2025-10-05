@@ -1,8 +1,5 @@
-fn w(x: i32): i32{
-    if x == 1 {
-        return 1;
-    } else {
-        return x * w(x - 1);
-    }
+fn w(k: i32): i32 {
+    let x = k;
+    x = 12;
+    return x;
 }
-

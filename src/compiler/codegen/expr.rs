@@ -4,13 +4,12 @@ use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::{
-    SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{Info, error::TranslateError},
+        codegen::{error::TranslateError, variable::expr_assign, Info},
         parser::node::{ExprKind, NodeKind, Type},
         tokens::PrimitiveTypes,
-    },
+    }, SafeConvert
 };
 
 use super::{
@@ -35,10 +34,7 @@ pub fn expr_to_val(
                 ExprKind::Literal(literal) => match_literal(*literal, type_.unwrap_or(literal_default_types(*literal)), node, fn_builder)?,
                 ExprKind::BinOp { left, right, op } => expr_binop(*left, *right, *op, fn_builder, scopes, info)?,
                 ExprKind::Return { value: ret_val } => expr_return(*ret_val, fn_builder, scopes, info)?,
-                ExprKind::Block { exprs } => {
-                    let (val, _) = expr_block(exprs, fn_builder, scopes, info)?;
-                    val
-                }
+                ExprKind::Block { exprs } => expr_block(exprs, fn_builder, scopes, info)?,
                 ExprKind::LetBinding { name, value, .. } => expr_let_binding(*name, *value, fn_builder, scopes, info)?,
                 ExprKind::Identifier(sym) => expr_identifier(*sym, fn_builder, scopes)?,
                 ExprKind::Call { func, args } => expr_call(*func, args, fn_builder, scopes, info)?,
@@ -47,12 +43,13 @@ pub fn expr_to_val(
                     then_block,
                     else_block,
                 } => expr_if(*cond, *then_block, *else_block, fn_builder, scopes, info)?,
+                ExprKind::Assign { target, value } => expr_assign(*target, *value, fn_builder, scopes, info)?,
                 _ => {
                     return Err(TranslateError::Internal(format!("Unsupported expression kind: {:?}", kind)));
                 }
             };
 
-            Ok((value, type_.unwrap()))
+            Ok((value, type_.safe()))
             // TODO: Make the blocks accept -> statements like returns and eval its type instead of defaulting to Never
         }
         _ => return Err(TranslateError::Internal("Expected expression node in expr_to_val".to_string())),

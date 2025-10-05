@@ -3,12 +3,13 @@ use crate::{
     compiler::{
         codegen::{Info, expr::expr_to_val},
         parser::node::{DefKind, Node, NodeKind, Type},
+        tokens::PrimitiveTypes,
     },
 };
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
     module::FuncId,
-    prelude::{AbiParam, EntityRef, FunctionBuilder, FunctionBuilderContext, Signature, Variable},
+    prelude::{AbiParam, EntityRef, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, Variable},
 };
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
@@ -48,9 +49,9 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             fn_builder.append_block_params_for_function_params(entry);
 
             // -- Body --
-            let mut scopes: Vec<HashMap<SymbolUsize, (Type, Variable)>> = vec![HashMap::new()]; // New scope for the function
-
-            // Collect block parameters into a vector to avoid borrowing conflicts
+            let mut scopes: Vec<HashMap<SymbolUsize, (Type, Variable)>> = vec![HashMap::new()];
+            
+            // collect block parameters into a vector to avoid borrowing conflicts
             let block_params: Vec<_> = fn_builder.block_params(entry).to_vec();
 
             for (i, param) in params.iter().enumerate() {
@@ -62,8 +63,13 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                 fn_builder.def_var(var, val);
                 scopes.last_mut().safe().insert(param.0, (param.1, var));
             }
+            
+            let (body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
 
-            expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
+            // add implicit return if the body doesn't diverge (never type)
+            if body_type != Type::Primitive(PrimitiveTypes::Never) {
+                fn_builder.ins().return_(&[body_val]); // <- should be 1 item because i dont have multi value returns
+            }
 
             fn_builder.seal_block(entry);
             fn_builder.finalize();

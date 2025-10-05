@@ -7,7 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, error::TranslateError},
-        parser::node::Type,
+        parser::node::{ExprKind, NodeKind, Type},
     },
 };
 
@@ -45,4 +45,32 @@ pub fn expr_identifier(
         Some((_, variable)) => Ok(fn_builder.use_var(*variable)),
         None => Err(TranslateError::UndeclaredIdentifier(format!("Identifier {:?}", sym))),
     }
+}
+
+pub fn expr_assign(
+    target: Index,
+    value: Index,
+    fn_builder: &mut FunctionBuilder,
+    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    info: &mut Info,
+) -> Result<Value, TranslateError> {
+    let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
+    let ty = actual_type.to_clif(info.build_config.ptr_width);
+
+    // Create a unique variable index across all scopes
+    let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
+    let var = Variable::new(var_index);
+    fn_builder.declare_var(var, ty);
+    fn_builder.def_var(var, var_val);
+    let symbol = match &info.nodes.get(target).safe().kind {
+        NodeKind::Expr { kind, .. } => match kind {
+            ExprKind::Identifier(K) => K,
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
+    };
+
+    scopes.last_mut().safe().insert(*symbol, (actual_type, var));
+
+    Ok(var_val)
 }
