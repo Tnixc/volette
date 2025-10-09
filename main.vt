@@ -1,5 +1,5 @@
 fn f(): Nil {
-    return nil;
+    return nil + 2;
 }
 
 fn w(x: i32) :i32 {

@@ -281,7 +281,20 @@ fn resolve_binop(
     fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) -> Result<Type, AnalysisError> {
     let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table)?;
-    let right_ty = resolve_expr_type(right, Some(left_ty), nodes, interner, ident_types, fn_table)?;
+    let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table)?;
+
+    if left_ty == Type::Primitive(PrimitiveTypes::Nil) || left_ty == Type::Primitive(PrimitiveTypes::Nil) {
+        return Err(AnalysisError::InvalidBinOp {
+            op: op,
+            ty: left_ty,
+            span: nodes
+                .get(left)
+                .safe()
+                .span
+                .connect_new(&nodes.get(right).safe().span)
+                .to_display(interner),
+        });
+    }
 
     if left_ty != right_ty {
         return Err(AnalysisError::TypeMismatch {
