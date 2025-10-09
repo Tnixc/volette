@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
 
         self.advance();
 
-        let mut return_type = Type::Primitive(PrimitiveTypes::Unit);
+        let mut return_type = Type::Primitive(PrimitiveTypes::Nil);
 
         if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
             self.advance();

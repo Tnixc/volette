@@ -21,7 +21,6 @@ impl PrimitiveTypes {
             F32 => types::F32,
             F64 => types::F64,
             Bool => types::I8,
-            Unit => types::INVALID, // TODO: is this correct?
             Nil | Never => types::INVALID,
         }
     }

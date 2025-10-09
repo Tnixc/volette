@@ -18,13 +18,22 @@ pub fn expr_block(
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     scopes.push(HashMap::new());
-    let mut last_res: Option<(Value, Type)> = None;
+    let mut last_res: Option<(Option<Value>, Type)> = None;
     for expr in exprs {
         last_res = Some(expr_to_val(*expr, fn_builder, scopes, info)?);
     }
     scopes.pop();
 
-    Ok(last_res
-        .unwrap_or_else(|| (fn_builder.ins().iconst(types::I32, 0), Type::Primitive(PrimitiveTypes::I32)))
-        .0)
+    match last_res {
+        Some((Some(val), _)) => Ok(val),
+        Some((None, Type::Primitive(PrimitiveTypes::Never))) => {
+            // TODO: check if this makes sense
+            // block terminated with never type (e.g., return), return dummy value
+            Ok(Value::from_u32(0))
+        }
+        Some((None, _)) | None => {
+            // zero-sized value or empty block, emit dummy constant
+            Ok(fn_builder.ins().iconst(types::I32, 0))
+        }
+    }
 }

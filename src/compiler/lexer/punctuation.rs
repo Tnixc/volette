@@ -33,6 +33,7 @@ impl<'a> Lexer<'a> {
             (">=", GreaterThanOrEq, 2),
             ("||", PipePipe, 2),
             ("=>", FatArrow, 2),
+            ("->", Arrow, 2),
             // 1-char ops that require 2 chars (for precedence)
             ("&", Amp, 2),
             ("!", Bang, 2),
@@ -41,6 +42,7 @@ impl<'a> Lexer<'a> {
             ("<", LessThan, 2),
             (">", GreaterThan, 2),
             ("|", Pipe, 2),
+            ("-", Minus, 2),
             // 1-char ops that only require 1 char
             (")", CloseParen, 1),
             ("(", OpenParen, 1),
@@ -55,7 +57,6 @@ impl<'a> Lexer<'a> {
             ("/", Slash, 1),
             ("%", Percent, 1),
             ("+", Plus, 1),
-            ("-", Minus, 1),
         ];
 
         for &(pattern, punctuation, min_chars) in PATTERNS {

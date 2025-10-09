@@ -21,6 +21,8 @@ pub fn expr_let_binding(
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
+    // TODO: allow binding to Nil/ other zero-sized value
+    let var_val = var_val.expect("TODO: let binding requires non-zero-sized value. This will change later");
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
     // Create a unique variable index across all scopes
@@ -54,7 +56,8 @@ pub fn expr_assign(
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
-    let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
+    let (maybe_var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
+    let var_val = maybe_var_val.expect("assignment requires non-zero-sized value");
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
     // Create a unique variable index across all scopes

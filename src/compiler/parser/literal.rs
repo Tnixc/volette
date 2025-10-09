@@ -14,6 +14,7 @@ impl<'a> Parser<'a> {
             TokenKind::IntLiteral(i) => Literal::Int(i),
             TokenKind::FloatLiteral(f) => Literal::Float(f),
             TokenKind::BoolLiteral(b) => Literal::Bool(b),
+            TokenKind::NilLiteral => Literal::Nil,
             _ => {
                 return Err(ParserError::InternalError("Not a literal token in parse_literal_nud".into()));
             }
