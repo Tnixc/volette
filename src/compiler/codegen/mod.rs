@@ -153,13 +153,16 @@ pub fn codegen(
 }
 
 fn isa() -> Arc<dyn TargetIsa + 'static> {
-    let triple_str = "aarch64-apple-darwin";
-    let triple = Triple::from_str(triple_str).safe();
+    let triple = target_lexicon::Triple::host();
 
     let flag_builder = settings::builder();
     let flags = Flags::new(flag_builder);
 
-    let isa_builder = isa::lookup(triple.clone()).safe();
-
-    (isa_builder.finish(flags).safe()) as _
+    match isa::lookup(triple.clone()) {
+        Ok(isa_builder) => match isa_builder.finish(flags) {
+            Ok(isa) => isa,
+            Err(e) => panic!("failed to create ISA for {}: {}", triple, e),
+        },
+        Err(e) => panic!("target {} is not supported: {}", triple, e),
+    }
 }
