@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use cranelift::{
     codegen::Context,
@@ -12,7 +12,7 @@ use cranelift::{
 };
 use generational_arena::Arena;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
-use target_lexicon::Triple;
+use target_lexicon::{PointerWidth as TargetPointerWidth, Triple};
 
 use crate::{
     SafeConvert,
@@ -60,16 +60,13 @@ pub fn codegen(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     _fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
 ) -> Result<(), TranslateError> {
-    let target_isa = isa();
+    let (target_isa, call_conv, ptr_width) = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
     let module = ObjectModule::new(builder);
     let ctx = Context::new();
 
-    let build_config = BuildConfig {
-        ptr_width: PtrWidth::X64,
-        call_conv: CallConv::SystemV,
-    };
+    let build_config = BuildConfig { ptr_width, call_conv };
 
     let mut info = Info {
         module,
@@ -152,15 +149,26 @@ pub fn codegen(
     Ok(())
 }
 
-fn isa() -> Arc<dyn TargetIsa + 'static> {
-    let triple = target_lexicon::Triple::host();
+fn isa() -> (Arc<dyn TargetIsa + 'static>, CallConv, PtrWidth) {
+    let triple = Triple::host();
 
     let flag_builder = settings::builder();
     let flags = Flags::new(flag_builder);
 
     match isa::lookup(triple.clone()) {
         Ok(isa_builder) => match isa_builder.finish(flags) {
-            Ok(isa) => isa,
+            Ok(isa) => {
+                let call_conv = isa.default_call_conv();
+
+                let ptr_width = match triple.pointer_width() {
+                    Ok(TargetPointerWidth::U16) => PtrWidth::X32,
+                    Ok(TargetPointerWidth::U32) => PtrWidth::X32,
+                    Ok(TargetPointerWidth::U64) => PtrWidth::X64,
+                    Err(_) => PtrWidth::X64,
+                };
+
+                (isa, call_conv, ptr_width)
+            }
             Err(e) => panic!("failed to create ISA for {}: {}", triple, e),
         },
         Err(e) => panic!("target {} is not supported: {}", triple, e),
