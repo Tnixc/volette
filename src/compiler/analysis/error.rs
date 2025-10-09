@@ -16,8 +16,8 @@ pub enum AnalysisError {
     #[error("Internal error: {0}")]
     Internal(String),
 
-    #[error("Invalid binary operation at {span}: {op}")]
-    _InvalidBinOp { op: BinOpKind, ty: Type, span: DisplaySpan },
+    #[error("Invalid binary operation at {span}: operation '{op}' with type {ty}")]
+    InvalidBinOp { op: BinOpKind, ty: Type, span: DisplaySpan },
 
     #[error("Undeclared function '{name}' at {span}")]
     UndeclaredFunction { name: String, span: DisplaySpan },
@@ -29,7 +29,7 @@ impl AnalysisError {
             AnalysisError::TypeMismatch { span, .. } => Some(span),
             AnalysisError::UnresolvedIdentifier { span, .. } => Some(span),
             AnalysisError::Internal(_) => None,
-            AnalysisError::_InvalidBinOp { span, .. } => Some(span),
+            AnalysisError::InvalidBinOp { span, .. } => Some(span),
             AnalysisError::UndeclaredFunction { span, .. } => Some(span),
         }
     }
