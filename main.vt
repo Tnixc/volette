@@ -1,7 +1,18 @@
-fn f(): Nil {
-    return nil + 2;
+fn f(x:i32): i32 {
+    if x > 0 {
+        return 2;
+    } else {
+        return 3;
+    }
+    let x = 1;
 }
 
-fn w(x: i32) :i32 {
-    return 1;
+
+fn w(x:i32): i32 {
+    return if x > 0 {
+        2;
+    } else {
+        3;
+    }
+    let x = 1;
 }
