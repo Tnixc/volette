@@ -32,10 +32,11 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::AmpAmp) => BinOpKind::LogicalAnd,
             TokenKind::Punctuation(Punctuation::PipePipe) => BinOpKind::LogicalOr,
             _ => {
-                return Err(ParserError::InternalError(format!(
-                    "Not a binary infix operator: {:?}",
-                    op_token.kind
-                )));
+                return Err(ParserError::Invalid {
+                    what: "binary operator".to_string(),
+                    reason: format!("Token {:?} is not a binary infix operator", op_token.kind),
+                    span: op_token.span.to_display(self.interner),
+                });
             }
         };
 
@@ -44,11 +45,17 @@ impl<'a> Parser<'a> {
 
         let left_node_cloned = self
             .node(&left_idx)
-            .ok_or_else(|| ParserError::InternalError("Left operand node not found".to_string()))?
+            .ok_or_else(|| ParserError::NotFound {
+                what: "left operand node".to_string(),
+                span: self.current().span.to_display(self.interner),
+            })?
             .clone();
         let right_node_cloned = self
             .node(&right_idx)
-            .ok_or_else(|| ParserError::InternalError("Right operand node not found".to_string()))?
+            .ok_or_else(|| ParserError::NotFound {
+                what: "right operand node".to_string(),
+                span: self.current().span.to_display(self.interner),
+            })?
             .clone();
         let combined_span = left_node_cloned.span.connect_new(&right_node_cloned.span);
 

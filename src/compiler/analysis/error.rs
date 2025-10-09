@@ -1,36 +1,35 @@
-use thiserror::Error;
+use crate::compiler::tokens::DisplaySpan;
 
-use crate::compiler::{
-    parser::node::{BinOpKind, Type},
-    tokens::DisplaySpan,
-};
+crate::define_errors! {
+    AnalysisError, phase: Analysis {
+        #[msg = "Type mismatch: expected {expected}, got {got}"]
+        #[help = "Ensure the types match or add an explicit conversion"]
+        TypeMismatch {
+            expected: String,
+            got: String,
+            span: DisplaySpan,
+        },
 
-#[derive(Debug, Error, Clone)]
-pub enum AnalysisError {
-    #[error("Type mismatch at {span}: expected {expected}, got {got}")]
-    TypeMismatch { expected: Type, got: Type, span: DisplaySpan },
+        #[msg = "Unresolved {what}"]
+        #[help = "This identifier or symbol was not found in the current scope"]
+        Unresolved {
+            what: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Unresolved identifier '{name}' at {span}")]
-    UnresolvedIdentifier { name: String, span: DisplaySpan },
+        #[msg = "Invalid {what}: {reason}"]
+        #[help = "This construct is not valid in the current context"]
+        Invalid {
+            what: String,
+            reason: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Internal error: {0}")]
-    Internal(String),
-
-    #[error("Invalid binary operation at {span}: operation '{op}' with type {ty}")]
-    InvalidBinOp { op: BinOpKind, ty: Type, span: DisplaySpan },
-
-    #[error("Undeclared function '{name}' at {span}")]
-    UndeclaredFunction { name: String, span: DisplaySpan },
-}
-
-impl AnalysisError {
-    pub fn span(&self) -> Option<&DisplaySpan> {
-        match self {
-            AnalysisError::TypeMismatch { span, .. } => Some(span),
-            AnalysisError::UnresolvedIdentifier { span, .. } => Some(span),
-            AnalysisError::Internal(_) => None,
-            AnalysisError::InvalidBinOp { span, .. } => Some(span),
-            AnalysisError::UndeclaredFunction { span, .. } => Some(span),
-        }
+        #[msg = "Unsupported {what}"]
+        #[help = "This feature is not yet supported by the analyzer"]
+        Unsupported {
+            what: String,
+            span: DisplaySpan,
+        },
     }
 }

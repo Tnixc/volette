@@ -16,7 +16,11 @@ impl<'a> Parser<'a> {
             TokenKind::BoolLiteral(b) => Literal::Bool(b),
             TokenKind::NilLiteral => Literal::Nil,
             _ => {
-                return Err(ParserError::InternalError("Not a literal token in parse_literal_nud".into()));
+                return Err(ParserError::Invalid {
+                    what: "token in literal context".to_string(),
+                    reason: format!("Expected literal, got {:?}", literal_token.kind),
+                    span: literal_token.span.to_display(self.interner),
+                });
             }
         };
 

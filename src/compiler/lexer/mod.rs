@@ -91,8 +91,9 @@ impl<'a> Lexer<'a> {
         }
 
         if !c.is_allowed_char() {
-            self.errors.push(LexError::InvalidCharacter {
-                character: c,
+            self.errors.push(LexError::Unexpected {
+                what: format!("character '{}'", c),
+                context: "lexing".to_string(),
                 span: self
                     .create_span(self.cursor.line, self.cursor.col, self.cursor.line, self.cursor.col)
                     .to_display(&self.interner),

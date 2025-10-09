@@ -10,17 +10,24 @@ impl<'a> Parser<'a> {
         let inner_expr_idx = self.pratt_parse_expression(BindingPower::None)?; // Parse expression inside parentheses
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::CloseParen) {
-            return Err(ParserError::CloseParenExpected { token: *self.current() });
+            return Err(ParserError::Expected {
+                what: "closing parenthesis".to_string(),
+                got: format!("{:?}", self.current().kind),
+                span: self.current().span.to_display(self.interner),
+            });
         }
         let close_paren_token = *self.current();
         self.advance(); // consume ')'
 
         let full_span = open_paren_token.span.connect_new(&close_paren_token.span);
 
-        let actual_inner_node = self
-            .tree
-            .get_mut(inner_expr_idx)
-            .ok_or_else(|| ParserError::InternalError("Inner expression node not found in parentheses".to_string()))?;
+        // get span before mutable borrow
+        let error_span = self.current().span.to_display(self.interner);
+
+        let actual_inner_node = self.tree.get_mut(inner_expr_idx).ok_or_else(|| ParserError::NotFound {
+            what: "inner expression node in parentheses".to_string(),
+            span: error_span,
+        })?;
         actual_inner_node.span = full_span; // update span to include parentheses
         Ok(inner_expr_idx)
     }

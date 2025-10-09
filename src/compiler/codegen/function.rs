@@ -92,9 +92,11 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             Ok(())
         }
         _ => {
-            return Err(TranslateError::Internal(
-                "Only function definitions are currently supported".to_string(),
-            ));
+            return Err(TranslateError::Unsupported {
+                what: "non-function definition".to_string(),
+                reason: "only function definitions are currently supported".to_string(),
+                span: node.span.to_display(info.interner),
+            });
         }
     }
 }

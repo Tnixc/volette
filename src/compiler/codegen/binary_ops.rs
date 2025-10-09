@@ -43,7 +43,13 @@ pub fn expr_binop(
                 BinOpKind::GreaterThanOrEq => fn_builder.ins().fcmp(FloatCC::GreaterThanOrEqual, left_value, right_value),
                 BinOpKind::LessThan => fn_builder.ins().fcmp(FloatCC::LessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().fcmp(FloatCC::LessThanOrEqual, left_value, right_value),
-                _ => return Err(TranslateError::Internal("Unsupported float binary operation".to_string())),
+                _ => {
+                    return Err(TranslateError::Unsupported {
+                        what: format!("binary operation '{:?}' on floats", op),
+                        reason: "this operation is not supported for floating-point types".to_string(),
+                        span: info.nodes.get(left).safe().span.to_display(info.interner),
+                    });
+                }
             }
         }
         (Type::Primitive(PrimitiveTypes::I32), Type::Primitive(PrimitiveTypes::I32))
@@ -61,15 +67,23 @@ pub fn expr_binop(
                 BinOpKind::LessThan => fn_builder.ins().icmp(IntCC::SignedLessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().icmp(IntCC::SignedLessThanOrEqual, left_value, right_value),
                 BinOpKind::Mod => fn_builder.ins().srem(left_value, right_value),
-                _ => return Err(TranslateError::Internal("Unsupported integer binary operation".to_string())),
+                _ => {
+                    return Err(TranslateError::Unsupported {
+                        what: format!("binary operation '{:?}' on integers", op),
+                        reason: "this operation is not supported for integer types".to_string(),
+                        span: info.nodes.get(left).safe().span.to_display(info.interner),
+                    });
+                }
             }
         }
 
         _ => {
             eprintln!("TYPE LEFT, {:?}, OPERAND: {:?}, TYPE RIGHT, {:?}", left_type, op, right_type);
-            return Err(TranslateError::Internal(
-                "Unsupported type combination for binary operation".to_string(),
-            ));
+            return Err(TranslateError::Unsupported {
+                what: format!("binary operation '{:?}' with types {:?} and {:?}", op, left_type, right_type),
+                reason: "this type combination is not supported".to_string(),
+                span: info.nodes.get(left).safe().span.to_display(info.interner),
+            });
         }
     };
 

@@ -1,4 +1,5 @@
-use string_interner::symbol::SymbolUsize;
+use std::fmt::{self, Display};
+use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Keyword {
@@ -100,6 +101,16 @@ pub struct Span {
     pub end: (usize, usize),
 }
 
+impl Span {
+    pub fn to_display(&self, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> DisplaySpan {
+        DisplaySpan {
+            file: interner.resolve(self.file).unwrap_or("<unknown>").to_string(),
+            start: self.start,
+            end: self.end,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct Token {
     pub kind: TokenKind,
@@ -162,4 +173,10 @@ pub struct DisplaySpan {
     pub file: String,
     pub start: (usize, usize),
     pub end: (usize, usize),
+}
+
+impl Display for DisplaySpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}-{}", self.file, self.start.0, self.start.1, self.end.1)
+    }
 }

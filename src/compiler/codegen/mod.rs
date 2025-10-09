@@ -104,15 +104,19 @@ pub fn codegen(
                             info.func_table.insert(*name, func_id);
                         }
                         _ => {
-                            return Err(TranslateError::Internal(
-                                "Only function definitions are currently supported".to_string(),
-                            ));
+                            return Err(TranslateError::Unsupported {
+                                what: "non-function definition".to_string(),
+                                reason: "only function definitions are currently supported".to_string(),
+                                span: def_node.span.to_display(interner),
+                            });
                         }
                     },
                     _ => {
-                        return Err(TranslateError::Internal(
-                            "Only definition nodes are currently supported".to_string(),
-                        ));
+                        return Err(TranslateError::Invalid {
+                            what: "node".to_string(),
+                            reason: "only definition nodes are currently supported".to_string(),
+                            span: def_node.span.to_display(interner),
+                        });
                     }
                 }
             }
@@ -130,7 +134,7 @@ pub fn codegen(
                                 let diagnostic = Diagnostic {
                                     severity: Severity::Error,
                                     message: e.to_string(),
-                                    span: e.span().cloned(),
+                                    span: Some(e.span().clone()),
                                     phase: CompilerPhase::Codegen,
                                     help: None,
                                     note: None,
@@ -146,15 +150,19 @@ pub fn codegen(
                             info.ctx.clear();
                         }
                         _ => {
-                            return Err(TranslateError::Internal(
-                                "Only function definitions are currently supported".to_string(),
-                            ));
+                            return Err(TranslateError::Unsupported {
+                                what: "non-function definition".to_string(),
+                                reason: "only function definitions are currently supported".to_string(),
+                                span: def_node.span.to_display(interner),
+                            });
                         }
                     },
                     _ => {
-                        return Err(TranslateError::Internal(
-                            "Only definition nodes are currently supported".to_string(),
-                        ));
+                        return Err(TranslateError::Invalid {
+                            what: "node".to_string(),
+                            reason: "only definition nodes are currently supported".to_string(),
+                            span: def_node.span.to_display(interner),
+                        });
                     }
                 }
             }
@@ -163,7 +171,13 @@ pub fn codegen(
                 return Ok(info.diagnostics);
             }
         }
-        _ => return Err(TranslateError::Internal("Expected root node in codegen".to_string())),
+        _ => {
+            return Err(TranslateError::Invalid {
+                what: "node".to_string(),
+                reason: "expected root node in codegen".to_string(),
+                span: root.span.to_display(interner),
+            });
+        }
     }
 
     let product = info.module.finish();

@@ -43,7 +43,11 @@ impl<'a> Parser<'a> {
                 left_expr_idx = self.parse_block_expr_nud(current_token)?;
             }
             _ => {
-                return Err(ParserError::ExpressionExpected { token: current_token });
+                return Err(ParserError::Expected {
+                    what: "expression".to_string(),
+                    got: format!("{:?}", current_token.kind),
+                    span: current_token.span.to_display(self.interner),
+                });
             }
         }
 
@@ -104,7 +108,10 @@ impl<'a> Parser<'a> {
                 }
 
                 _ => {
-                    return Err(ParserError::InternalError(format!("Unhandled LED token: {:?}", next_token.kind)));
+                    return Err(ParserError::NotFound {
+                        what: format!("handler for infix/postfix token: {:?}", next_token.kind),
+                        span: next_token.span.to_display(self.interner),
+                    });
                 }
             }
         }

@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod compiler;
 
 trait SafeConvert<T> {

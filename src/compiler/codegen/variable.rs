@@ -40,12 +40,23 @@ pub fn expr_identifier(
     sym: SymbolUsize,
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    info: &Info,
 ) -> Result<Value, TranslateError> {
     let var = scopes.iter().rev().find_map(|scope| scope.get(&sym));
 
     match var {
         Some((_, variable)) => Ok(fn_builder.use_var(*variable)),
-        None => Err(TranslateError::UndeclaredIdentifier(format!("Identifier {:?}", sym))),
+        None => {
+            use crate::compiler::tokens::DisplaySpan;
+            Err(TranslateError::NotFound {
+                what: format!("identifier '{}'", info.interner.resolve(sym).unwrap_or("<unknown>")),
+                span: DisplaySpan {
+                    file: "<internal>".to_string(),
+                    start: (0, 0),
+                    end: (0, 0),
+                },
+            })
+        }
     }
 }
 

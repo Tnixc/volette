@@ -19,7 +19,13 @@ impl<'a> Parser<'a> {
     pub fn parse_def(&mut self) -> Result<Index, ParserError> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),
-            _ => return Err(ParserError::UnexpectedTokenAtTopLevel { token: *self.current() }),
+            _ => {
+                return Err(ParserError::Unexpected {
+                    what: format!("token at top level: {:?}", self.current().kind),
+                    context: "Only function and struct definitions are allowed at the top level".to_string(),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
         }
     }
 
@@ -29,13 +35,25 @@ impl<'a> Parser<'a> {
 
         let name = match self.current().kind {
             TokenKind::Identifier(name) => name,
-            _ => return Err(ParserError::IdentifierExpectedAfterFn { token: *self.current() }),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "identifier after 'fn'".to_string(),
+                    got: format!("{:?}", self.current().kind),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
         };
         self.advance();
 
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::OpenParen) => {}
-            _ => return Err(ParserError::OpenParenExpectedAfterFnName { token: *self.current() }),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "opening parenthesis after function name".to_string(),
+                    got: format!("{:?}", self.current().kind),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
         };
 
         let mut param: (Option<SymbolUsize>, Option<Type>, Option<Span>) = (None, None, None);
@@ -62,7 +80,11 @@ impl<'a> Parser<'a> {
                         mode = ParamMode::Colon;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamNameExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::Expected {
+                            what: "parameter name".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                         mode = ParamMode::Colon;
                         self.backtrack();
                     }
@@ -75,7 +97,11 @@ impl<'a> Parser<'a> {
                         }
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamTypeExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::Expected {
+                            what: "colon after parameter name".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
@@ -90,7 +116,11 @@ impl<'a> Parser<'a> {
                         mode = ParamMode::Comma;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamTypeExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::Expected {
+                            what: "type annotation".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                         mode = ParamMode::Type;
                         self.backtrack();
                     }
@@ -100,7 +130,11 @@ impl<'a> Parser<'a> {
                         mode = ParamMode::Name;
                     }
                     _ => {
-                        self.parse_errors.push(ParserError::FnParamCommaExpected { token: *self.current() });
+                        self.parse_errors.push(ParserError::Expected {
+                            what: "comma between parameters".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                         mode = ParamMode::Name;
                         self.backtrack();
                     }
@@ -110,11 +144,20 @@ impl<'a> Parser<'a> {
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseParen) => {
                 if mode != ParamMode::Comma && !params.is_empty() {
-                    self.parse_errors
-                        .push(ParserError::FnParameterIncomplete { token: *self.current() });
+                    self.parse_errors.push(ParserError::Invalid {
+                        what: "function parameter".to_string(),
+                        reason: "Parameter must have both a name and a type".to_string(),
+                        span: self.current().span.to_display(self.interner),
+                    });
                 }
             }
-            _ => return Err(ParserError::CloseParenExpected { token: *self.current() }),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "closing parenthesis".to_string(),
+                    got: format!("{:?}", self.current().kind),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
         };
 
         self.advance();
@@ -132,7 +175,13 @@ impl<'a> Parser<'a> {
                     return_type = Type::Custom(name);
                     self.advance();
                 }
-                _ => return Err(ParserError::FnReturnTypeExpected { token: *self.current() }),
+                _ => {
+                    return Err(ParserError::Expected {
+                        what: "return type after ':'".to_string(),
+                        got: format!("{:?}", self.current().kind),
+                        span: self.current().span.to_display(self.interner),
+                    });
+                }
             }
         }
 
@@ -153,7 +202,13 @@ impl<'a> Parser<'a> {
                 );
                 Ok(self.push(node))
             }
-            _ => return Err(ParserError::FnBodyExpected { token: *self.current() }),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "function body (opening brace)".to_string(),
+                    got: format!("{:?}", self.current().kind),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
         }
     }
 }

@@ -60,7 +60,9 @@ impl<'a> Lexer<'a> {
 
         if float {
             if base != NumberBase::Decimal {
-                self.errors.push(LexError::NonDecimalFloat {
+                self.errors.push(LexError::Invalid {
+                    what: "float literal".to_string(),
+                    reason: "floating-point literals must use decimal notation".to_string(),
                     span: span.to_display(&self.interner),
                 });
             } else if let Ok(n) = self.lex_float() {
@@ -78,7 +80,7 @@ impl<'a> Lexer<'a> {
         let current_string = self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>();
         let filtered_str: String = current_string.chars().filter(|&c| c != '_').collect();
 
-        filtered_str.parse::<f64>().map_err(|e| {
+        filtered_str.parse::<f64>().map_err(|_| {
             let start_pos = self
                 .current_chars
                 .front()
@@ -87,10 +89,10 @@ impl<'a> Lexer<'a> {
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
-            let err = LexError::InvalidFloat {
-                value: filtered_str.clone(),
+            let err = LexError::Invalid {
+                what: format!("float '{}'", filtered_str),
+                reason: "cannot be parsed as a floating-point number".to_string(),
                 span: span.to_display(&self.interner),
-                source: e,
             };
             self.errors.push(err.clone());
             err
@@ -120,7 +122,7 @@ impl<'a> Lexer<'a> {
             i64::from_str_radix(&parse_str, radix)
         };
 
-        result.map_err(|e| {
+        result.map_err(|_| {
             let start_pos = self
                 .current_chars
                 .front()
@@ -129,10 +131,10 @@ impl<'a> Lexer<'a> {
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
-            let err = LexError::InvalidInteger {
-                value: filtered_str.clone(),
+            let err = LexError::Invalid {
+                what: format!("integer '{}'", filtered_str),
+                reason: "cannot be parsed as an integer".to_string(),
                 span: span.to_display(&self.interner),
-                source: e,
             };
             self.errors.push(err.clone());
             err

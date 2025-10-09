@@ -17,7 +17,13 @@ impl<'a> Parser<'a> {
         let name_token = *self.current();
         let name_symbol = match name_token.kind {
             TokenKind::Identifier(s) => s,
-            _ => return Err(ParserError::ExpectedIdentifier { token: name_token }),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "identifier after 'let'".to_string(),
+                    got: format!("{:?}", name_token.kind),
+                    span: name_token.span.to_display(self.interner),
+                });
+            }
         };
 
         self.advance(); // consume identifier
@@ -32,14 +38,24 @@ impl<'a> Parser<'a> {
             let parsed_type = match type_node_token.kind {
                 TokenKind::TypeLiteral(tl) => Type::Primitive(tl),
                 TokenKind::Identifier(custom_type_name) => Type::Custom(custom_type_name),
-                _ => return Err(ParserError::ExpectedType { token: type_node_token }),
+                _ => {
+                    return Err(ParserError::Expected {
+                        what: "type annotation".to_string(),
+                        got: format!("{:?}", type_node_token.kind),
+                        span: type_node_token.span.to_display(self.interner),
+                    });
+                }
             };
             type_annotation = Some(parsed_type);
             self.advance(); // Consumes type
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::Eq) {
-            return Err(ParserError::LetInitializerExpected { token: *self.current() });
+            return Err(ParserError::Expected {
+                what: "initializer '='".to_string(),
+                got: format!("{:?}", self.current().kind),
+                span: self.current().span.to_display(self.interner),
+            });
         }
 
         let eq_token = *self.current();
@@ -48,9 +64,10 @@ impl<'a> Parser<'a> {
 
         // the value is an expression, parse it with full precedence.
         let value_expr_idx = self.pratt_parse_expression(BindingPower::None)?;
-        let value_expr_node_cloned = self
-            .node(&value_expr_idx)
-            .ok_or_else(|| ParserError::InternalError(format!("Node not found for let binding value at {:?}", self.current().span)))?;
+        let value_expr_node_cloned = self.node(&value_expr_idx).ok_or_else(|| ParserError::NotFound {
+            what: "let binding value node".to_string(),
+            span: self.current().span.to_display(self.interner),
+        })?;
         current_span.connect_mut(&value_expr_node_cloned.span);
 
         Ok(self.push(Node::new(
@@ -76,7 +93,10 @@ impl<'a> Parser<'a> {
             let value_idx = self.pratt_parse_expression(BindingPower::None)?;
             let value_node = self
                 .node(&value_idx)
-                .ok_or_else(|| ParserError::InternalError("Return value node not found".to_string()))?
+                .ok_or_else(|| ParserError::NotFound {
+                    what: "return value node".to_string(),
+                    span: self.current().span.to_display(self.interner),
+                })?
                 .clone();
             current_span.connect_mut(&value_node.span);
             value_idx_opt = Some(value_idx);
@@ -107,13 +127,18 @@ impl<'a> Parser<'a> {
         self.advance();
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::OpenBrace) {
-            return Err(ParserError::LoopBodyExpected { token: *self.current() });
+            return Err(ParserError::Expected {
+                what: "loop body (opening brace)".to_string(),
+                got: format!("{:?}", self.current().kind),
+                span: self.current().span.to_display(self.interner),
+            });
         }
         let body_idx = self.parse_block_body()?;
 
-        let body_node = self
-            .node(&body_idx)
-            .ok_or_else(|| ParserError::InternalError("Loop body node not found".to_string()))?;
+        let body_node = self.node(&body_idx).ok_or_else(|| ParserError::NotFound {
+            what: "loop body node".to_string(),
+            span: self.current().span.to_display(self.interner),
+        })?;
         let loop_span = loop_keyword_token.span.connect_new(&body_node.span);
 
         Ok(self.push(Node::new(
@@ -131,18 +156,20 @@ impl<'a> Parser<'a> {
         let condition_idx = self.pratt_parse_expression(BindingPower::None)?;
 
         let then_block_idx = self.parse_block_body()?;
-        let then_block_node = self
-            .node(&then_block_idx)
-            .ok_or_else(|| ParserError::InternalError("If body node not found".to_string()))?;
+        let then_block_node = self.node(&then_block_idx).ok_or_else(|| ParserError::NotFound {
+            what: "if body node".to_string(),
+            span: self.current().span.to_display(self.interner),
+        })?;
         let mut span = if_keyword_token.span.connect_new(&then_block_node.span);
 
         let mut else_block_idx_opt = None;
         if self.current().kind == TokenKind::Keyword(Else) {
             self.advance(); // consume 'else'
             let else_block_idx = self.parse_block_body()?;
-            let else_block_node = self
-                .node(&else_block_idx)
-                .ok_or_else(|| ParserError::InternalError("Else body node not found".to_string()))?;
+            let else_block_node = self.node(&else_block_idx).ok_or_else(|| ParserError::NotFound {
+                what: "else body node".to_string(),
+                span: self.current().span.to_display(self.interner),
+            })?;
             span.connect_mut(&else_block_node.span);
             else_block_idx_opt = Some(else_block_idx);
         }

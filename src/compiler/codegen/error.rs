@@ -1,69 +1,105 @@
-use std::fmt::Display;
-
 use cranelift::codegen::CodegenError;
 use cranelift::module::ModuleError;
 use cranelift::object;
-use thiserror::Error;
 
-use crate::compiler::parser::node::{Node, Type};
+use crate::compiler::parser::node::Type;
 use crate::compiler::tokens::DisplaySpan;
+use std::fmt::Display;
 
-#[derive(Error, Debug, Clone)]
-pub enum TranslateError {
-    #[error("Cranelift Codegen Error: {0}")]
-    CodegenError(String),
+crate::define_errors! {
+    TranslateError, phase: Codegen {
+        #[msg = "Unexpected {what}"]
+        #[help = "This should not occur during code generation"]
+        Unexpected {
+            what: String,
+            context: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Cranelift Module Error: {0}")]
-    ModuleError(String),
+        #[msg = "Expected {what}, got {got}"]
+        #[help = "The code generator expected a different construct here"]
+        Expected {
+            what: String,
+            got: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Expected block expression: {span}")]
-    ExpectedBlockExpression { span: DisplaySpan },
+        #[msg = "Invalid {what}: {reason}"]
+        #[help = "This construct cannot be translated to machine code"]
+        Invalid {
+            what: String,
+            reason: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Object Write Error: {0}")]
-    ObjectWriteError(String),
+        #[msg = "Not found: {what}"]
+        #[help = "This identifier or construct was not found during code generation"]
+        NotFound {
+            what: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Incorrect type hit. Expected {type_} but got {node}, which cannot be coerced into {type_}.")]
-    IncorrectTypeAnalysis { type_: Type, node: Node },
+        #[msg = "Unsupported {what}"]
+        #[help = "This feature is not yet implemented in the code generator"]
+        Unsupported {
+            what: String,
+            reason: String,
+            span: DisplaySpan,
+        },
 
-    #[error("No type information available for {node}")]
-    UntypedExpr { node: Node },
+        #[msg = "Type error: {message}"]
+        #[help = "There was a type mismatch during code generation"]
+        TypeError {
+            message: String,
+            span: DisplaySpan,
+        },
 
-    #[error("Internal error: {0}")]
-    Internal(String),
-
-    #[error("Undeclared identifier: {0}")]
-    UndeclaredIdentifier(String),
+        #[msg = "External error: {message}"]
+        #[help = "An error occurred in an external library (Cranelift or object file writer)"]
+        External {
+            message: String,
+            span: DisplaySpan,
+        },
+    }
 }
 
+// Keep the From impls for external error types
 impl From<CodegenError> for TranslateError {
     fn from(err: CodegenError) -> Self {
-        TranslateError::CodegenError(err.to_string())
+        // Use a dummy span since cranelift errors don't have source locations
+        TranslateError::External {
+            message: format!("Cranelift codegen error: {}", err),
+            span: DisplaySpan {
+                file: "<codegen>".to_string(),
+                start: (0, 0),
+                end: (0, 0),
+            },
+        }
     }
 }
 
 impl From<ModuleError> for TranslateError {
     fn from(err: ModuleError) -> Self {
-        TranslateError::ModuleError(err.to_string())
+        TranslateError::External {
+            message: format!("Cranelift module error: {}", err),
+            span: DisplaySpan {
+                file: "<codegen>".to_string(),
+                start: (0, 0),
+                end: (0, 0),
+            },
+        }
     }
 }
 
 impl From<object::object::write::Error> for TranslateError {
     fn from(err: object::object::write::Error) -> Self {
-        TranslateError::ObjectWriteError(err.to_string())
-    }
-}
-
-impl TranslateError {
-    pub fn span(&self) -> Option<&DisplaySpan> {
-        match self {
-            TranslateError::CodegenError(_) => None,
-            TranslateError::ModuleError(_) => None,
-            TranslateError::ExpectedBlockExpression { span } => Some(span),
-            TranslateError::ObjectWriteError(_) => None,
-            TranslateError::IncorrectTypeAnalysis { .. } => None, // Node doesn't have direct span access
-            TranslateError::UntypedExpr { .. } => None,           // Node doesn't have direct span access
-            TranslateError::Internal(_) => None,
-            TranslateError::UndeclaredIdentifier(_) => None,
+        TranslateError::External {
+            message: format!("Object write error: {}", err),
+            span: DisplaySpan {
+                file: "<codegen>".to_string(),
+                start: (0, 0),
+                end: (0, 0),
+            },
         }
     }
 }

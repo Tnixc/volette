@@ -27,7 +27,11 @@ impl<'a> Parser<'a> {
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::CloseBrace) {
-            return Err(ParserError::BlockExpectedCloseBrace { token: *self.current() });
+            return Err(ParserError::Expected {
+                what: "closing brace '}'".to_string(),
+                got: format!("{:?}", self.current().kind),
+                span: self.current().span.to_display(self.interner),
+            });
         }
 
         let end_span = self.current().span;

@@ -2,20 +2,20 @@ use std::path::Path;
 
 pub mod analysis;
 pub mod codegen;
+#[macro_use]
+pub mod diagnostic_macros;
 pub mod error;
 pub mod lexer;
 pub mod parser;
 pub mod tokens;
-pub mod validation;
 
 use analysis::analysis_pass;
 use colored::Colorize;
-use error::{CompilerError, DiagnosticCollection, ResultWithDiagnostics};
+use error::{CompilerPhase, Diagnostic, DiagnosticCollection, ResultWithDiagnostics, Severity};
 use lexer::Lexer;
 use parser::Parser;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use tokens::{Span, Token, TokenKind};
-use validation::validate_ast;
 
 pub fn build(file: &Path) {
     let mut all_diagnostics = DiagnosticCollection::new();
@@ -23,7 +23,11 @@ pub fn build(file: &Path) {
     let contents = match std::fs::read_to_string(file) {
         Ok(contents) => contents,
         Err(e) => {
-            all_diagnostics.add_error(CompilerError::internal(format!("Failed to read file: {}", e), None));
+            all_diagnostics.push(Diagnostic::new(
+                Severity::Fatal,
+                format!("Failed to read file: {}", e),
+                CompilerPhase::Lexing,
+            ));
             all_diagnostics.print_all();
             return;
         }
@@ -75,12 +79,6 @@ pub fn build(file: &Path) {
     all_diagnostics.extend(analysis_result.diagnostics);
     let fn_table = analysis_result.value;
 
-    // validation phase
-    println!("{}", "=== Validation Phase ===".bright_blue());
-    if let Err(diagnostics) = validation_phase(&root, &tree, &interner) {
-        all_diagnostics.extend(diagnostics);
-    }
-
     // stop if we have any errors
     if all_diagnostics.has_errors() {
         all_diagnostics.print_all();
@@ -96,7 +94,7 @@ pub fn build(file: &Path) {
             println!("{}", "Compilation successful!".green().bold());
         }
         Err(e) => {
-            all_diagnostics.add_error(CompilerError::Codegen(e));
+            all_diagnostics.add_error(e);
         }
     }
 
@@ -124,7 +122,7 @@ fn lex_phase(
     ));
 
     if !lexer.errors.is_empty() {
-        let diagnostics = lexer.errors.into_iter().map(CompilerError::Lex).collect();
+        let diagnostics = lexer.errors.into_iter().map(|e| e.into()).collect();
         return Err(diagnostics);
     }
 
@@ -147,7 +145,7 @@ fn parse_phase(
     let mut diagnostics = DiagnosticCollection::new();
     let parse_errors = std::mem::take(&mut parser.parse_errors);
     for error in parse_errors {
-        diagnostics.add_error(CompilerError::Parse(error));
+        diagnostics.add_error(error);
     }
 
     if diagnostics.has_errors() {
@@ -174,14 +172,6 @@ fn analysis_phase(
     } else {
         Ok(analysis_result)
     }
-}
-
-fn validation_phase(
-    root: &crate::compiler::parser::node::Node,
-    nodes: &generational_arena::Arena<crate::compiler::parser::node::Node>,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-) -> Result<(), DiagnosticCollection> {
-    validate_ast(root, nodes, interner)
 }
 
 fn format_tokens(tokens: &[Token], interner: &StringInterner<BucketBackend<SymbolUsize>>) -> Vec<(String, usize, (usize, usize))> {

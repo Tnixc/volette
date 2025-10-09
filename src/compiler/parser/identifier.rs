@@ -15,7 +15,11 @@ impl<'a> Parser<'a> {
         let name_symbol = match ident_token.kind {
             TokenKind::Identifier(s) => s,
             _ => {
-                return Err(ParserError::InternalError("Not an identifier token in parse_identifier_nud".into()));
+                return Err(ParserError::Invalid {
+                    what: "token in identifier context".to_string(),
+                    reason: format!("Expected identifier, got {:?}", ident_token.kind),
+                    span: ident_token.span.to_display(self.interner),
+                });
             }
         };
 
@@ -65,7 +69,11 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     _ => {
-                        return Err(ParserError::CloseParenExpected { token: *self.current() });
+                        return Err(ParserError::Expected {
+                            what: "closing parenthesis or comma".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                     }
                 }
             }
@@ -92,7 +100,10 @@ impl<'a> Parser<'a> {
     pub fn parse_call_led(&mut self, _open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError> {
         let func_node = self
             .node(&func_idx)
-            .ok_or_else(|| ParserError::InternalError("Function node not found for call".to_string()))?
+            .ok_or_else(|| ParserError::NotFound {
+                what: "function node for call".to_string(),
+                span: self.current().span.to_display(self.interner),
+            })?
             .clone();
         let mut call_span = func_node.span;
 
@@ -120,7 +131,11 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     _ => {
-                        return Err(ParserError::CloseParenExpected { token: *self.current() });
+                        return Err(ParserError::Expected {
+                            what: "closing parenthesis or comma".to_string(),
+                            got: format!("{:?}", self.current().kind),
+                            span: self.current().span.to_display(self.interner),
+                        });
                     }
                 }
             }

@@ -6,7 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
-        error::{CompilerError, DiagnosticCollection},
+        error::DiagnosticCollection,
         parser::node::{BinOpKind, DefKind, ExprKind, Literal, Node, NodeKind, Type},
         tokens::PrimitiveTypes,
     },
@@ -41,7 +41,7 @@ pub fn type_check_root(
                     // type check the function body
                     // the body is a block expression that should ultimately return the declared return_type
                     if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table) {
-                        diagnostics.add_error(CompilerError::Analysis(e));
+                        diagnostics.add_error(e);
                     }
 
                     // a body with type never is compatible with any return type
@@ -51,11 +51,11 @@ pub fn type_check_root(
                     } = &body_node.kind
                     {
                         if *body_type != Type::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
-                            diagnostics.add_error(CompilerError::Analysis(AnalysisError::TypeMismatch {
-                                expected: return_type,
-                                got: *body_type,
+                            diagnostics.add_error(AnalysisError::TypeMismatch {
+                                expected: format!("{:?}", return_type),
+                                got: format!("{:?}", body_type),
                                 span: body_node.span.to_display(interner),
-                            }));
+                            });
                         }
                     }
                 }
@@ -84,8 +84,8 @@ fn resolve_expr_type(
             if let Some(expected_ty) = expected {
                 if ty != expected_ty {
                     return Err(AnalysisError::TypeMismatch {
-                        expected: expected_ty,
-                        got: ty,
+                        expected: format!("{:?}", expected_ty),
+                        got: format!("{:?}", ty),
                         span: target_node.span.to_display(interner),
                     });
                 }
@@ -97,13 +97,10 @@ fn resolve_expr_type(
 
     let inferred_type = match kind {
         NodeKind::Expr { kind, .. } => match kind {
-            ExprKind::Identifier(symbol) => ident_types
-                .get(&symbol)
-                .copied()
-                .ok_or_else(|| AnalysisError::UnresolvedIdentifier {
-                    name: interner.resolve(symbol).unwrap_or("<unknown>").to_string(),
-                    span: span.to_display(interner),
-                }),
+            ExprKind::Identifier(symbol) => ident_types.get(&symbol).copied().ok_or_else(|| AnalysisError::Unresolved {
+                what: format!("identifier '{}'", interner.resolve(symbol).unwrap_or("<unknown>")),
+                span: span.to_display(interner),
+            }),
             ExprKind::LetBinding {
                 name,
                 type_annotation,
@@ -121,8 +118,8 @@ fn resolve_expr_type(
                 let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table)?;
                 if target_type != value_type {
                     Err(AnalysisError::TypeMismatch {
-                        expected: target_type,
-                        got: value_type,
+                        expected: format!("{:?}", target_type),
+                        got: format!("{:?}", value_type),
                         span: span.to_display(interner),
                     })
                 } else {
@@ -173,8 +170,8 @@ fn resolve_expr_type(
                         Ok(then_type)
                     } else {
                         Err(AnalysisError::TypeMismatch {
-                            expected: then_type,
-                            got: else_type,
+                            expected: format!("{:?}", then_type),
+                            got: format!("{:?}", else_type),
                             span: nodes.get(else_block).safe().span.to_display(interner),
                         })
                     }
@@ -190,7 +187,12 @@ fn resolve_expr_type(
                         kind: ExprKind::Identifier(name),
                         ..
                     } => name,
-                    _ => return Err(AnalysisError::Internal("Function call target must be an identifier".to_string())),
+                    _ => {
+                        return Err(AnalysisError::Unsupported {
+                            what: "function call target must be an identifier".to_string(),
+                            span: span.to_display(interner),
+                        });
+                    }
                 };
 
                 let rest = fn_table.get(&func_name);
@@ -201,8 +203,8 @@ fn resolve_expr_type(
                             if arg_type != *expected_type {
                                 let span = nodes.get(*arg_idx).safe().span;
                                 return Err(AnalysisError::TypeMismatch {
-                                    expected: *expected_type,
-                                    got: arg_type,
+                                    expected: format!("{:?}", expected_type),
+                                    got: format!("{:?}", arg_type),
                                     span: span.to_display(interner),
                                 });
                             }
@@ -210,20 +212,27 @@ fn resolve_expr_type(
                         Ok(rest.1)
                     }
                     None => {
-                        return Err(AnalysisError::UndeclaredFunction {
-                            name: interner.resolve(*func_name).safe().to_string(),
+                        return Err(AnalysisError::Unresolved {
+                            what: format!("function '{}'", interner.resolve(*func_name).safe()),
                             span: span.to_display(interner),
                         });
                     }
                 }
             }
             _ => {
-                return Err(AnalysisError::Internal(
-                    "Unsupported expression kind for type resolution".to_string(),
-                ));
+                return Err(AnalysisError::Unsupported {
+                    what: format!("expression kind: {:?}", kind),
+                    span: span.to_display(interner),
+                });
             }
         },
-        _ => return Err(AnalysisError::Internal("Expected expression node for type resolution".to_string())),
+        _ => {
+            return Err(AnalysisError::Invalid {
+                what: "node".to_string(),
+                reason: "expected expression node for type resolution".to_string(),
+                span: span.to_display(interner),
+            });
+        }
     }?;
 
     // if an expected type was provided, check if the inferred type matches
@@ -231,8 +240,8 @@ fn resolve_expr_type(
     if let Some(expected_ty) = expected {
         if inferred_type != expected_ty {
             return Err(AnalysisError::TypeMismatch {
-                expected: expected_ty,
-                got: inferred_type,
+                expected: format!("{:?}", expected_ty),
+                got: format!("{:?}", inferred_type),
                 span: span.to_display(interner),
             });
         }
@@ -264,8 +273,8 @@ fn resolve_literal(
         (Literal::Bool(_), Type::Primitive(PrimitiveTypes::Bool)) => Ok(literal_type),
         (Literal::Nil, Type::Primitive(PrimitiveTypes::Nil)) => Ok(literal_type),
         _ => Err(AnalysisError::TypeMismatch {
-            expected: expected.unwrap_or(literal_type),
-            got: literal_type,
+            expected: format!("{:?}", expected.unwrap_or(literal_type)),
+            got: format!("{:?}", literal_type),
             span: span.to_display(interner),
         }),
     }
@@ -284,9 +293,9 @@ fn resolve_binop(
     let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table)?;
 
     if left_ty == Type::Primitive(PrimitiveTypes::Nil) || left_ty == Type::Primitive(PrimitiveTypes::Nil) {
-        return Err(AnalysisError::InvalidBinOp {
-            op: op,
-            ty: left_ty,
+        return Err(AnalysisError::Invalid {
+            what: format!("binary operation '{:?}'", op),
+            reason: format!("cannot be used with type {:?}", left_ty),
             span: nodes
                 .get(left)
                 .safe()
@@ -298,8 +307,8 @@ fn resolve_binop(
 
     if left_ty != right_ty {
         return Err(AnalysisError::TypeMismatch {
-            expected: left_ty,
-            got: right_ty,
+            expected: format!("{:?}", left_ty),
+            got: format!("{:?}", right_ty),
             span: nodes.get(right).safe().span.to_display(interner),
         });
     }
@@ -315,6 +324,14 @@ fn resolve_binop(
         | BinOpKind::GreaterThanOrEq
         | BinOpKind::GreaterThan
         | BinOpKind::LessThanOrEq => Ok(Type::Primitive(PrimitiveTypes::Bool)),
-        _ => Err(AnalysisError::Internal("Unsupported binary operator.".to_string())),
+        _ => Err(AnalysisError::Unsupported {
+            what: format!("binary operator '{:?}'", op),
+            span: nodes
+                .get(left)
+                .safe()
+                .span
+                .connect_new(&nodes.get(right).safe().span)
+                .to_display(interner),
+        }),
     }
 }
