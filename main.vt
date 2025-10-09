@@ -1,5 +1,7 @@
-fn w(k: i32): i32 {
-    let x = k;
-    x = 12;
-    return x;
+fn f(): Nil {
+    return nil;
+}
+
+fn w(x: i32) :i32 {
+    return 1;
 }

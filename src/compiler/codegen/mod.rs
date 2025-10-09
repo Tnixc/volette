@@ -122,7 +122,10 @@ pub fn codegen(
                         DefKind::Function { .. } => {
                             let func_id = func_ids[i];
                             lower_fn(def_node, &mut info, func_id)?;
-                            info.module.define_function(func_id, &mut info.ctx)?;
+                            if let Err(e) = info.module.define_function(func_id, &mut info.ctx) {
+                                eprintln!("!!! cranelift error: {:?}", e);
+                                return Err(e.into());
+                            }
                         }
                         _ => {
                             return Err(TranslateError::Internal(

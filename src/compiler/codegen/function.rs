@@ -35,7 +35,16 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             for param in params {
                 sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
             }
-            sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+            // only add return type if it's not zero-sized (Nil or Never)
+            match return_type {
+                Type::Primitive(PrimitiveTypes::Nil) | Type::Primitive(PrimitiveTypes::Never) => {
+                    // TODO: check if this is correct
+                    // zero-sized types don't need a return value in the signature
+                }
+                _ => {
+                    sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+                }
+            }
 
             let dbg_fn_name = UserFuncName::testcase(fn_name);
             let mut func = Function::with_name_signature(dbg_fn_name, sig);
@@ -64,11 +73,14 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                 scopes.last_mut().safe().insert(param.0, (param.1, var));
             }
 
-            let (body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
+            let (maybe_body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
 
             // add implicit return if the body doesn't diverge (never type)
             if body_type != Type::Primitive(PrimitiveTypes::Never) {
-                fn_builder.ins().return_(&[body_val]); // <- should be 1 item because i dont have multi value returns
+                match maybe_body_val {
+                    Some(body_val) => fn_builder.ins().return_(&[body_val]),
+                    None => fn_builder.ins().return_(&[]),
+                };
             }
 
             fn_builder.seal_block(entry);

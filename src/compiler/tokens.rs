@@ -55,6 +55,7 @@ pub enum Punctuation {
     PipePipe,
 
     FatArrow,
+    Arrow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -72,7 +73,6 @@ pub enum PrimitiveTypes {
     F32,
     F64,
     Bool,
-    Unit,
     Nil,
     Never,
 }
@@ -82,6 +82,7 @@ pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
     BoolLiteral(bool),
+    NilLiteral,
     StringLiteral(SymbolUsize),
     Keyword(Keyword),
     TypeLiteral(PrimitiveTypes),

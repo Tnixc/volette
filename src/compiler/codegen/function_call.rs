@@ -8,7 +8,8 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, error::TranslateError},
-        parser::node::{ExprKind, NodeKind, Type},
+        parser::node::{DefKind, ExprKind, NodeKind, Type},
+        tokens::PrimitiveTypes,
     },
 };
 
@@ -35,7 +36,8 @@ pub fn expr_call(
 
     let mut arg_values = Vec::new();
     for arg in args {
-        let (arg_value, _arg_type) = expr_to_val(*arg, fn_builder, scopes, info)?;
+        let (arg_value, _) = expr_to_val(*arg, fn_builder, scopes, info)?;
+        let arg_value = arg_value.expect("function arguments must be non-zero-sized");
         arg_values.push(arg_value);
     }
 
@@ -43,7 +45,26 @@ pub fn expr_call(
 
     let call_inst = fn_builder.ins().call(func_ref, &arg_values);
 
-    let result = fn_builder.inst_results(call_inst)[0];
+    // check if the function returns a zero-sized type (Nil or Never)
+    // by looking up the function definition
+    let return_type = match &func_node.kind {
+        NodeKind::Def { kind, .. } => match kind {
+            DefKind::Function { return_type, .. } => return_type,
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
+    };
 
-    Ok(result)
+    // only get result if the function returns a non-zero-sized type
+    match return_type {
+        Type::Primitive(PrimitiveTypes::Nil) | Type::Primitive(PrimitiveTypes::Never) => {
+            // TODO: Also check if this is right??
+            // zero-sized return, return dummy value
+            Ok(Value::from_u32(0))
+        }
+        _ => {
+            let result = fn_builder.inst_results(call_inst)[0];
+            Ok(result)
+        }
+    }
 }

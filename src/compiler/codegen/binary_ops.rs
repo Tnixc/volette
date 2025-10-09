@@ -3,10 +3,13 @@ use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    codegen::{Info, error::TranslateError},
-    parser::node::{BinOpKind, Type},
-    tokens::PrimitiveTypes,
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{Info, error::TranslateError},
+        parser::node::{BinOpKind, Type},
+        tokens::PrimitiveTypes,
+    },
 };
 
 use super::expr::expr_to_val;
@@ -20,7 +23,9 @@ pub fn expr_binop(
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let (left_value, left_type) = expr_to_val(left, fn_builder, scopes, info)?;
+    let left_value = left_value.safe(); // type checker should catch bin ops with Nil/zero sized types?
     let (right_value, right_type) = expr_to_val(right, fn_builder, scopes, info)?;
+    let right_value = right_value.safe();
 
     let val = match (left_type, right_type) {
         (Type::Primitive(PrimitiveTypes::F32), Type::Primitive(PrimitiveTypes::F32))

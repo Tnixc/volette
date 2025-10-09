@@ -15,7 +15,7 @@ impl<'a> Parser<'a> {
         let current_token = *self.current();
 
         match current_token.kind {
-            TokenKind::IntLiteral(_) | TokenKind::FloatLiteral(_) | TokenKind::BoolLiteral(_) => {
+            TokenKind::IntLiteral(_) | TokenKind::FloatLiteral(_) | TokenKind::BoolLiteral(_) | TokenKind::NilLiteral => {
                 left_expr_idx = self.parse_literal_nud(current_token)?;
             }
             TokenKind::Identifier(_) => {
