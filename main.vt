@@ -1,12 +1,4 @@
-fn bad_fn {
-    return 5;
-}
-
-fn test(x: Int y: Int) {
+fn test(x: i32, y: i32):i32 {
     let z = 5;
     return x + y;
-}
-
-fn missing_paren(a: i32 {
-    return 1;
 }

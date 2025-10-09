@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
         self.advance();
 
         match self.current().kind {
-            TokenKind::Punctuation(Punctuation::OpenParen) => {}
+            TokenKind::Punctuation(Punctuation::OpenParen) => {} // it's a function
             _ => {
                 return Err(ParserError::Expected {
                     what: "opening parenthesis after function name".to_string(),
@@ -75,18 +75,18 @@ impl<'a> Parser<'a> {
             match mode {
                 ParamMode::Name => match self.current().kind {
                     TokenKind::Identifier(name) => {
+                        mode = ParamMode::Colon;
                         param.0 = Some(name);
                         param.2 = Some(self.current().span);
-                        mode = ParamMode::Colon;
                     }
                     _ => {
+                        mode = ParamMode::Colon;
                         self.parse_errors.push(ParserError::Expected {
                             what: "parameter name".to_string(),
                             got: format!("{:?}", self.current().kind),
                             span: self.current().span.to_display(self.interner),
                         });
-                        mode = ParamMode::Colon;
-                        self.backtrack();
+                        self.advance();
                     }
                 },
                 ParamMode::Colon => match self.current().kind {
@@ -97,32 +97,32 @@ impl<'a> Parser<'a> {
                         }
                     }
                     _ => {
+                        mode = ParamMode::Type;
                         self.parse_errors.push(ParserError::Expected {
                             what: "colon after parameter name".to_string(),
                             got: format!("{:?}", self.current().kind),
                             span: self.current().span.to_display(self.interner),
                         });
-                        mode = ParamMode::Type;
-                        self.backtrack();
+                        self.advance();
                     }
                 },
                 ParamMode::Type => match self.current().kind {
                     TokenKind::TypeLiteral(ty) => {
+                        mode = ParamMode::Comma;
                         if let Some(span) = param.2.as_mut() {
                             span.connect_mut(&self.current().span);
                         }
                         params.push((param.0.safe(), Type::Primitive(ty), param.2.safe()));
                         param = (None, None, None);
-                        mode = ParamMode::Comma;
                     }
                     _ => {
+                        mode = ParamMode::Comma;
                         self.parse_errors.push(ParserError::Expected {
                             what: "type annotation".to_string(),
                             got: format!("{:?}", self.current().kind),
                             span: self.current().span.to_display(self.interner),
                         });
-                        mode = ParamMode::Type;
-                        self.backtrack();
+                        self.advance();
                     }
                 },
                 ParamMode::Comma => match self.current().kind {
@@ -130,17 +130,18 @@ impl<'a> Parser<'a> {
                         mode = ParamMode::Name;
                     }
                     _ => {
+                        mode = ParamMode::Name;
                         self.parse_errors.push(ParserError::Expected {
                             what: "comma between parameters".to_string(),
                             got: format!("{:?}", self.current().kind),
                             span: self.current().span.to_display(self.interner),
                         });
-                        mode = ParamMode::Name;
-                        self.backtrack();
+                        self.advance();
                     }
                 },
             }
         }
+
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseParen) => {
                 if mode != ParamMode::Comma && !params.is_empty() {
