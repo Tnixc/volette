@@ -84,64 +84,79 @@ pub fn expr_if(
     let else_terminates = else_idx.map_or(false, |idx| expr_terminates(idx, info));
     let both_terminate = then_terminates && else_terminates;
 
-    // then block
-    fn_builder.switch_to_block(then_block);
-
-    let (then_val, _) = expr_to_val(then_idx, fn_builder, scopes, info)?;
-    fn_builder.seal_block(then_block);
-
-    // else block
-    fn_builder.switch_to_block(else_block);
-
-    let else_val = if let Some(else_idx) = else_idx {
-        let (val, _) = expr_to_val(else_idx, fn_builder, scopes, info)?;
-        fn_builder.seal_block(else_block);
-        val
+    // create merge block if at least one branch continues
+    let merge_block = if !both_terminate {
+        let mb = fn_builder.create_block();
+        fn_builder.append_block_param(mb, result_type);
+        Some(mb)
     } else {
-        fn_builder.seal_block(else_block);
         None
     };
 
-    // if both branches terminate, switch to unreachable block
+    // then block
+    fn_builder.switch_to_block(then_block);
+    let (then_val, _) = expr_to_val(then_idx, fn_builder, scopes, info)?;
+
+    // seal the block if it terminates (has a return)
+    if then_terminates {
+        fn_builder.seal_block(then_block);
+    }
+
+    // add jump if this branch doesn't terminate
+    if !then_terminates {
+        let merge = merge_block.unwrap();
+        match then_val {
+            Some(val) => fn_builder.ins().jump(merge, &[val]),
+            None => {
+                let default = fn_builder.ins().iconst(result_type, 0);
+                fn_builder.ins().jump(merge, &[default])
+            }
+        };
+        fn_builder.seal_block(then_block);
+    }
+
+    // else block
+    fn_builder.switch_to_block(else_block);
+    let else_val = if let Some(else_idx) = else_idx {
+        let (val, _) = expr_to_val(else_idx, fn_builder, scopes, info)?;
+        val
+    } else {
+        None
+    };
+
+    // seal the block if it terminates (has a return)
+    if else_terminates {
+        fn_builder.seal_block(else_block);
+    }
+
+    // add jump if this branch doesn't terminate
+    if !else_terminates {
+        let merge = merge_block.unwrap();
+        match else_val {
+            Some(val) => fn_builder.ins().jump(merge, &[val]),
+            None => {
+                let default = fn_builder.ins().iconst(result_type, 0);
+                fn_builder.ins().jump(merge, &[default])
+            }
+        };
+        fn_builder.seal_block(else_block);
+    } else if else_idx.is_none() {
+        // no else branch provided, jump with default value
+        let merge = merge_block.unwrap();
+        let default_val = fn_builder.ins().iconst(result_type, 0);
+        fn_builder.ins().jump(merge, &[default_val]);
+        fn_builder.seal_block(else_block);
+    }
+
+    // if both branches terminate, we need to switch to a new block but the value doesn't matter
+    // since this code is unreachable
+
     if both_terminate {
-        let dead_block = fn_builder.create_block();
-        fn_builder.switch_to_block(dead_block);
-        fn_builder.seal_block(dead_block);
+        // return a dummy value that won't actually be used (the type is never).
         return Ok(Value::from_u32(0));
     }
 
-    // create merge block since at least one branch continues
-    let merge_block = fn_builder.create_block();
-    fn_builder.append_block_param(merge_block, result_type);
-
-    // add jumps from non-terminating branches
-    if !then_terminates {
-        fn_builder.switch_to_block(then_block);
-        match then_val {
-            Some(then_val) => fn_builder.ins().jump(merge_block, &[then_val]),
-            None => {
-                let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge_block, &[default])
-            }
-        };
-    }
-
-    if !else_terminates {
-        fn_builder.switch_to_block(else_block);
-        match else_val {
-            Some(else_val) => fn_builder.ins().jump(merge_block, &[else_val]),
-            None => {
-                let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge_block, &[default])
-            }
-        };
-    } else if else_idx.is_none() {
-        // no else branch provided, jump with default value
-        fn_builder.switch_to_block(else_block);
-        let default_val = fn_builder.ins().iconst(result_type, 0);
-        fn_builder.ins().jump(merge_block, &[default_val]);
-    }
-
+    let merge_block = merge_block.unwrap();
     fn_builder.switch_to_block(merge_block);
     fn_builder.seal_block(merge_block);
 

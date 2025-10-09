@@ -18,6 +18,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{error::TranslateError, function::lower_fn},
+        error::DiagnosticCollection,
         parser::node::{DefKind, Node, NodeKind, Type},
     },
 };
@@ -52,6 +53,7 @@ pub struct Info<'a> {
     pub nodes: &'a Arena<Node>,
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
     pub func_table: HashMap<SymbolUsize, cranelift::module::FuncId>,
+    pub diagnostics: DiagnosticCollection,
 }
 
 pub fn codegen(
@@ -59,7 +61,7 @@ pub fn codegen(
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     _fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
-) -> Result<(), TranslateError> {
+) -> Result<DiagnosticCollection, TranslateError> {
     let (target_isa, call_conv, ptr_width) = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
@@ -75,6 +77,7 @@ pub fn codegen(
         nodes,
         interner,
         func_table: HashMap::new(),
+        diagnostics: DiagnosticCollection::new(),
     };
 
     match &root.kind {
@@ -115,17 +118,32 @@ pub fn codegen(
             }
 
             // define function bodies
+            let mut had_error = false;
             for (i, def) in defs.iter().enumerate() {
                 let def_node = nodes.get(*def).safe();
                 match &def_node.kind {
                     NodeKind::Def { kind } => match kind {
                         DefKind::Function { .. } => {
                             let func_id = func_ids[i];
-                            lower_fn(def_node, &mut info, func_id)?;
+                            if let Err(e) = lower_fn(def_node, &mut info, func_id) {
+                                use crate::compiler::error::{CompilerPhase, Diagnostic, Severity};
+                                let diagnostic = Diagnostic {
+                                    severity: Severity::Error,
+                                    message: e.to_string(),
+                                    span: e.span().cloned(),
+                                    phase: CompilerPhase::Codegen,
+                                    help: None,
+                                    note: None,
+                                };
+                                info.diagnostics.push(diagnostic);
+                                had_error = true;
+                                continue;
+                            }
                             if let Err(e) = info.module.define_function(func_id, &mut info.ctx) {
                                 eprintln!("!!! cranelift error: {:?}", e);
                                 return Err(e.into());
                             }
+                            info.ctx.clear();
                         }
                         _ => {
                             return Err(TranslateError::Internal(
@@ -140,6 +158,10 @@ pub fn codegen(
                     }
                 }
             }
+
+            if had_error {
+                return Ok(info.diagnostics);
+            }
         }
         _ => return Err(TranslateError::Internal("Expected root node in codegen".to_string())),
     }
@@ -149,7 +171,7 @@ pub fn codegen(
 
     std::fs::write("vtlib.o", obj_bytes).expect("Couldn't write");
     println!("Object file 'vtlib.o' emitted.");
-    Ok(())
+    Ok(info.diagnostics)
 }
 
 fn isa() -> (Arc<dyn TargetIsa + 'static>, CallConv, PtrWidth) {
