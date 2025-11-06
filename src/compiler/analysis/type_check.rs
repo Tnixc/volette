@@ -109,8 +109,7 @@ fn resolve_expr_type(
                 let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table)?;
                 // println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type);
-                // Let bindings are statements that return Nil/unit type
-                Ok(Type::Primitive(PrimitiveTypes::Nil))
+                Ok(value_type)
             }
             ExprKind::Literal(v) => resolve_literal(span, interner, expected, v),
             ExprKind::Assign { target, value } => {
