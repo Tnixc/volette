@@ -1,4 +1,4 @@
-use cranelift::prelude::{EntityRef, FunctionBuilder, Value, Variable};
+use cranelift::prelude::{FunctionBuilder, Value, Variable};
 use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
@@ -26,9 +26,9 @@ pub fn expr_let_binding(
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
     // Create a unique variable index across all scopes
-    let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
-    let var = Variable::new(var_index);
-    fn_builder.declare_var(var, ty);
+    // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
+    // let var = Variable::new(var_index);
+    let var = fn_builder.declare_var(ty);
     fn_builder.def_var(var, var_val);
 
     scopes.last_mut().safe().insert(name, (actual_type, var));
@@ -72,9 +72,9 @@ pub fn expr_assign(
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
     // Create a unique variable index across all scopes
-    let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
-    let var = Variable::new(var_index);
-    fn_builder.declare_var(var, ty);
+    // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
+    // let var = Variable::new(var_index);
+    let var = fn_builder.declare_var(ty);
     fn_builder.def_var(var, var_val);
     let symbol = match &info.nodes.get(target).safe().kind {
         NodeKind::Expr { kind, .. } => match kind {

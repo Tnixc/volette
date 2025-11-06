@@ -9,7 +9,7 @@ use crate::{
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
     module::FuncId,
-    prelude::{AbiParam, EntityRef, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, Variable},
+    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, Variable},
 };
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
@@ -65,10 +65,10 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
 
             for (i, param) in params.iter().enumerate() {
                 let val = block_params[i];
-                let var = Variable::new(i);
+                // let var = Variable::new(i);
                 let ty = param.1.to_clif(info.build_config.ptr_width);
 
-                fn_builder.declare_var(var, ty);
+                let var = fn_builder.declare_var(ty);
                 fn_builder.def_var(var, val);
                 scopes.last_mut().safe().insert(param.0, (param.1, var));
             }

@@ -108,4 +108,3 @@ macro_rules! define_errors {
         }
     };
 }
-

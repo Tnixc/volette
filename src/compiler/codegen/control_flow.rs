@@ -1,4 +1,7 @@
-use cranelift::prelude::{FunctionBuilder, InstBuilder, Value, Variable};
+use cranelift::{
+    codegen::ir::BlockArg,
+    prelude::{FunctionBuilder, InstBuilder, Value, Variable},
+};
 use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
@@ -106,10 +109,10 @@ pub fn expr_if(
     if !then_terminates {
         let merge = merge_block.unwrap();
         match then_val {
-            Some(val) => fn_builder.ins().jump(merge, &[val]),
+            Some(val) => fn_builder.ins().jump(merge, &[BlockArg::Value(val)]),
             None => {
                 let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge, &[default])
+                fn_builder.ins().jump(merge, &[BlockArg::Value(default)])
             }
         };
         fn_builder.seal_block(then_block);
@@ -133,10 +136,10 @@ pub fn expr_if(
     if !else_terminates {
         let merge = merge_block.unwrap();
         match else_val {
-            Some(val) => fn_builder.ins().jump(merge, &[val]),
+            Some(val) => fn_builder.ins().jump(merge, &[BlockArg::Value(val)]),
             None => {
                 let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge, &[default])
+                fn_builder.ins().jump(merge, &[BlockArg::Value(default)])
             }
         };
         fn_builder.seal_block(else_block);
@@ -144,7 +147,7 @@ pub fn expr_if(
         // no else branch provided, jump with default value
         let merge = merge_block.unwrap();
         let default_val = fn_builder.ins().iconst(result_type, 0);
-        fn_builder.ins().jump(merge, &[default_val]);
+        fn_builder.ins().jump(merge, &[BlockArg::Value(default_val)]);
         fn_builder.seal_block(else_block);
     }
 

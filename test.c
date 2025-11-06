@@ -1,9 +1,7 @@
 #include <stdio.h>
-extern int w();
-extern void *f();
+extern int test();
 
 int main() {
-  printf("f = %p\n", f(20));
-  printf("w = %d\n", w(20));
+  printf("w = %d\n", test(2, 2));
   return 0;
 }

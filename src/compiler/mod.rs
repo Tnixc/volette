@@ -63,7 +63,7 @@ pub fn build(file: &Path) {
     all_diagnostics.extend(parse_result.diagnostics);
     let (root, mut tree) = (parse_result.value.0, parse_result.value.1);
 
-    // root.print_tree(&tree, &interner);
+    root.print_tree(&tree, &interner);
 
     // ------------------------------ Analysis phase
     println!("{}", "=== Analysis Phase ===".bright_blue());

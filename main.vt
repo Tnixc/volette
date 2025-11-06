@@ -1,4 +1,4 @@
 fn test(x: i32, y: i32):i32 {
-    let z = 5;
-    return x + y;
+    let a = let c = 2;
+    return a * c * x * y;
 }
