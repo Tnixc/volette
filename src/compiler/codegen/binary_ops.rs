@@ -27,7 +27,7 @@ pub fn expr_binop(
     let (right_value, right_type) = expr_to_val(right, fn_builder, scopes, info)?;
     let right_value = right_value.safe();
 
-    let val = match (left_type, right_type) {
+    let val = match (left_type.clone(), right_type.clone()) {
         (Type::Primitive(PrimitiveTypes::F32), Type::Primitive(PrimitiveTypes::F32))
         | (Type::Primitive(PrimitiveTypes::F64), Type::Primitive(PrimitiveTypes::F64)) => {
             use cranelift::codegen::ir::condcodes::FloatCC;
@@ -67,6 +67,9 @@ pub fn expr_binop(
                 BinOpKind::LessThan => fn_builder.ins().icmp(IntCC::SignedLessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().icmp(IntCC::SignedLessThanOrEqual, left_value, right_value),
                 BinOpKind::Mod => fn_builder.ins().srem(left_value, right_value),
+                BinOpKind::BitwiseAnd => fn_builder.ins().band(left_value, right_value),
+                BinOpKind::BitwiseOr => fn_builder.ins().bor(left_value, right_value),
+                BinOpKind::BitwiseXor => fn_builder.ins().bxor(left_value, right_value),
                 _ => {
                     return Err(TranslateError::Unsupported {
                         what: format!("binary operation '{:?}' on integers", op),

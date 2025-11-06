@@ -33,7 +33,7 @@ pub fn expr_to_val(
             let value = match kind {
                 ExprKind::Literal(literal) => match_literal(
                     *literal,
-                    type_.unwrap_or(literal_default_types(*literal)),
+                    type_.clone().unwrap_or(literal_default_types(*literal)),
                     node,
                     fn_builder,
                     info.interner,
@@ -59,10 +59,11 @@ pub fn expr_to_val(
                 }
             };
 
-            match type_.safe() {
+            let type_val = type_.clone().safe();
+            match type_val {
                 Type::Primitive(crate::compiler::tokens::PrimitiveTypes::Nil)
-                | Type::Primitive(crate::compiler::tokens::PrimitiveTypes::Never) => Ok((None, type_.safe())),
-                _ => Ok((value, type_.safe())),
+                | Type::Primitive(crate::compiler::tokens::PrimitiveTypes::Never) => Ok((None, type_val)),
+                _ => Ok((value, type_val)),
             }
         }
         _ => {

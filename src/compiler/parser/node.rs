@@ -7,10 +7,11 @@ use crate::compiler::{
     tokens::{PrimitiveTypes, Span},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Primitive(PrimitiveTypes),
     Custom(SymbolUsize),
+    Pointer(Box<Type>),
 }
 
 impl Type {
@@ -18,6 +19,10 @@ impl Type {
         match self {
             Type::Primitive(pt) => pt.to_clif(ptr_bits),
             Type::Custom(_) => panic!("Custom types are not yet supported in codegen"),
+            Type::Pointer(_) => match ptr_bits {
+                PtrWidth::X64 => types::I64,
+                PtrWidth::X32 => types::I32,
+            }, // yeah idk
         }
     }
 }
@@ -78,12 +83,17 @@ pub enum BinOpKind {
     GreaterThanOrEq,
     LogicalAnd,
     LogicalOr,
+    BitwiseXor,
+    BitwiseAnd,
+    BitwiseOr,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOpKind {
     Neg,
     Not,
+    Deref,      // @ptr
+    AddressOf,  // &var
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

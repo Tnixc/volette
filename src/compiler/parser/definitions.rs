@@ -16,6 +16,42 @@ use super::{
 };
 
 impl<'a> Parser<'a> {
+    /// Parse a type annotation and return both the type and its span.
+    /// Advances the cursor past the type.
+    pub fn parse_type(&mut self) -> Result<(Type, Span), ParserError> {
+        let start_span = self.current().span;
+
+        // count leading carets (^) for pointer depth
+        let mut pointer_depth = 0;
+        while let TokenKind::Punctuation(Punctuation::Caret) = self.current().kind {
+            pointer_depth += 1;
+            self.advance();
+        }
+
+        let mut base_type = match self.current().kind {
+            TokenKind::TypeLiteral(ty) => Type::Primitive(ty),
+            TokenKind::Identifier(name) => Type::Custom(name),
+            _ => {
+                return Err(ParserError::Expected {
+                    what: "type (primitive or identifier)".to_string(),
+                    got: format!("{:?}", self.current().kind),
+                    span: self.current().span.to_display(self.interner),
+                });
+            }
+        };
+
+        let type_span = start_span.connect_new(&self.current().span);
+
+        for _ in 0..pointer_depth {
+            base_type = Type::Pointer(Box::new(base_type));
+        }
+
+        // advance past the base type
+        self.advance();
+
+        Ok((base_type, type_span))
+    }
+
     pub fn parse_def(&mut self) -> Result<Index, ParserError> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),
@@ -106,28 +142,32 @@ impl<'a> Parser<'a> {
                         self.advance();
                     }
                 },
-                ParamMode::Type => match self.current().kind {
-                    TokenKind::TypeLiteral(ty) => {
-                        mode = ParamMode::Comma;
-                        if let Some(span) = param.2.as_mut() {
-                            span.connect_mut(&self.current().span);
+                ParamMode::Type => {
+                    match self.parse_type() {
+                        Ok((ty, type_span)) => {
+                            mode = ParamMode::Comma;
+                            // backtrack because parse_type advanced past the type,
+                            // but the loop will advance again
+                            // this is actually so dumb
+                            self.backtrack();
+                            if let Some(span) = param.2.as_mut() {
+                                span.connect_mut(&type_span);
+                            }
+                            params.push((param.0.safe(), ty, param.2.safe()));
+                            param = (None, None, None);
                         }
-                        params.push((param.0.safe(), Type::Primitive(ty), param.2.safe()));
-                        param = (None, None, None);
-                    }
-                    _ => {
-                        mode = ParamMode::Comma;
-                        self.parse_errors.push(ParserError::Expected {
-                            what: "type annotation".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
-                        self.advance();
+                        Err(e) => {
+                            mode = ParamMode::Comma;
+                            self.parse_errors.push(e);
+                        }
                     }
                 },
                 ParamMode::Comma => match self.current().kind {
                     TokenKind::Punctuation(Punctuation::Comma) => {
                         mode = ParamMode::Name;
+                    }
+                    TokenKind::Punctuation(Punctuation::CloseParen) => {
+                        break;
                     }
                     _ => {
                         mode = ParamMode::Name;
@@ -167,23 +207,8 @@ impl<'a> Parser<'a> {
 
         if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
             self.advance();
-            match self.current().kind {
-                TokenKind::TypeLiteral(ty) => {
-                    return_type = Type::Primitive(ty);
-                    self.advance();
-                }
-                TokenKind::Identifier(name) => {
-                    return_type = Type::Custom(name);
-                    self.advance();
-                }
-                _ => {
-                    return Err(ParserError::Expected {
-                        what: "return type after ':'".to_string(),
-                        got: format!("{:?}", self.current().kind),
-                        span: self.current().span.to_display(self.interner),
-                    });
-                }
-            }
+            let (parsed_type, _) = self.parse_type()?;
+            return_type = parsed_type;
         }
 
         match self.current().kind {

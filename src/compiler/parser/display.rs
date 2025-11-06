@@ -24,6 +24,9 @@ impl Display for BinOpKind {
             BinOpKind::GreaterThanOrEq => write!(f, ">="),
             BinOpKind::LogicalAnd => write!(f, "&&"),
             BinOpKind::LogicalOr => write!(f, "||"),
+            BinOpKind::BitwiseAnd => write!(f, "&"),
+            BinOpKind::BitwiseOr => write!(f, "|"),
+            BinOpKind::BitwiseXor => write!(f, "^"),
             BinOpKind::Pow => write!(f, "**"),
         }
     }
@@ -38,6 +41,9 @@ fn format_type_val(type_val: &Type, interner: &StringInterner<BucketBackend<Symb
         Type::Primitive(pt) => format!("Primitive{{type:\"{:?}\"}}", pt),
         Type::Custom(s_idx) => {
             format!("Custom{{name:\"{}\"}}", format_symbol(*s_idx, interner))
+        }
+        Type::Pointer(inner) => {
+            format!("Pointer{{to:{}}}", format_type_val(inner, interner))
         }
     }
 }
@@ -102,7 +108,7 @@ impl Node {
             NodeKind::Expr { kind, type_ } => {
                 format!(
                     "Expr{{type:{},kind:{}}}",
-                    format_optional_type(*type_, interner),
+                    format_optional_type(type_.clone(), interner),
                     kind.to_json_like_string(arena, interner)
                 )
             }
@@ -141,7 +147,7 @@ impl ExprKind {
             } => format!(
                 "LetBinding{{name:\"{}\",type_annotation:{},value:{}}}",
                 format_symbol(*name, interner),
-                format_optional_type(*type_annotation, interner),
+                format_optional_type(type_annotation.clone(), interner),
                 format_node_to_string(*value, arena, interner)
             ),
             ExprKind::BinOp { left, right, op } => format!(

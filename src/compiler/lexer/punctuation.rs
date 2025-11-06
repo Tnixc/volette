@@ -1,9 +1,9 @@
-use crate::compiler::tokens::Token;
+use crate::compiler::tokens::{Punctuation, Token, TokenKind};
 
 use super::Lexer;
 
 impl<'a> Lexer<'a> {
-    fn push_punctuation(&mut self, punct: crate::compiler::tokens::Punctuation, chars_consumed: usize) {
+    fn push_punctuation(&mut self, punct: Punctuation, chars_consumed: usize) {
         if chars_consumed == 0 || self.current_chars.is_empty() {
             return;
         }
@@ -17,13 +17,13 @@ impl<'a> Lexer<'a> {
 
         let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
         self.tokens
-            .push(Token::new(crate::compiler::tokens::TokenKind::Punctuation(punct), span));
+            .push(Token::new(TokenKind::Punctuation(punct), span));
     }
 
     pub fn check_punctuation(&mut self) -> bool {
         use crate::compiler::tokens::Punctuation::*;
 
-        const PATTERNS: &[(&str, crate::compiler::tokens::Punctuation, usize)] = &[
+        const PATTERNS: &[(&str, Punctuation, usize)] = &[
             // 2-char ops (checked first)
             ("&&", AmpAmp, 2),
             ("!=", NotEq, 2),
@@ -57,6 +57,9 @@ impl<'a> Lexer<'a> {
             ("/", Slash, 1),
             ("%", Percent, 1),
             ("+", Plus, 1),
+            ("@", At, 2),
+            ("^", Caret, 2),
+            ("~", Tilde, 1),
         ];
 
         for &(pattern, punctuation, min_chars) in PATTERNS {

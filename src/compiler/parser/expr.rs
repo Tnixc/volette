@@ -42,6 +42,12 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 left_expr_idx = self.parse_block_expr_nud(current_token)?;
             }
+            TokenKind::Punctuation(Punctuation::At) => {
+                left_expr_idx = self.parse_unary_op_nud(current_token)?;
+            }
+            TokenKind::Punctuation(Punctuation::Amp) => {
+                left_expr_idx = self.parse_unary_op_nud(current_token)?;
+            }
             _ => {
                 return Err(ParserError::Expected {
                     what: "expression".to_string(),
@@ -73,6 +79,12 @@ impl<'a> Parser<'a> {
                 TokenKind::Punctuation(Punctuation::AmpAmp) => (BindingPower::LogicalAnd, false),
                 TokenKind::Punctuation(Punctuation::PipePipe) => (BindingPower::LogicalOr, false),
 
+                TokenKind::Punctuation(Punctuation::Amp) => (BindingPower::BitwiseAnd, false),
+                TokenKind::Punctuation(Punctuation::Pipe) => (BindingPower::BitwiseOr, false),
+                TokenKind::Punctuation(Punctuation::Caret) => (BindingPower::BitwiseXor, false),
+
+                TokenKind::Keyword(Keyword::As) => (BindingPower::Cast, false),
+
                 TokenKind::Punctuation(Punctuation::OpenParen) => (BindingPower::Call, false),
 
                 _ => (BindingPower::None, false),
@@ -100,8 +112,14 @@ impl<'a> Parser<'a> {
                 | TokenKind::Punctuation(Punctuation::GreaterThan)
                 | TokenKind::Punctuation(Punctuation::GreaterThanOrEq)
                 | TokenKind::Punctuation(Punctuation::AmpAmp)
-                | TokenKind::Punctuation(Punctuation::PipePipe) => {
+                | TokenKind::Punctuation(Punctuation::PipePipe)
+                | TokenKind::Punctuation(Punctuation::Amp)
+                | TokenKind::Punctuation(Punctuation::Pipe)
+                | TokenKind::Punctuation(Punctuation::Caret) => {
                     left_expr_idx = self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
+                }
+                TokenKind::Keyword(Keyword::As) => {
+                    left_expr_idx = self.parse_cast_led(next_token, left_expr_idx)?;
                 }
                 TokenKind::Punctuation(Punctuation::OpenParen) => {
                     left_expr_idx = self.parse_call_led(next_token, left_expr_idx)?;

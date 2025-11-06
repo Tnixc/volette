@@ -70,7 +70,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
 
                 let var = fn_builder.declare_var(ty);
                 fn_builder.def_var(var, val);
-                scopes.last_mut().safe().insert(param.0, (param.1, var));
+                scopes.last_mut().safe().insert(param.0, (param.1.clone(), var));
             }
 
             let (maybe_body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;

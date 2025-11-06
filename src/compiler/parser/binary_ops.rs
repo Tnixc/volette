@@ -31,6 +31,9 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::GreaterThanOrEq) => BinOpKind::GreaterThanOrEq,
             TokenKind::Punctuation(Punctuation::AmpAmp) => BinOpKind::LogicalAnd,
             TokenKind::Punctuation(Punctuation::PipePipe) => BinOpKind::LogicalOr,
+            TokenKind::Punctuation(Punctuation::Amp) => BinOpKind::BitwiseAnd,
+            TokenKind::Punctuation(Punctuation::Pipe) => BinOpKind::BitwiseOr,
+            TokenKind::Punctuation(Punctuation::Caret) => BinOpKind::BitwiseXor,
             _ => {
                 return Err(ParserError::Invalid {
                     what: "binary operator".to_string(),

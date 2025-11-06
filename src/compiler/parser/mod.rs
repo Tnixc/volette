@@ -6,6 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use super::tokens::{Token, TokenKind};
 use crate::SafeConvert;
 
+pub mod as_;
 pub mod assignment;
 pub mod binary_ops;
 pub mod block;
@@ -19,6 +20,7 @@ pub mod literal;
 pub mod node;
 pub mod paren_block;
 pub mod precedence;
+pub mod unary_ops;
 
 pub struct Parser<'a> {
     pub tree: Arena<Node>,

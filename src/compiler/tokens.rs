@@ -36,6 +36,9 @@ pub enum Punctuation {
     Semicolon,
     AmpAmp,
     Bang,
+    At,
+    Caret,
+    Tilde,
 
     Plus,
     Minus, // Binop and Unary

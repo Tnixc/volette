@@ -207,7 +207,7 @@ impl LexedChar for char {
     }
 
     fn is_allowed_char(&self) -> bool {
-        let disallowed_chars = ['^', '`', '~', '\'', '"', '?', '\\', '@'];
+        let disallowed_chars = ['`', '\'', '"', '?', '\\'];
         !disallowed_chars.contains(self) && self.is_ascii()
     }
 }

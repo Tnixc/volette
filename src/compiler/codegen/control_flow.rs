@@ -70,8 +70,8 @@ pub fn expr_if(
     let then_block = fn_builder.create_block();
     let else_block = fn_builder.create_block();
 
-    let result_type = match info.nodes.get(then_idx).safe().kind {
-        NodeKind::Expr { type_, .. } => type_,
+    let result_type = match &info.nodes.get(then_idx).safe().kind {
+        NodeKind::Expr { type_, .. } => type_.clone(),
         _ => unreachable!(),
     }
     .safe()

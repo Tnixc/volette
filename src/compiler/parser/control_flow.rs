@@ -33,21 +33,9 @@ impl<'a> Parser<'a> {
 
         if self.current().kind == TokenKind::Punctuation(Punctuation::Colon) {
             self.advance(); // consume ':'
-            let type_node_token = *self.current();
-            current_span.connect_mut(&type_node_token.span);
-            let parsed_type = match type_node_token.kind {
-                TokenKind::TypeLiteral(tl) => Type::Primitive(tl),
-                TokenKind::Identifier(custom_type_name) => Type::Custom(custom_type_name),
-                _ => {
-                    return Err(ParserError::Expected {
-                        what: "type annotation".to_string(),
-                        got: format!("{:?}", type_node_token.kind),
-                        span: type_node_token.span.to_display(self.interner),
-                    });
-                }
-            };
+            let (parsed_type, type_span) = self.parse_type()?;
+            current_span.connect_mut(&type_span);
             type_annotation = Some(parsed_type);
-            self.advance(); // Consumes type
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::Eq) {
