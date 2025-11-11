@@ -1,6 +1,6 @@
 #include <stdio.h>
-extern int add(int);
+extern long test(int);
 int main() {
-  printf("Identity(5) = %d\n", add(5));
+  printf("Res = %ld\n", test(12345));
   return 0;
 }

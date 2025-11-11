@@ -5,6 +5,6 @@ fn test(a: ^i32): f32 {
     let xor: i32 = val ^ a;
     let result: f32 = xor as f32;
     let ptr_cast: ^f32 = 12345 as ^f32;
-    let t : f32 = (x * p as f32 * 2 as f32) as f64;
+    let t : f32 = x ^ &p as ^^^ f64 as f32;
     return result;
 }
