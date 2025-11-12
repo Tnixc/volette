@@ -12,6 +12,8 @@ use super::{
 impl<'a> Parser<'a> {
     pub fn parse_unary_op_nud(&mut self, op_token: Token) -> Result<Index, ParserError> {
         let op_kind = match op_token.kind {
+            TokenKind::Punctuation(Punctuation::Bang) => UnaryOpKind::Not,
+            TokenKind::Punctuation(Punctuation::Minus) => UnaryOpKind::Neg,
             TokenKind::Punctuation(Punctuation::At) => UnaryOpKind::Deref,
             TokenKind::Punctuation(Punctuation::Amp) => UnaryOpKind::AddressOf,
             _ => {

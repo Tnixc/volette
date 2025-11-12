@@ -6,8 +6,9 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
+        analysis::binop::check_binop,
         error::DiagnosticCollection,
-        parser::node::{BinOpKind, DefKind, ExprKind, Literal, Node, NodeKind, Type},
+        parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, Type},
         tokens::PrimitiveTypes,
     },
 };
@@ -69,7 +70,7 @@ pub fn type_check_root(
 /// resolves the type of an expression.
 /// if `expected` is `some`, it checks the expression against that type.
 /// if `expected` is `none`, it infers the expression's type.
-fn resolve_expr_type(
+pub(crate) fn resolve_expr_type(
     target_idx: Index,
     expected: Option<Type>,
     nodes: &mut Arena<Node>,
@@ -111,7 +112,7 @@ fn resolve_expr_type(
                 ident_types.insert(name, value_type.clone());
                 Ok(value_type)
             }
-            ExprKind::Literal(v) => resolve_literal(span, interner, expected.clone(), v),
+            ExprKind::Literal(v) => check_literal(span, interner, expected.clone(), v),
             ExprKind::Assign { target, value } => {
                 let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table)?;
                 let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table)?;
@@ -125,7 +126,7 @@ fn resolve_expr_type(
                     Ok(target_type)
                 }
             }
-            ExprKind::BinOp { left, right, op } => resolve_binop(left, right, op, nodes, interner, ident_types, fn_table),
+            ExprKind::BinOp { left, right, op } => check_binop(left, right, op, nodes, interner, ident_types, fn_table),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
                     resolve_expr_type(v, expected.clone(), nodes, interner, ident_types, fn_table)?;
@@ -253,7 +254,7 @@ fn resolve_expr_type(
     Ok(inferred_type)
 }
 
-fn resolve_literal(
+fn check_literal(
     span: crate::compiler::tokens::Span,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     expected: Option<Type>,
@@ -276,68 +277,6 @@ fn resolve_literal(
             expected: format!("{:?}", expected.unwrap_or(literal_type.clone())),
             got: format!("{:?}", literal_type),
             span: span.to_display(interner),
-        }),
-    }
-}
-
-fn resolve_binop(
-    left: Index,
-    right: Index,
-    op: BinOpKind,
-    nodes: &mut Arena<Node>,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ident_types: &mut HashMap<SymbolUsize, Type>,
-    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
-) -> Result<Type, AnalysisError> {
-    let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table)?;
-    let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table)?;
-
-    if left_ty == Type::Primitive(PrimitiveTypes::Nil) || left_ty == Type::Primitive(PrimitiveTypes::Nil) {
-        return Err(AnalysisError::Invalid {
-            what: format!("binary operation '{:?}'", op),
-            reason: format!("cannot be used with type {:?}", left_ty),
-            span: nodes
-                .get(left)
-                .safe()
-                .span
-                .connect_new(&nodes.get(right).safe().span)
-                .to_display(interner),
-        });
-    }
-
-    if left_ty != right_ty {
-        return Err(AnalysisError::TypeMismatch {
-            expected: format!("{:?}", left_ty),
-            got: format!("{:?}", right_ty),
-            span: nodes.get(right).safe().span.to_display(interner),
-        });
-    }
-
-    match op {
-        BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul | BinOpKind::Div | BinOpKind::Mod => {
-            // TODO??
-            Ok(left_ty)
-        }
-        BinOpKind::BitwiseAnd | BinOpKind::BitwiseOr | BinOpKind::BitwiseXor => {
-            // Bitwise operators return the same type as operands
-            Ok(left_ty)
-        }
-        BinOpKind::Eq
-        | BinOpKind::NotEq
-        | BinOpKind::LessThan
-        | BinOpKind::GreaterThanOrEq
-        | BinOpKind::GreaterThan
-        | BinOpKind::LessThanOrEq
-        | BinOpKind::LogicalAnd
-        | BinOpKind::LogicalOr => Ok(Type::Primitive(PrimitiveTypes::Bool)),
-        _ => Err(AnalysisError::Unsupported {
-            what: format!("binary operator '{:?}'", op),
-            span: nodes
-                .get(left)
-                .safe()
-                .span
-                .connect_new(&nodes.get(right).safe().span)
-                .to_display(interner),
         }),
     }
 }

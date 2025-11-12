@@ -42,10 +42,10 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::OpenBrace) => {
                 left_expr_idx = self.parse_block_expr_nud(current_token)?;
             }
-            TokenKind::Punctuation(Punctuation::At) => {
-                left_expr_idx = self.parse_unary_op_nud(current_token)?;
-            }
-            TokenKind::Punctuation(Punctuation::Amp) => {
+            TokenKind::Punctuation(Punctuation::Bang)
+            | TokenKind::Punctuation(Punctuation::Minus)
+            | TokenKind::Punctuation(Punctuation::At)
+            | TokenKind::Punctuation(Punctuation::Amp) => {
                 left_expr_idx = self.parse_unary_op_nud(current_token)?;
             }
             _ => {

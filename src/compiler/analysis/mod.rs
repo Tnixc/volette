@@ -1,3 +1,4 @@
+mod binop;
 pub mod error;
 mod function_table;
 mod type_check;
