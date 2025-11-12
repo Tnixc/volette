@@ -6,7 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
-        analysis::binop::check_binop,
+        analysis::{binop::check_binop, unaryop::check_unaryop},
         error::DiagnosticCollection,
         parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, Type},
         tokens::PrimitiveTypes,
@@ -220,6 +220,7 @@ pub(crate) fn resolve_expr_type(
                     }
                 }
             }
+            ExprKind::UnaryOp { op, expr } => check_unaryop(expr, op, nodes, interner, ident_types, fn_table),
             _ => {
                 return Err(AnalysisError::Unsupported {
                     what: format!("expression kind: {:?}", kind),

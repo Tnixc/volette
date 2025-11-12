@@ -2,6 +2,7 @@ mod binop;
 pub mod error;
 mod function_table;
 mod type_check;
+mod unaryop;
 
 use std::collections::HashMap;
 

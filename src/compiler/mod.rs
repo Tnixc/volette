@@ -90,8 +90,8 @@ pub fn build(file: &Path) {
     root.print_tree(&tree, &interner);
 
     match codegen::codegen(&root, &tree, &interner, &fn_table) {
-        Ok(_) => {
-            println!("{}", "Compilation successful!".green().bold());
+        Ok(diag) => {
+            all_diagnostics.extend(diag);
         }
         Err(e) => {
             all_diagnostics.add_error(e);
@@ -99,6 +99,9 @@ pub fn build(file: &Path) {
     }
 
     all_diagnostics.print_all();
+    if !all_diagnostics.has_errors() {
+        println!("{}", "Compilation successful!".green().bold());
+    }
 }
 
 fn lex_phase(
