@@ -1,7 +1,5 @@
-use cranelift::prelude::{FunctionBuilder, Value, Variable};
+use cranelift::prelude::{FunctionBuilder, Value};
 use generational_arena::Index;
-use std::collections::HashMap;
-use string_interner::symbol::SymbolUsize;
 
 use crate::{
     SafeConvert,

@@ -1,16 +1,14 @@
 use cranelift::{
     codegen::ir::BlockArg,
-    prelude::{FunctionBuilder, InstBuilder, Value, Variable},
+    prelude::{FunctionBuilder, InstBuilder, Value},
 };
 use generational_arena::Index;
-use std::collections::HashMap;
-use string_interner::symbol::SymbolUsize;
 
 use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, Scopes, error::TranslateError},
-        parser::node::{ExprKind, NodeKind, Type},
+        parser::node::{ExprKind, NodeKind},
     },
 };
 

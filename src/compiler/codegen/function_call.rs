@@ -1,8 +1,6 @@
 use cranelift::module::Module;
-use cranelift::prelude::{FunctionBuilder, InstBuilder, Value, Variable};
+use cranelift::prelude::{FunctionBuilder, InstBuilder, Value};
 use generational_arena::Index;
-use std::collections::HashMap;
-use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::codegen::Scopes;
 use crate::{

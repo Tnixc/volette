@@ -9,10 +9,9 @@ use crate::{
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
     module::FuncId,
-    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, StackSlotData, StackSlotKind, Variable},
+    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, StackSlotData, StackSlotKind},
 };
 use std::collections::HashMap;
-use string_interner::symbol::SymbolUsize;
 
 use super::error::TranslateError;
 
