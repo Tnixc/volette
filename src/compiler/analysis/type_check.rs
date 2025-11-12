@@ -198,7 +198,8 @@ fn resolve_expr_type(
                 match rest {
                     Some(rest) => {
                         for (arg_idx, expected_type) in args.iter().zip(rest.0.iter()) {
-                            let arg_type = resolve_expr_type(*arg_idx, Some(expected_type.clone()), nodes, interner, ident_types, fn_table)?;
+                            let arg_type =
+                                resolve_expr_type(*arg_idx, Some(expected_type.clone()), nodes, interner, ident_types, fn_table)?;
                             if arg_type != *expected_type {
                                 let span = nodes.get(*arg_idx).safe().span;
                                 return Err(AnalysisError::TypeMismatch {

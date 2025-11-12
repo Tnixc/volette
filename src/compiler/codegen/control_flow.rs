@@ -9,7 +9,7 @@ use string_interner::symbol::SymbolUsize;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, error::TranslateError},
+        codegen::{Info, Scopes, error::TranslateError},
         parser::node::{ExprKind, NodeKind, Type},
     },
 };
@@ -44,7 +44,7 @@ fn expr_terminates(node_idx: Index, info: &Info) -> bool {
 pub fn expr_return(
     ret_val: Option<Index>,
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Option<Value>, TranslateError> {
     if let Some(ret_val) = ret_val {
@@ -64,7 +64,7 @@ pub fn expr_if(
     then_idx: Index,
     else_idx: Option<Index>,
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let then_block = fn_builder.create_block();

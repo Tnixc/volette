@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{Info, error::TranslateError},
+    codegen::{Info, Scopes, error::TranslateError},
     parser::node::Type,
     tokens::PrimitiveTypes,
 };
@@ -14,7 +14,7 @@ use super::expr::expr_to_val;
 pub fn expr_block(
     exprs: &[Index],
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     scopes.push(HashMap::new());

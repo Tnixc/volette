@@ -1,7 +1,7 @@
 #include <stdio.h>
-extern int test();
+extern int test(int);
 
 int main() {
-  printf("w = %d\n", test(2, 2));
+  printf("Res = %d\n", test(2));
   return 0;
 }

@@ -1,7 +1,7 @@
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, expr::expr_to_val},
+        codegen::{Info, Scopes, expr::expr_to_val},
         parser::node::{DefKind, Node, NodeKind, Type},
         tokens::PrimitiveTypes,
     },
@@ -9,7 +9,7 @@ use crate::{
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
     module::FuncId,
-    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, Variable},
+    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, StackSlotData, StackSlotKind, Variable},
 };
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
@@ -58,7 +58,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             fn_builder.append_block_params_for_function_params(entry);
 
             // -- Body --
-            let mut scopes: Vec<HashMap<SymbolUsize, (Type, Variable)>> = vec![HashMap::new()];
+            let mut scopes: Scopes = vec![HashMap::new()];
 
             // collect block parameters into a vector to avoid borrowing conflicts
             let block_params: Vec<_> = fn_builder.block_params(entry).to_vec();
@@ -67,10 +67,11 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                 let val = block_params[i];
                 // let var = Variable::new(i);
                 let ty = param.1.to_clif(info.build_config.ptr_width);
+                let stack_slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, ty.bytes(), 0));
 
                 let var = fn_builder.declare_var(ty);
                 fn_builder.def_var(var, val);
-                scopes.last_mut().safe().insert(param.0, (param.1.clone(), var));
+                scopes.last_mut().safe().insert(param.0, (param.1.clone(), var, stack_slot));
             }
 
             let (maybe_body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;

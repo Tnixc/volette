@@ -6,7 +6,7 @@ use string_interner::symbol::SymbolUsize;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, error::TranslateError},
+        codegen::{Info, Scopes, error::TranslateError},
         parser::node::{BinOpKind, Type},
         tokens::PrimitiveTypes,
     },
@@ -19,7 +19,7 @@ pub fn expr_binop(
     right: Index,
     op: BinOpKind,
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let (left_value, left_type) = expr_to_val(left, fn_builder, scopes, info)?;

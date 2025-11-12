@@ -16,8 +16,7 @@ impl<'a> Lexer<'a> {
         };
 
         let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
-        self.tokens
-            .push(Token::new(TokenKind::Punctuation(punct), span));
+        self.tokens.push(Token::new(TokenKind::Punctuation(punct), span));
     }
 
     pub fn check_punctuation(&mut self) -> bool {

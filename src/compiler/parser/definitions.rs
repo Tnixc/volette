@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
                             self.parse_errors.push(e);
                         }
                     }
-                },
+                }
                 ParamMode::Comma => match self.current().kind {
                     TokenKind::Punctuation(Punctuation::Comma) => {
                         mode = ParamMode::Name;

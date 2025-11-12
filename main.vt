@@ -1,10 +1,4 @@
-fn test(a: ^i32): f32 {
-    let x: i32 = 42;
-    let p: ^i32 = &x;
-    let val: i32 = @p;
-    let xor: i32 = val ^ a;
-    let result: f32 = xor as f32;
-    let ptr_cast: ^f32 = 12345 as ^f32;
-    let t : f32 = x ^ &p as ^^^ f64 as f32;
-    return result;
+fn test(a: i32): i32 {
+    let x = let y = 12;
+    return a + x * y;
 }

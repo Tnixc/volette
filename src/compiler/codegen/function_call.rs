@@ -4,6 +4,7 @@ use generational_arena::Index;
 use std::collections::HashMap;
 use string_interner::symbol::SymbolUsize;
 
+use crate::compiler::codegen::Scopes;
 use crate::{
     SafeConvert,
     compiler::{
@@ -19,7 +20,7 @@ pub fn expr_call(
     func: Index,
     args: &[Index],
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let func_node = info.nodes.get(func).safe();

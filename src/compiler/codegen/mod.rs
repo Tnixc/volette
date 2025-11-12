@@ -1,11 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cranelift::{
-    codegen::Context,
+    codegen::{Context, ir::StackSlot},
     module::{Linkage, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
-        AbiParam, Signature,
+        AbiParam, Signature, Variable,
         isa::{self, CallConv, TargetIsa},
         settings::{self, Flags},
     },
@@ -45,6 +45,8 @@ pub struct BuildConfig {
     pub ptr_width: PtrWidth,
     pub call_conv: CallConv,
 }
+
+pub type Scopes = Vec<HashMap<SymbolUsize, (Type, Variable, StackSlot)>>;
 
 pub struct Info<'a> {
     pub module: ObjectModule,

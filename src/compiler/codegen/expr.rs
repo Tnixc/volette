@@ -7,7 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{Info, error::TranslateError, variable::expr_assign},
+        codegen::{Info, Scopes, error::TranslateError, variable::expr_assign},
         parser::node::{ExprKind, NodeKind, Type},
     },
 };
@@ -24,7 +24,7 @@ use super::{
 pub fn expr_to_val(
     node: Index,
     fn_builder: &mut FunctionBuilder,
-    scopes: &mut Vec<HashMap<SymbolUsize, (Type, Variable)>>,
+    scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<(Option<Value>, Type), TranslateError> {
     let node = info.nodes.get(node).safe();

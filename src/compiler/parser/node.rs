@@ -92,8 +92,8 @@ pub enum BinOpKind {
 pub enum UnaryOpKind {
     Neg,
     Not,
-    Deref,      // @ptr
-    AddressOf,  // &var
+    Deref,     // @ptr
+    AddressOf, // &var
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
