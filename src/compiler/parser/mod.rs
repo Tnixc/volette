@@ -3,8 +3,8 @@ use generational_arena::{Arena, Index};
 use node::{Node, NodeKind};
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
-use super::tokens::{Token, TokenKind};
-use crate::SafeConvert;
+use super::tokens::{Keyword, Token, TokenKind};
+use crate::{SafeConvert, compiler::tokens::Punctuation};
 
 pub mod as_;
 pub mod assignment;
@@ -57,7 +57,21 @@ impl<'a> Parser<'a> {
         while self.advance().is_some_and(|t| t.kind != TokenKind::Eof) {
             match self.parse_def() {
                 Ok(idx) => defs.push(idx),
-                Err(e) => self.parse_errors.push(e),
+                Err(e) => {
+                    self.parse_errors.push(e);
+                    // skip to the next potential "stable" section to avoid cascading errors
+                    // while self.advance().is_some_and(|t| t.kind != TokenKind::Eof && t.kind != TokenKind::Keyword(Keyword::Fn)) {}
+                    while self.advance().is_some_and(|t| {
+                        !matches!(
+                            t.kind,
+                            TokenKind::Eof
+                                | TokenKind::Punctuation(Punctuation::OpenParen)
+                                | TokenKind::Punctuation(Punctuation::OpenBrace)
+                                | TokenKind::Punctuation(Punctuation::Semicolon)
+                                | TokenKind::Keyword(Keyword::Fn)
+                        )
+                    }) {}
+                }
             }
         }
 
