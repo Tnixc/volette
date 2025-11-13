@@ -6,12 +6,13 @@ fn test_negation(x: i32): i32 {
     return -x;
 }
 
-//fn test_not(b: i32): i32 {
-//    if !(b > 0) {
-//        return 0;
-//    }
-//    return 1;
-//}
+fn test_not(b: i32): i32 {
+    if !(b > 0) {
+        return 0;
+    }
+    return 1;
+}
+
 //
 //fn test_nested_negation(x: i32): i32 {
 //    return -(-x);

@@ -14,8 +14,8 @@ use crate::{
 
 use super::expr::expr_to_val;
 
-/// checks if an expression terminates the current block (e.g., contains a return)
-/// i.e. you cannot add any more instructions
+/// checks if an expression terminates the current block (e.g, contains a return)
+/// that is, you cannot add any more instructions
 fn expr_terminates(node_idx: Index, info: &Info) -> bool {
     let node = info.nodes.get(node_idx).safe();
     match &node.kind {
@@ -58,6 +58,7 @@ pub fn expr_return(
 }
 
 pub fn expr_if(
+    if_node_idx: Index,
     cond: Index,
     then_idx: Index,
     else_idx: Option<Index>,
@@ -68,7 +69,8 @@ pub fn expr_if(
     let then_block = fn_builder.create_block();
     let else_block = fn_builder.create_block();
 
-    let result_type = match &info.nodes.get(then_idx).safe().kind {
+    // get the result type from the if expression itself
+    let result_type = match &info.nodes.get(if_node_idx).safe().kind {
         NodeKind::Expr { type_, .. } => type_.clone(),
         _ => unreachable!(),
     }
@@ -85,10 +87,17 @@ pub fn expr_if(
     let else_terminates = else_idx.map_or(false, |idx| expr_terminates(idx, info));
     let both_terminate = then_terminates && else_terminates;
 
+    // check if result type is valid (not nil or never)
+    use cranelift::prelude::types;
+    let has_value = result_type != types::INVALID;
+
     // create merge block if at least one branch continues
     let merge_block = if !both_terminate {
         let mb = fn_builder.create_block();
-        fn_builder.append_block_param(mb, result_type);
+        // Only add block parameter if the type produces a value
+        if has_value {
+            fn_builder.append_block_param(mb, result_type);
+        }
         Some(mb)
     } else {
         None
@@ -106,8 +115,13 @@ pub fn expr_if(
     // add jump if this branch doesn't terminate
     if !then_terminates {
         let merge = merge_block.unwrap();
-        let val = then_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
-        fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
+        if has_value {
+            let val = then_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
+            fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
+        } else {
+            // No value to pass for Nil/Never types
+            fn_builder.ins().jump(merge, &[]);
+        }
         fn_builder.seal_block(then_block);
     }
 
@@ -128,14 +142,23 @@ pub fn expr_if(
     // add jump if this branch doesn't terminate
     if !else_terminates {
         let merge = merge_block.unwrap();
-        let val = else_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
-        fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
+        if has_value {
+            let val = else_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
+            fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
+        } else {
+            // No value to pass for Nil/Never types
+            fn_builder.ins().jump(merge, &[]);
+        }
         fn_builder.seal_block(else_block);
     } else if else_idx.is_none() {
-        // no else branch provided, jump with default value
+        // no else branch provided, jump with default value (or no value for Nil)
         let merge = merge_block.unwrap();
-        let default_val = fn_builder.ins().iconst(result_type, 0);
-        fn_builder.ins().jump(merge, &[BlockArg::Value(default_val)]);
+        if has_value {
+            let default_val = fn_builder.ins().iconst(result_type, 0);
+            fn_builder.ins().jump(merge, &[BlockArg::Value(default_val)]);
+        } else {
+            fn_builder.ins().jump(merge, &[]);
+        }
         fn_builder.seal_block(else_block);
     }
 
@@ -143,7 +166,7 @@ pub fn expr_if(
     // since this code is unreachable
 
     if both_terminate {
-        // return a dummy value that won't actually be used (the type is never).
+        // return a dummy value that won't actually be used (the type is never)
         return Ok(Value::from_u32(0));
     }
 
@@ -151,7 +174,11 @@ pub fn expr_if(
     fn_builder.switch_to_block(merge_block);
     fn_builder.seal_block(merge_block);
 
-    let result = fn_builder.block_params(merge_block)[0];
-
-    Ok(result)
+    if has_value {
+        let result = fn_builder.block_params(merge_block)[0];
+        Ok(result)
+    } else {
+        // dummy value
+        Ok(Value::from_u32(0)) // FIXME: idkkkkk 
+    }
 }

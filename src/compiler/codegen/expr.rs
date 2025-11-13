@@ -26,6 +26,7 @@ pub fn expr_to_val(
     scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<(Option<Value>, VType), TranslateError> {
+    let node_idx = node; // Save the index before reassignment
     let node = info.nodes.get(node).safe();
     match &node.kind {
         NodeKind::Expr { kind, type_ } => {
@@ -47,7 +48,7 @@ pub fn expr_to_val(
                     cond,
                     then_block,
                     else_block,
-                } => Some(expr_if(*cond, *then_block, *else_block, fn_builder, scopes, info)?),
+                } => Some(expr_if(node_idx, *cond, *then_block, *else_block, fn_builder, scopes, info)?),
                 ExprKind::Assign { target, value } => Some(expr_assign(*target, *value, fn_builder, scopes, info)?),
                 ExprKind::UnaryOp { op, expr } => Some(expr_unaryop(*op, *expr, fn_builder, scopes, info)?),
                 _ => {

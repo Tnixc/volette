@@ -178,8 +178,7 @@ pub(crate) fn resolve_expr_type(
                     }
                 } else {
                     // if without else should return nil when condition is false
-                    // but we'll just use the then branch type for now (TODO)
-                    Ok(then_type)
+                    Ok(VType::Primitive(PrimitiveTypes::Nil))
                 }
             }
             ExprKind::Call { func, args } => {

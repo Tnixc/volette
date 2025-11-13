@@ -1,5 +1,6 @@
+use crate::compiler::tokens::PrimitiveTypes;
 use crate::{is_float, is_int};
-use cranelift::prelude::FunctionBuilder;
+use cranelift::prelude::{FunctionBuilder, IntCC};
 use cranelift::prelude::{InstBuilder, Value};
 use generational_arena::Index;
 
@@ -24,7 +25,7 @@ pub fn expr_unaryop(
     match (op, item_type) {
         (UnaryOpKind::Neg, VType::Primitive(is_int!())) => Ok(fn_builder.ins().ineg(item)),
         (UnaryOpKind::Neg, VType::Primitive(is_float!())) => Ok(fn_builder.ins().fneg(item)),
-        (UnaryOpKind::Neg, _) => todo!(), // ERROR: wrong type
-        _ => todo!(),                     // ERROR: unsupported op
+        (UnaryOpKind::Not, VType::Primitive(PrimitiveTypes::Bool)) => Ok(fn_builder.ins().icmp_imm(IntCC::Equal, item, 0)),
+        _ => todo!(), // ERROR: unsupported op
     }
 }
