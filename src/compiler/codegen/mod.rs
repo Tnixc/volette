@@ -8,6 +8,7 @@ use cranelift::{
         AbiParam, Signature, Variable,
         isa::{self, CallConv, TargetIsa},
         settings::{self, Flags},
+        types::{I32, I64},
     },
 };
 use generational_arena::Arena;
@@ -45,6 +46,14 @@ pub enum PtrWidth {
 pub struct BuildConfig {
     pub ptr_width: PtrWidth,
     pub call_conv: CallConv,
+}
+impl PtrWidth {
+    fn to_clif(self) -> cranelift::prelude::Type {
+        match self {
+            PtrWidth::X32 => I32,
+            PtrWidth::X64 => I64,
+        }
+    }
 }
 
 pub type Scopes = Vec<HashMap<SymbolUsize, (VType, Variable)>>;

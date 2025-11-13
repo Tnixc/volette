@@ -13,6 +13,10 @@ fn test_not(b: i32): i32 {
     return 1;
 }
 
+fn ptr(x: i32): ^i32{
+    return &x;
+}
+
 //
 //fn test_nested_negation(x: i32): i32 {
 //    return -(-x);
