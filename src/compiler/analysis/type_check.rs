@@ -9,7 +9,7 @@ use crate::{
         analysis::{binop::check_binop, unaryop::check_unaryop},
         error::DiagnosticCollection,
         parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
-        tokens::PrimitiveTypes,
+        tokens::{PrimitiveTypes, Span},
     },
     is_float, is_int,
 };
@@ -254,27 +254,29 @@ pub(crate) fn resolve_expr_type(
 }
 
 fn check_literal(
-    span: crate::compiler::tokens::Span,
+    span: Span,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     expected: Option<VType>,
     literal: Literal,
 ) -> Result<VType, AnalysisError> {
-    let literal_type = match literal {
-        Literal::Int(_) => expected.clone().unwrap_or(VType::Primitive(PrimitiveTypes::I32)),
-        Literal::Float(_) => expected.clone().unwrap_or(VType::Primitive(PrimitiveTypes::F32)),
+    let inferred = match literal {
+        Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
+        Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
         Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
         Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     };
 
-    // check if the literal can be coerced to the expected type
-    match (literal, &literal_type) {
-        (Literal::Int(_), VType::Primitive(is_int!())) => Ok(literal_type),
-        (Literal::Float(_), VType::Primitive(is_float!())) => Ok(literal_type),
-        (Literal::Bool(_), VType::Primitive(PrimitiveTypes::Bool)) => Ok(literal_type),
-        (Literal::Nil, VType::Primitive(PrimitiveTypes::Nil)) => Ok(literal_type),
+    let target = expected.as_ref().unwrap_or(&inferred);
+
+    // can coerce?
+    match (literal, target) {
+        (Literal::Int(_), VType::Primitive(is_int!())) => Ok(target.clone()),
+        (Literal::Float(_), VType::Primitive(is_float!())) => Ok(target.clone()),
+        (Literal::Bool(_), VType::Primitive(PrimitiveTypes::Bool)) => Ok(target.clone()),
+        (Literal::Nil, VType::Primitive(PrimitiveTypes::Nil)) => Ok(target.clone()),
         _ => Err(AnalysisError::TypeMismatch {
-            expected: format!("{:?}", expected.unwrap_or(literal_type.clone())),
-            got: format!("{:?}", literal_type),
+            expected: format!("{:?}", target),
+            got: format!("{:?}", inferred),
             span: span.to_display(interner),
         }),
     }

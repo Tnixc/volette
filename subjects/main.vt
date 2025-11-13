@@ -15,7 +15,7 @@ fn ptr(x: i32): i32{
     let b = 67890;
     let p1 = &a;
     let p2 = &b;
-    let offset: i64 = 8;
+    let offset: usize = 8;
     let x = p1 + offset;
     return @x;
 }

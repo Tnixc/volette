@@ -3,7 +3,7 @@ use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
 use crate::compiler::{
-    codegen::{PtrWidth, ptr_width},
+    codegen::PtrWidth,
     tokens::{PrimitiveTypes, Span},
 };
 
@@ -28,10 +28,12 @@ impl VType {
 
     pub fn coerced(&self) -> &VType {
         match self {
-            VType::Pointer(_) => match ptr_width() {
-                PtrWidth::X64 => &VType::Primitive(PrimitiveTypes::I64),
-                PtrWidth::X32 => &VType::Primitive(PrimitiveTypes::I32),
-            }, // yeah idk
+            // VType::Pointer(_) => match ptr_width() {
+            //     // PtrWidth::X64 => &VType::Primitive(PrimitiveTypes::IS),
+            //     // PtrWidth::X32 => &VType::Primitive(PrimitiveTypes::I32),
+            //     //
+            // }, // yeah idk
+            VType::Pointer(_) => &VType::Primitive(PrimitiveTypes::Usize),
             _ => self,
         }
     }
@@ -48,6 +50,8 @@ macro_rules! is_int {
             | crate::compiler::tokens::PrimitiveTypes::U16
             | crate::compiler::tokens::PrimitiveTypes::U32
             | crate::compiler::tokens::PrimitiveTypes::U64
+            | crate::compiler::tokens::PrimitiveTypes::Usize
+            | crate::compiler::tokens::PrimitiveTypes::Isize
     };
 }
 
