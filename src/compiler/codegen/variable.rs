@@ -24,16 +24,13 @@ pub fn expr_let_binding(
     let var_val = var_val.expect("TODO: let binding requires non-zero-sized value. This will change later");
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
-    let stack_slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, ty.bytes(), 0));
-    // WARNING: idk if it's right to always set offset as 0
-
     // Create a unique variable index across all scopes
     // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
     // let var = Variable::new(var_index);
     let var = fn_builder.declare_var(ty);
     fn_builder.def_var(var, var_val);
 
-    scopes.last_mut().safe().insert(name, (actual_type, var, stack_slot));
+    scopes.last_mut().safe().insert(name, (actual_type, var));
 
     Ok(var_val)
 }
@@ -47,7 +44,7 @@ pub fn expr_identifier(
     let var = scopes.iter().rev().find_map(|scope| scope.get(&sym));
 
     match var {
-        Some((_, variable, _)) => Ok(fn_builder.use_var(*variable)),
+        Some((_, variable)) => Ok(fn_builder.use_var(*variable)),
         None => {
             use crate::compiler::tokens::DisplaySpan;
             Err(TranslateError::NotFound {
@@ -73,9 +70,6 @@ pub fn expr_assign(
     let var_val = maybe_var_val.expect("assignment requires non-zero-sized value");
     let ty = actual_type.to_clif(info.build_config.ptr_width);
 
-    // FIXME: mutation should not reassign?
-    let stack_slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, ty.bytes(), 0));
-
     // Create a unique variable index across all scopes
     // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
     // let var = Variable::new(var_index);
@@ -89,7 +83,7 @@ pub fn expr_assign(
         _ => unreachable!(),
     };
 
-    scopes.last_mut().safe().insert(*symbol, (actual_type, var, stack_slot));
+    scopes.last_mut().safe().insert(*symbol, (actual_type, var));
 
     Ok(var_val)
 }

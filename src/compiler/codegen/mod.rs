@@ -46,7 +46,7 @@ pub struct BuildConfig {
     pub call_conv: CallConv,
 }
 
-pub type Scopes = Vec<HashMap<SymbolUsize, (Type, Variable, StackSlot)>>;
+pub type Scopes = Vec<HashMap<SymbolUsize, (Type, Variable)>>;
 
 pub struct Info<'a> {
     pub module: ObjectModule,
