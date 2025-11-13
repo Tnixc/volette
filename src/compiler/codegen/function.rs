@@ -1,7 +1,7 @@
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, expr::expr_to_val},
+        codegen::{Info, Scopes, expr::expr_to_val, ptr_width},
         parser::node::{DefKind, Node, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
@@ -32,7 +32,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             // make the signature again
             let mut sig = Signature::new(info.build_config.call_conv);
             for param in params {
-                sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
+                sig.params.push(AbiParam::new(param.1.to_clif(ptr_width())));
             }
             // only add return type if it's not zero-sized (Nil or Never)
             match return_type {
@@ -41,7 +41,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
                     // zero-sized types don't need a return value in the signature
                 }
                 _ => {
-                    sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+                    sig.returns.push(AbiParam::new(return_type.to_clif(ptr_width())));
                 }
             }
 
@@ -65,7 +65,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             for (i, param) in params.iter().enumerate() {
                 let val = block_params[i];
                 // let var = Variable::new(i);
-                let ty = param.1.to_clif(info.build_config.ptr_width);
+                let ty = param.1.to_clif(ptr_width());
                 let var = fn_builder.declare_var(ty);
                 fn_builder.def_var(var, val);
                 scopes.last_mut().safe().insert(param.0, (param.1.clone(), var));

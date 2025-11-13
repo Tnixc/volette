@@ -5,7 +5,7 @@ use string_interner::symbol::SymbolUsize;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError},
+        codegen::{Info, Scopes, error::TranslateError, ptr_width},
         parser::node::{ExprKind, NodeKind},
     },
 };
@@ -22,7 +22,7 @@ pub fn expr_let_binding(
     let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
     // TODO: allow binding to Nil/ other zero-sized value
     let var_val = var_val.expect("TODO: let binding requires non-zero-sized value. This will change later");
-    let ty = actual_type.to_clif(info.build_config.ptr_width);
+    let ty = actual_type.to_clif(ptr_width());
 
     // Create a unique variable index across all scopes
     // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
@@ -68,7 +68,7 @@ pub fn expr_assign(
 ) -> Result<Value, TranslateError> {
     let (maybe_var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
     let var_val = maybe_var_val.expect("assignment requires non-zero-sized value");
-    let ty = actual_type.to_clif(info.build_config.ptr_width);
+    let ty = actual_type.to_clif(ptr_width());
 
     // Create a unique variable index across all scopes
     // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();

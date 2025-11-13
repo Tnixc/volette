@@ -7,7 +7,7 @@ use generational_arena::Index;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError, expr::expr_to_val},
+        codegen::{Info, Scopes, error::TranslateError, expr::expr_to_val, ptr_width},
         parser::node::{UnaryOpKind, VType},
     },
 };
@@ -27,14 +27,14 @@ pub fn expr_unaryop(
         (UnaryOpKind::Neg, VType::Primitive(is_float!())) => Ok(fn_builder.ins().fneg(item)),
         (UnaryOpKind::Not, VType::Primitive(PrimitiveTypes::Bool)) => Ok(fn_builder.ins().icmp_imm(IntCC::Equal, item, 0)),
         (UnaryOpKind::AddressOf, VType::Primitive(ty)) => {
-            let size = ty.to_clif(info.build_config.ptr_width).bytes();
+            let size = ty.to_clif(ptr_width()).bytes();
             let stack_slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, 0));
             fn_builder.ins().stack_store(item, stack_slot, 0);
-            let addr = fn_builder.ins().stack_addr(info.build_config.ptr_width.to_clif(), stack_slot, 0);
+            let addr = fn_builder.ins().stack_addr(ptr_width().to_clif(), stack_slot, 0);
             Ok(addr)
         }
         (UnaryOpKind::Deref, VType::Pointer(ty)) => {
-            let ty = ty.to_clif(info.build_config.ptr_width);
+            let ty = ty.to_clif(ptr_width());
             let loaded = fn_builder.ins().load(ty, MemFlags::new(), item, 0);
             Ok(loaded)
         }

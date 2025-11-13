@@ -7,7 +7,7 @@ use generational_arena::Index;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError},
+        codegen::{Info, Scopes, error::TranslateError, ptr_width},
         parser::node::{ExprKind, NodeKind},
     },
 };
@@ -75,7 +75,7 @@ pub fn expr_if(
         _ => unreachable!(),
     }
     .safe()
-    .to_clif(info.build_config.ptr_width);
+    .to_clif(ptr_width());
 
     let (cond_val, _) = expr_to_val(cond, fn_builder, scopes, info)?;
     let cond_val = cond_val.safe(); // should be caught by type checker

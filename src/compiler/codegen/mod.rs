@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
 
 use cranelift::{
     codegen::Context,
@@ -42,11 +45,6 @@ pub enum PtrWidth {
     X64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct BuildConfig {
-    pub ptr_width: PtrWidth,
-    pub call_conv: CallConv,
-}
 impl PtrWidth {
     fn to_clif(self) -> cranelift::prelude::Type {
         match self {
@@ -54,6 +52,25 @@ impl PtrWidth {
             PtrWidth::X64 => I64,
         }
     }
+}
+
+static PTR_WIDTH: OnceLock<PtrWidth> = OnceLock::new();
+
+pub fn ptr_width() -> PtrWidth {
+    *PTR_WIDTH.get_or_init(|| {
+        let triple = Triple::host();
+        match triple.pointer_width() {
+            Ok(TargetPointerWidth::U16) => PtrWidth::X32,
+            Ok(TargetPointerWidth::U32) => PtrWidth::X32,
+            Ok(TargetPointerWidth::U64) => PtrWidth::X64,
+            Err(_) => PtrWidth::X64,
+        }
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BuildConfig {
+    pub call_conv: CallConv,
 }
 
 pub type Scopes = Vec<HashMap<SymbolUsize, (VType, Variable)>>;
@@ -74,13 +91,13 @@ pub fn codegen(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     _fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
 ) -> Result<DiagnosticCollection, TranslateError> {
-    let (target_isa, call_conv, ptr_width) = isa();
+    let (target_isa, call_conv) = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
 
     let module = ObjectModule::new(builder);
     let ctx = Context::new();
 
-    let build_config = BuildConfig { ptr_width, call_conv };
+    let build_config = BuildConfig { call_conv };
 
     let mut info = Info {
         module,
@@ -107,9 +124,9 @@ pub fn codegen(
 
                             let mut sig = Signature::new(info.build_config.call_conv);
                             for param in params {
-                                sig.params.push(AbiParam::new(param.1.to_clif(info.build_config.ptr_width)));
+                                sig.params.push(AbiParam::new(param.1.to_clif(ptr_width())));
                             }
-                            sig.returns.push(AbiParam::new(return_type.to_clif(info.build_config.ptr_width)));
+                            sig.returns.push(AbiParam::new(return_type.to_clif(ptr_width())));
 
                             let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
                             func_ids.push(func_id);
@@ -200,7 +217,7 @@ pub fn codegen(
     Ok(info.diagnostics)
 }
 
-fn isa() -> (Arc<dyn TargetIsa + 'static>, CallConv, PtrWidth) {
+fn isa() -> (Arc<dyn TargetIsa + 'static>, CallConv) {
     let triple = Triple::host();
 
     let flag_builder = settings::builder();
@@ -210,15 +227,7 @@ fn isa() -> (Arc<dyn TargetIsa + 'static>, CallConv, PtrWidth) {
         Ok(isa_builder) => match isa_builder.finish(flags) {
             Ok(isa) => {
                 let call_conv = isa.default_call_conv();
-
-                let ptr_width = match triple.pointer_width() {
-                    Ok(TargetPointerWidth::U16) => PtrWidth::X32,
-                    Ok(TargetPointerWidth::U32) => PtrWidth::X32,
-                    Ok(TargetPointerWidth::U64) => PtrWidth::X64,
-                    Err(_) => PtrWidth::X64,
-                };
-
-                (isa, call_conv, ptr_width)
+                (isa, call_conv)
             }
             Err(e) => panic!("failed to create ISA for {}: {}", triple, e),
         },
