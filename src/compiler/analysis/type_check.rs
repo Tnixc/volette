@@ -183,17 +183,15 @@ pub(crate) fn resolve_expr_type(
                 }
             }
             ExprKind::Call { func, args } => {
-                let func_name = match &nodes.get(func).safe().kind {
-                    NodeKind::Expr {
-                        kind: ExprKind::Identifier(name),
-                        ..
-                    } => name,
-                    _ => {
-                        return Err(AnalysisError::Unsupported {
-                            what: "function call target must be an identifier".to_string(),
-                            span: span.to_display(interner),
-                        });
-                    }
+                let NodeKind::Expr {
+                    kind: ExprKind::Identifier(func_name),
+                    ..
+                } = &nodes.get(func).safe().kind
+                else {
+                    return Err(AnalysisError::Unsupported {
+                        what: "function call target must be an identifier".to_string(),
+                        span: span.to_display(interner),
+                    });
                 };
 
                 let rest = fn_table.get(&func_name);

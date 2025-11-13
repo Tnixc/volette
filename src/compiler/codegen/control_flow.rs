@@ -106,13 +106,8 @@ pub fn expr_if(
     // add jump if this branch doesn't terminate
     if !then_terminates {
         let merge = merge_block.unwrap();
-        match then_val {
-            Some(val) => fn_builder.ins().jump(merge, &[BlockArg::Value(val)]),
-            None => {
-                let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge, &[BlockArg::Value(default)])
-            }
-        };
+        let val = then_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
+        fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
         fn_builder.seal_block(then_block);
     }
 
@@ -133,13 +128,8 @@ pub fn expr_if(
     // add jump if this branch doesn't terminate
     if !else_terminates {
         let merge = merge_block.unwrap();
-        match else_val {
-            Some(val) => fn_builder.ins().jump(merge, &[BlockArg::Value(val)]),
-            None => {
-                let default = fn_builder.ins().iconst(result_type, 0);
-                fn_builder.ins().jump(merge, &[BlockArg::Value(default)])
-            }
-        };
+        let val = else_val.unwrap_or_else(|| fn_builder.ins().iconst(result_type, 0));
+        fn_builder.ins().jump(merge, &[BlockArg::Value(val)]);
         fn_builder.seal_block(else_block);
     } else if else_idx.is_none() {
         // no else branch provided, jump with default value

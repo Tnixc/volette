@@ -7,6 +7,7 @@ use crate::{
         analysis::literal_default_types,
         codegen::{Info, Scopes, error::TranslateError, unary_ops::expr_unaryop, variable::expr_assign},
         parser::node::{ExprKind, NodeKind, VType},
+        tokens::PrimitiveTypes,
     },
 };
 
@@ -60,9 +61,8 @@ pub fn expr_to_val(
 
             let type_val = type_.clone().safe();
             match type_val {
-                VType::Primitive(crate::compiler::tokens::PrimitiveTypes::Nil)
-                | VType::Primitive(crate::compiler::tokens::PrimitiveTypes::Never) => Ok((None, type_val)),
-                _ => Ok((value, type_val)),
+                ty @ (VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never)) => Ok((None, ty)),
+                ty => Ok((value, ty)),
             }
         }
         _ => {

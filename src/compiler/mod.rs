@@ -178,7 +178,7 @@ fn analysis_phase(
     }
 }
 
-fn format_tokens(tokens: &[Token], interner: &StringInterner<BucketBackend<SymbolUsize>>) -> Vec<(String, usize, (usize, usize))> {
+fn _format_tokens(tokens: &[Token], interner: &StringInterner<BucketBackend<SymbolUsize>>) -> Vec<(String, usize, (usize, usize))> {
     tokens
         .iter()
         .map(|t| {

@@ -21,17 +21,10 @@ pub fn expr_unaryop(
     let (item, item_type) = expr_to_val(expr, fn_builder, scopes, info)?;
     if item.is_none() {};
     let item = item.safe();
-    match op {
-        UnaryOpKind::Neg => match item_type {
-            VType::Primitive(x) => {
-                match x {
-                    is_int!() => Ok(fn_builder.ins().ineg(item)),
-                    is_float!() => Ok(fn_builder.ins().fneg(item)),
-                    _ => todo!(), // ERROR
-                }
-            }
-            _ => todo!(),
-        },
-        _ => todo!(),
+    match (op, item_type) {
+        (UnaryOpKind::Neg, VType::Primitive(is_int!())) => Ok(fn_builder.ins().ineg(item)),
+        (UnaryOpKind::Neg, VType::Primitive(is_float!())) => Ok(fn_builder.ins().fneg(item)),
+        (UnaryOpKind::Neg, _) => todo!(), // ERROR: wrong type
+        _ => todo!(),                     // ERROR: unsupported op
     }
 }

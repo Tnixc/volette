@@ -1,4 +1,4 @@
-use cranelift::prelude::{FunctionBuilder, StackSlotData, StackSlotKind, Value};
+use cranelift::prelude::{FunctionBuilder, Value};
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 

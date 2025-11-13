@@ -37,17 +37,11 @@ pub fn match_literal(
             }),
         },
         Literal::Int(i) => match type_ {
-            VType::Primitive(PrimitiveTypes::I64) | VType::Primitive(PrimitiveTypes::U64) => {
-                Ok(Some(fn_builder.ins().iconst(types::I64, i)))
-            }
-            VType::Primitive(PrimitiveTypes::I32) | VType::Primitive(PrimitiveTypes::U32) => {
-                Ok(Some(fn_builder.ins().iconst(types::I32, i)))
-            }
-            VType::Primitive(PrimitiveTypes::I16) | VType::Primitive(PrimitiveTypes::U16) => {
-                Ok(Some(fn_builder.ins().iconst(types::I16, i)))
-            }
-            VType::Primitive(PrimitiveTypes::I8) | VType::Primitive(PrimitiveTypes::U8) => Ok(Some(fn_builder.ins().iconst(types::I8, i))),
-            VType::Primitive(PrimitiveTypes::Isize) | VType::Primitive(PrimitiveTypes::Usize) => {
+            VType::Primitive(PrimitiveTypes::I64 | PrimitiveTypes::U64) => Ok(Some(fn_builder.ins().iconst(types::I64, i))),
+            VType::Primitive(PrimitiveTypes::I32 | PrimitiveTypes::U32) => Ok(Some(fn_builder.ins().iconst(types::I32, i))),
+            VType::Primitive(PrimitiveTypes::I16 | PrimitiveTypes::U16) => Ok(Some(fn_builder.ins().iconst(types::I16, i))),
+            VType::Primitive(PrimitiveTypes::I8 | PrimitiveTypes::U8) => Ok(Some(fn_builder.ins().iconst(types::I8, i))),
+            VType::Primitive(PrimitiveTypes::Isize | PrimitiveTypes::Usize) => {
                 // TODO: make this respect system ptr width
                 Ok(Some(fn_builder.ins().iconst(types::I64, i)))
             }
