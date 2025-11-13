@@ -7,14 +7,17 @@ fn test_negation(x: i32): i32 {
 }
 
 fn test_not(b: i32): i32 {
-    if !(b > 0) {
-        return 0;
-    }
     return 1;
 }
 
-fn ptr(x: i32): ^i32{
-    return &x;
+fn ptr(x: i32): i32{
+    let a = 12345;
+    let b = 67890;
+    let p1 = &a;
+    let p2 = &b;
+    let offset: i64 = 8;
+    let x = p1 + offset;
+    return @x;
 }
 
 //

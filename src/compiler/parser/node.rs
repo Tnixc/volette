@@ -25,6 +25,18 @@ impl VType {
             }, // yeah idk
         }
     }
+
+    pub fn coerced(&self) -> &VType {
+        match self {
+            // VType::Pointer(_) =>
+            // match ptr_bits {
+            //     PtrWidth::X64 => VType::Primitive(PrimitiveTypes::I64),
+            //     PtrWidth::X32 => VType::Primitive(PrimitiveTypes::I32),
+            // }, // yeah idk
+            VType::Pointer(_) => &VType::Primitive(PrimitiveTypes::I64),
+            _ => self,
+        }
+    }
 }
 
 #[macro_export]

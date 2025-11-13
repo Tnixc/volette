@@ -1,7 +1,6 @@
-use crate::compiler::codegen::PtrWidth;
 use crate::compiler::tokens::PrimitiveTypes;
 use crate::{is_float, is_int};
-use cranelift::prelude::{FunctionBuilder, IntCC, StackSlotData, StackSlotKind};
+use cranelift::prelude::{FunctionBuilder, IntCC, MemFlags, StackSlotData, StackSlotKind};
 use cranelift::prelude::{InstBuilder, Value};
 use generational_arena::Index;
 
@@ -30,8 +29,14 @@ pub fn expr_unaryop(
         (UnaryOpKind::AddressOf, VType::Primitive(ty)) => {
             let size = ty.to_clif(info.build_config.ptr_width).bytes();
             let stack_slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, 0));
+            fn_builder.ins().stack_store(item, stack_slot, 0);
             let addr = fn_builder.ins().stack_addr(info.build_config.ptr_width.to_clif(), stack_slot, 0);
             Ok(addr)
+        }
+        (UnaryOpKind::Deref, VType::Pointer(ty)) => {
+            let ty = ty.to_clif(info.build_config.ptr_width);
+            let loaded = fn_builder.ins().load(ty, MemFlags::new(), item, 0);
+            Ok(loaded)
         }
         _ => todo!(), // ERROR: unsupported op
     }

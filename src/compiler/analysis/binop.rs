@@ -39,7 +39,7 @@ pub(crate) fn check_binop(
         });
     }
 
-    if left_ty != right_ty {
+    if left_ty.coerced() != right_ty.coerced() {
         return Err(AnalysisError::TypeMismatch {
             expected: format!("{:?}", left_ty),
             got: format!("{:?}", right_ty),

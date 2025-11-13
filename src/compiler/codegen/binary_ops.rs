@@ -25,7 +25,7 @@ pub fn expr_binop(
     let (right_value, right_type) = expr_to_val(right, fn_builder, scopes, info)?;
     let right_value = right_value.safe();
 
-    let val = match (&left_type, &right_type) {
+    let val = match (&left_type.coerced(), &right_type.coerced()) {
         (VType::Primitive(pt @ is_float!()), VType::Primitive(rt)) if pt == rt => {
             use cranelift::codegen::ir::condcodes::FloatCC;
 
