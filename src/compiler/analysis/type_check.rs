@@ -8,9 +8,10 @@ use crate::{
     compiler::{
         analysis::{binop::check_binop, unaryop::check_unaryop},
         error::DiagnosticCollection,
-        parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, Type},
+        parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
+    is_float, is_int,
 };
 
 use super::error::AnalysisError;
@@ -19,7 +20,7 @@ pub fn type_check_root(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut Arena<Node>,
-    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
 ) -> Result<(), DiagnosticCollection> {
     let mut diagnostics = DiagnosticCollection::new();
 
@@ -34,7 +35,7 @@ pub fn type_check_root(
                     let body_idx = *body;
                     let return_type = return_type.clone();
 
-                    let mut ident_types: HashMap<SymbolUsize, Type> = HashMap::new();
+                    let mut ident_types: HashMap<SymbolUsize, VType> = HashMap::new();
                     params.iter().for_each(|param| {
                         ident_types.insert(param.0, param.1.clone());
                     });
@@ -51,7 +52,7 @@ pub fn type_check_root(
                         type_: Some(body_type), ..
                     } = &body_node.kind
                     {
-                        if *body_type != Type::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
+                        if *body_type != VType::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
                             diagnostics.add_error(AnalysisError::TypeMismatch {
                                 expected: format!("{:?}", return_type),
                                 got: format!("{:?}", body_type),
@@ -72,12 +73,12 @@ pub fn type_check_root(
 /// if `expected` is `none`, it infers the expression's type.
 pub(crate) fn resolve_expr_type(
     target_idx: Index,
-    expected: Option<Type>,
+    expected: Option<VType>,
     nodes: &mut Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ident_types: &mut HashMap<SymbolUsize, Type>,
-    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
-) -> Result<Type, AnalysisError> {
+    ident_types: &mut HashMap<SymbolUsize, VType>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+) -> Result<VType, AnalysisError> {
     let (kind, span) = {
         let target_node = nodes.get(target_idx).safe();
         // if type is already resolved, return it and check if it matches expectations
@@ -131,13 +132,13 @@ pub(crate) fn resolve_expr_type(
                 if let Some(v) = value {
                     resolve_expr_type(v, expected.clone(), nodes, interner, ident_types, fn_table)?;
                 }
-                Ok(Type::Primitive(PrimitiveTypes::Never))
+                Ok(VType::Primitive(PrimitiveTypes::Never))
             }
             ExprKind::Block { exprs } => {
                 if exprs.is_empty() {
-                    Ok(Type::Primitive(PrimitiveTypes::Nil))
+                    Ok(VType::Primitive(PrimitiveTypes::Nil))
                 } else {
-                    let mut last_expr_type = Type::Primitive(PrimitiveTypes::Nil);
+                    let mut last_expr_type = VType::Primitive(PrimitiveTypes::Nil);
                     for &expr_idx in &exprs {
                         last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
                     }
@@ -153,7 +154,7 @@ pub(crate) fn resolve_expr_type(
             } => {
                 resolve_expr_type(
                     cond,
-                    Some(Type::Primitive(PrimitiveTypes::Bool)),
+                    Some(VType::Primitive(PrimitiveTypes::Bool)),
                     nodes,
                     interner,
                     ident_types,
@@ -164,8 +165,8 @@ pub(crate) fn resolve_expr_type(
                     let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table)?;
 
                     // if both branches diverge (never), the if-expression diverges
-                    if then_type == Type::Primitive(PrimitiveTypes::Never) && else_type == Type::Primitive(PrimitiveTypes::Never) {
-                        Ok(Type::Primitive(PrimitiveTypes::Never))
+                    if then_type == VType::Primitive(PrimitiveTypes::Never) && else_type == VType::Primitive(PrimitiveTypes::Never) {
+                        Ok(VType::Primitive(PrimitiveTypes::Never))
                     } else if then_type == else_type {
                         Ok(then_type)
                     } else {
@@ -258,22 +259,22 @@ pub(crate) fn resolve_expr_type(
 fn check_literal(
     span: crate::compiler::tokens::Span,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    expected: Option<Type>,
+    expected: Option<VType>,
     literal: Literal,
-) -> Result<Type, AnalysisError> {
+) -> Result<VType, AnalysisError> {
     let literal_type = match literal {
-        Literal::Int(_) => expected.clone().unwrap_or(Type::Primitive(PrimitiveTypes::I32)),
-        Literal::Float(_) => expected.clone().unwrap_or(Type::Primitive(PrimitiveTypes::F32)),
-        Literal::Bool(_) => Type::Primitive(PrimitiveTypes::Bool),
-        Literal::Nil => Type::Primitive(PrimitiveTypes::Nil),
+        Literal::Int(_) => expected.clone().unwrap_or(VType::Primitive(PrimitiveTypes::I32)),
+        Literal::Float(_) => expected.clone().unwrap_or(VType::Primitive(PrimitiveTypes::F32)),
+        Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
+        Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     };
 
     // check if the literal can be coerced to the expected type
     match (literal, &literal_type) {
-        (Literal::Int(_), Type::Primitive(pt)) if pt.is_integer() => Ok(literal_type),
-        (Literal::Float(_), Type::Primitive(pt)) if pt.is_float() => Ok(literal_type),
-        (Literal::Bool(_), Type::Primitive(PrimitiveTypes::Bool)) => Ok(literal_type),
-        (Literal::Nil, Type::Primitive(PrimitiveTypes::Nil)) => Ok(literal_type),
+        (Literal::Int(_), VType::Primitive(is_int!())) => Ok(literal_type),
+        (Literal::Float(_), VType::Primitive(is_float!())) => Ok(literal_type),
+        (Literal::Bool(_), VType::Primitive(PrimitiveTypes::Bool)) => Ok(literal_type),
+        (Literal::Nil, VType::Primitive(PrimitiveTypes::Nil)) => Ok(literal_type),
         _ => Err(AnalysisError::TypeMismatch {
             expected: format!("{:?}", expected.unwrap_or(literal_type.clone())),
             got: format!("{:?}", literal_type),

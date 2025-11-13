@@ -11,7 +11,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 
 use crate::compiler::{
     error::ResultWithDiagnostics,
-    parser::node::{Literal, Node, Type},
+    parser::node::{Literal, Node, VType},
     tokens::PrimitiveTypes,
 };
 
@@ -19,7 +19,7 @@ pub fn analysis_pass(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     mut nodes: &mut Arena<Node>,
-) -> ResultWithDiagnostics<HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>> {
+) -> ResultWithDiagnostics<HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>> {
     let function_table = function_table::generate_function_table(&mut nodes);
     let type_check_result = type_check::type_check_root(root, &interner, &mut nodes, &function_table);
 
@@ -31,11 +31,11 @@ pub fn analysis_pass(
     result
 }
 
-pub fn literal_default_types(literal: Literal) -> Type {
+pub fn literal_default_types(literal: Literal) -> VType {
     match literal {
-        Literal::Int(_) => Type::Primitive(PrimitiveTypes::I32),
-        Literal::Float(_) => Type::Primitive(PrimitiveTypes::F32),
-        Literal::Bool(_) => Type::Primitive(PrimitiveTypes::Bool),
-        Literal::Nil => Type::Primitive(PrimitiveTypes::Nil),
+        Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
+        Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
+        Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
+        Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     }
 }

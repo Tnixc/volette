@@ -6,7 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 
 use crate::compiler::tokens::Span;
 
-use super::node::{BinOpKind, DefKind, ExprKind, Node, NodeKind, Type};
+use super::node::{BinOpKind, DefKind, ExprKind, Node, NodeKind, VType};
 
 impl Display for BinOpKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -36,19 +36,19 @@ fn format_symbol(sym: SymbolUsize, interner: &StringInterner<BucketBackend<Symbo
     interner.resolve(sym).unwrap_or("<unknown>").to_string()
 }
 
-fn format_type_val(type_val: &Type, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
+fn format_type_val(type_val: &VType, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
     match type_val {
-        Type::Primitive(pt) => format!("Primitive{{type:\"{:?}\"}}", pt),
-        Type::Custom(s_idx) => {
+        VType::Primitive(pt) => format!("Primitive{{type:\"{:?}\"}}", pt),
+        VType::Custom(s_idx) => {
             format!("Custom{{name:\"{}\"}}", format_symbol(*s_idx, interner))
         }
-        Type::Pointer(inner) => {
+        VType::Pointer(inner) => {
             format!("Pointer{{to:{}}}", format_type_val(inner, interner))
         }
     }
 }
 
-fn format_optional_type(opt_type: Option<Type>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
+fn format_optional_type(opt_type: Option<VType>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
     opt_type
         .as_ref()
         .map(|t| format_type_val(t, interner))

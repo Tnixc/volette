@@ -5,7 +5,7 @@ use crate::compiler::tokens::{Keyword::Else, Punctuation, Token, TokenKind};
 use super::{
     Parser,
     error::ParserError,
-    node::{ExprKind, Node, NodeKind, Type},
+    node::{ExprKind, Node, NodeKind, VType},
     precedence::BindingPower,
 };
 
@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
         self.advance(); // consume identifier
 
-        let mut type_annotation: Option<Type> = None;
+        let mut type_annotation: Option<VType> = None;
         let mut current_span = let_keyword_token.span.connect_new(&name_token.span);
 
         if self.current().kind == TokenKind::Punctuation(Punctuation::Colon) {

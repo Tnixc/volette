@@ -1,0 +1,37 @@
+use crate::{is_float, is_int};
+use cranelift::prelude::FunctionBuilder;
+use cranelift::prelude::{InstBuilder, Value};
+use generational_arena::Index;
+
+use crate::{
+    SafeConvert,
+    compiler::{
+        codegen::{Info, Scopes, error::TranslateError, expr::expr_to_val},
+        parser::node::{UnaryOpKind, VType},
+    },
+};
+
+pub fn expr_unaryop(
+    op: UnaryOpKind,
+    expr: Index,
+    fn_builder: &mut FunctionBuilder,
+    scopes: &mut Scopes,
+    info: &mut Info,
+) -> Result<Value, TranslateError> {
+    let (item, item_type) = expr_to_val(expr, fn_builder, scopes, info)?;
+    if item.is_none() {};
+    let item = item.safe();
+    match op {
+        UnaryOpKind::Neg => match item_type {
+            VType::Primitive(x) => {
+                match x {
+                    is_int!() => Ok(fn_builder.ins().ineg(item)),
+                    is_float!() => Ok(fn_builder.ins().fneg(item)),
+                    _ => todo!(), // ERROR
+                }
+            }
+            _ => todo!(),
+        },
+        _ => todo!(),
+    }
+}

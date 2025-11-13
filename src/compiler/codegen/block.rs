@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::compiler::{
     codegen::{Info, Scopes, error::TranslateError},
-    parser::node::Type,
+    parser::node::VType,
     tokens::PrimitiveTypes,
 };
 
@@ -17,7 +17,7 @@ pub fn expr_block(
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     scopes.push(HashMap::new());
-    let mut last_res: Option<(Option<Value>, Type)> = None;
+    let mut last_res: Option<(Option<Value>, VType)> = None;
     for expr in exprs {
         last_res = Some(expr_to_val(*expr, fn_builder, scopes, info)?);
     }
@@ -25,7 +25,7 @@ pub fn expr_block(
 
     match last_res {
         Some((Some(val), _)) => Ok(val),
-        Some((None, Type::Primitive(PrimitiveTypes::Never))) => {
+        Some((None, VType::Primitive(PrimitiveTypes::Never))) => {
             // TODO: check if this makes sense
             // block terminated with never type (e.g., return), return dummy value
             Ok(Value::from_u32(0))

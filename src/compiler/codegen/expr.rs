@@ -5,8 +5,8 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{Info, Scopes, error::TranslateError, variable::expr_assign},
-        parser::node::{ExprKind, NodeKind, Type},
+        codegen::{Info, Scopes, error::TranslateError, unary_ops::expr_unaryop, variable::expr_assign},
+        parser::node::{ExprKind, NodeKind, VType},
     },
 };
 
@@ -24,7 +24,7 @@ pub fn expr_to_val(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<(Option<Value>, Type), TranslateError> {
+) -> Result<(Option<Value>, VType), TranslateError> {
     let node = info.nodes.get(node).safe();
     match &node.kind {
         NodeKind::Expr { kind, type_ } => {
@@ -48,6 +48,7 @@ pub fn expr_to_val(
                     else_block,
                 } => Some(expr_if(*cond, *then_block, *else_block, fn_builder, scopes, info)?),
                 ExprKind::Assign { target, value } => Some(expr_assign(*target, *value, fn_builder, scopes, info)?),
+                ExprKind::UnaryOp { op, expr } => Some(expr_unaryop(*op, *expr, fn_builder, scopes, info)?),
                 _ => {
                     return Err(TranslateError::Unsupported {
                         what: format!("expression kind: {:?}", kind),
@@ -59,8 +60,8 @@ pub fn expr_to_val(
 
             let type_val = type_.clone().safe();
             match type_val {
-                Type::Primitive(crate::compiler::tokens::PrimitiveTypes::Nil)
-                | Type::Primitive(crate::compiler::tokens::PrimitiveTypes::Never) => Ok((None, type_val)),
+                VType::Primitive(crate::compiler::tokens::PrimitiveTypes::Nil)
+                | VType::Primitive(crate::compiler::tokens::PrimitiveTypes::Never) => Ok((None, type_val)),
                 _ => Ok((value, type_val)),
             }
         }

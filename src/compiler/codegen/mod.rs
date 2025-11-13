@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use cranelift::{
-    codegen::{Context, ir::StackSlot},
+    codegen::Context,
     module::{Linkage, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
@@ -19,7 +19,7 @@ use crate::{
     compiler::{
         codegen::{error::TranslateError, function::lower_fn},
         error::DiagnosticCollection,
-        parser::node::{DefKind, Node, NodeKind, Type},
+        parser::node::{DefKind, Node, NodeKind, VType},
     },
 };
 
@@ -32,6 +32,7 @@ pub mod function;
 pub mod function_call;
 pub mod literal;
 pub mod translate;
+pub mod unary_ops;
 pub mod variable;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,7 +47,7 @@ pub struct BuildConfig {
     pub call_conv: CallConv,
 }
 
-pub type Scopes = Vec<HashMap<SymbolUsize, (Type, Variable)>>;
+pub type Scopes = Vec<HashMap<SymbolUsize, (VType, Variable)>>;
 
 pub struct Info<'a> {
     pub module: ObjectModule,
@@ -62,7 +63,7 @@ pub fn codegen(
     root: &Node,
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    _fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
+    _fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
 ) -> Result<DiagnosticCollection, TranslateError> {
     let (target_isa, call_conv, ptr_width) = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;

@@ -2,7 +2,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, Scopes, expr::expr_to_val},
-        parser::node::{DefKind, Node, NodeKind, Type},
+        parser::node::{DefKind, Node, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
 };
@@ -36,7 +36,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             }
             // only add return type if it's not zero-sized (Nil or Never)
             match return_type {
-                Type::Primitive(PrimitiveTypes::Nil) | Type::Primitive(PrimitiveTypes::Never) => {
+                VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => {
                     // TODO: check if this is correct
                     // zero-sized types don't need a return value in the signature
                 }
@@ -74,7 +74,7 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             let (maybe_body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;
 
             // add implicit return if the body doesn't diverge (never type)
-            if body_type != Type::Primitive(PrimitiveTypes::Never) {
+            if body_type != VType::Primitive(PrimitiveTypes::Never) {
                 match maybe_body_val {
                     Some(body_val) => fn_builder.ins().return_(&[body_val]),
                     None => fn_builder.ins().return_(&[]),

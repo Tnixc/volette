@@ -7,7 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::type_check::resolve_expr_type,
-        parser::node::{BinOpKind, Node, Type},
+        parser::node::{BinOpKind, Node, VType},
         tokens::PrimitiveTypes,
     },
 };
@@ -20,13 +20,13 @@ pub(crate) fn check_binop(
     op: BinOpKind,
     nodes: &mut Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    ident_types: &mut HashMap<SymbolUsize, Type>,
-    fn_table: &HashMap<SymbolUsize, (Box<Vec<Type>>, Type)>,
-) -> Result<Type, AnalysisError> {
+    ident_types: &mut HashMap<SymbolUsize, VType>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+) -> Result<VType, AnalysisError> {
     let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table)?;
     let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table)?;
 
-    if left_ty == Type::Primitive(PrimitiveTypes::Nil) || left_ty == Type::Primitive(PrimitiveTypes::Nil) {
+    if left_ty == VType::Primitive(PrimitiveTypes::Nil) || left_ty == VType::Primitive(PrimitiveTypes::Nil) {
         return Err(AnalysisError::Invalid {
             what: format!("binary operation '{:?}'", op),
             reason: format!("cannot be used with type {:?}", left_ty),
@@ -63,7 +63,7 @@ pub(crate) fn check_binop(
         | BinOpKind::GreaterThan
         | BinOpKind::LessThanOrEq
         | BinOpKind::LogicalAnd
-        | BinOpKind::LogicalOr => Ok(Type::Primitive(PrimitiveTypes::Bool)),
+        | BinOpKind::LogicalOr => Ok(VType::Primitive(PrimitiveTypes::Bool)),
         _ => Err(AnalysisError::Unsupported {
             what: format!("binary operator '{:?}'", op),
             span: nodes

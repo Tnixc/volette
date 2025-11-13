@@ -7,7 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, error::TranslateError},
-        parser::node::{DefKind, ExprKind, NodeKind, Type},
+        parser::node::{DefKind, ExprKind, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
 };
@@ -56,7 +56,8 @@ pub fn expr_call(
 
     // only get result if the function returns a non-zero-sized type
     match return_type {
-        Type::Primitive(PrimitiveTypes::Nil) | Type::Primitive(PrimitiveTypes::Never) => {
+        // VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => {
+        VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => {
             // TODO: Also check if this is right??
             // zero-sized return, return dummy value
             Ok(Value::from_u32(0))

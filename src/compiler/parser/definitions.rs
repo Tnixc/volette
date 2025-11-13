@@ -4,7 +4,7 @@ use string_interner::symbol::SymbolUsize;
 use crate::{
     SafeConvert,
     compiler::{
-        parser::node::Type,
+        parser::node::VType,
         tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
     },
 };
@@ -18,7 +18,7 @@ use super::{
 impl<'a> Parser<'a> {
     /// Parse a type annotation and return both the type and its span.
     /// Advances the cursor past the type.
-    pub fn parse_type(&mut self) -> Result<(Type, Span), ParserError> {
+    pub fn parse_type(&mut self) -> Result<(VType, Span), ParserError> {
         let start_span = self.current().span;
 
         // count leading carets (^) for pointer depth
@@ -29,8 +29,8 @@ impl<'a> Parser<'a> {
         }
 
         let mut base_type = match self.current().kind {
-            TokenKind::TypeLiteral(ty) => Type::Primitive(ty),
-            TokenKind::Identifier(name) => Type::Custom(name),
+            TokenKind::TypeLiteral(ty) => VType::Primitive(ty),
+            TokenKind::Identifier(name) => VType::Custom(name),
             _ => {
                 return Err(ParserError::Expected {
                     what: "type (primitive or identifier)".to_string(),
@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
         let type_span = start_span.connect_new(&self.current().span);
 
         for _ in 0..pointer_depth {
-            base_type = Type::Pointer(Box::new(base_type));
+            base_type = VType::Pointer(Box::new(base_type));
         }
 
         // advance past the base type
@@ -92,8 +92,8 @@ impl<'a> Parser<'a> {
             }
         };
 
-        let mut param: (Option<SymbolUsize>, Option<Type>, Option<Span>) = (None, None, None);
-        let mut params: Vec<(SymbolUsize, Type, Span)> = Vec::new();
+        let mut param: (Option<SymbolUsize>, Option<VType>, Option<Span>) = (None, None, None);
+        let mut params: Vec<(SymbolUsize, VType, Span)> = Vec::new();
 
         #[derive(Debug, PartialEq, Eq)]
         enum ParamMode {
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
 
         self.advance();
 
-        let mut return_type = Type::Primitive(PrimitiveTypes::Nil);
+        let mut return_type = VType::Primitive(PrimitiveTypes::Nil);
 
         if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
             self.advance();

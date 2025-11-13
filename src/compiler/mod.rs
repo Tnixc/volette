@@ -6,6 +6,7 @@ pub mod codegen;
 pub mod diagnostic_macros;
 pub mod error;
 pub mod lexer;
+#[macro_use]
 pub mod parser;
 pub mod tokens;
 
@@ -164,7 +165,7 @@ fn analysis_phase(
     nodes: &mut generational_arena::Arena<crate::compiler::parser::node::Node>,
 ) -> Result<
     ResultWithDiagnostics<
-        std::collections::HashMap<SymbolUsize, (Box<Vec<crate::compiler::parser::node::Type>>, crate::compiler::parser::node::Type)>,
+        std::collections::HashMap<SymbolUsize, (Box<Vec<crate::compiler::parser::node::VType>>, crate::compiler::parser::node::VType)>,
     >,
     DiagnosticCollection,
 > {

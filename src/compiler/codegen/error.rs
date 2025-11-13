@@ -2,7 +2,7 @@ use cranelift::codegen::CodegenError;
 use cranelift::module::ModuleError;
 use cranelift::object;
 
-use crate::compiler::parser::node::Type;
+use crate::compiler::parser::node::VType;
 use crate::compiler::tokens::DisplaySpan;
 use std::fmt::Display;
 
@@ -104,7 +104,7 @@ impl From<object::object::write::Error> for TranslateError {
     }
 }
 
-impl Display for Type {
+impl Display for VType {
     // TODO: Actually impl Display for Type
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)

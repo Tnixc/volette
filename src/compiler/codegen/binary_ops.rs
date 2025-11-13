@@ -5,7 +5,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, Scopes, error::TranslateError},
-        parser::node::{BinOpKind, Type},
+        parser::node::{BinOpKind, VType},
         tokens::PrimitiveTypes,
     },
 };
@@ -26,8 +26,8 @@ pub fn expr_binop(
     let right_value = right_value.safe();
 
     let val = match (left_type.clone(), right_type.clone()) {
-        (Type::Primitive(PrimitiveTypes::F32), Type::Primitive(PrimitiveTypes::F32))
-        | (Type::Primitive(PrimitiveTypes::F64), Type::Primitive(PrimitiveTypes::F64)) => {
+        (VType::Primitive(PrimitiveTypes::F32), VType::Primitive(PrimitiveTypes::F32))
+        | (VType::Primitive(PrimitiveTypes::F64), VType::Primitive(PrimitiveTypes::F64)) => {
             use cranelift::codegen::ir::condcodes::FloatCC;
 
             match op {
@@ -50,8 +50,8 @@ pub fn expr_binop(
                 }
             }
         }
-        (Type::Primitive(PrimitiveTypes::I32), Type::Primitive(PrimitiveTypes::I32))
-        | (Type::Primitive(PrimitiveTypes::I64), Type::Primitive(PrimitiveTypes::I64)) => {
+        (VType::Primitive(PrimitiveTypes::I32), VType::Primitive(PrimitiveTypes::I32))
+        | (VType::Primitive(PrimitiveTypes::I64), VType::Primitive(PrimitiveTypes::I64)) => {
             use cranelift::codegen::ir::condcodes::IntCC;
             match op {
                 BinOpKind::Add => fn_builder.ins().iadd(left_value, right_value),

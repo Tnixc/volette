@@ -17,6 +17,7 @@ pub mod error;
 pub mod expr;
 pub mod identifier;
 pub mod literal;
+#[macro_use]
 pub mod node;
 pub mod paren_block;
 pub mod precedence;
