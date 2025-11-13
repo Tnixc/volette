@@ -23,13 +23,19 @@ impl<'a> Lexer<'a> {
         use crate::compiler::tokens::Punctuation::*;
 
         const PATTERNS: &[(&str, Punctuation, usize)] = &[
+            ("<<=", LeftLeftEq, 3),
+            (">>=", RightRightEq, 3),
+            ("<<", LeftLeft, 3),
+            (">>", RightRight, 3),
+            ("<=", LessThanOrEq, 3),
+            (">=", GreaterThanOrEq, 3),
+            ("<", LessThan, 3),
+            (">", GreaterThan, 3),
             // 2-char ops (checked first)
             ("&&", AmpAmp, 2),
             ("!=", NotEq, 2),
             ("**", StarStar, 2),
             ("==", EqEq, 2),
-            ("<=", LessThanOrEq, 2),
-            (">=", GreaterThanOrEq, 2),
             ("||", PipePipe, 2),
             ("=>", FatArrow, 2),
             ("->", Arrow, 2),
@@ -38,8 +44,6 @@ impl<'a> Lexer<'a> {
             ("!", Bang, 2),
             ("*", Star, 2),
             ("=", Eq, 2),
-            ("<", LessThan, 2),
-            (">", GreaterThan, 2),
             ("|", Pipe, 2),
             ("-", Minus, 2),
             // 1-char ops that only require 1 char
@@ -56,7 +60,7 @@ impl<'a> Lexer<'a> {
             ("/", Slash, 1),
             ("%", Percent, 1),
             ("+", Plus, 1),
-            ("@", At, 2),
+            ("@", At, 1),
             ("^", Caret, 2),
             ("~", Tilde, 1),
         ];

@@ -53,6 +53,10 @@ pub enum Punctuation {
     LessThanOrEq,
     GreaterThan,
     GreaterThanOrEq,
+    LeftLeft,
+    LeftLeftEq,
+    RightRight,
+    RightRightEq,
 
     Amp,
     Pipe,
