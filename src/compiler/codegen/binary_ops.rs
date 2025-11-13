@@ -7,7 +7,7 @@ use crate::{
         codegen::{Info, Scopes, error::TranslateError},
         parser::node::{BinOpKind, VType},
     },
-    is_float,
+    is_float, is_int,
 };
 
 use super::expr::expr_to_val;
@@ -49,7 +49,7 @@ pub fn expr_binop(
                 }
             }
         }
-        (VType::Primitive(pt @ is_float!()), VType::Primitive(rt)) if pt == rt => {
+        (VType::Primitive(pt @ is_int!()), VType::Primitive(rt)) if pt == rt => {
             use cranelift::codegen::ir::condcodes::IntCC;
             match op {
                 BinOpKind::Add => fn_builder.ins().iadd(left_value, right_value),
