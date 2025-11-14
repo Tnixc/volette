@@ -4,7 +4,7 @@ use std::{
 };
 
 use cranelift::{
-    codegen::Context,
+    codegen::{Context, control::ControlPlane},
     module::{Linkage, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
@@ -109,6 +109,9 @@ pub fn codegen(
         diagnostics: DiagnosticCollection::new(),
     };
 
+    info.ctx.want_disasm = true;
+    info.ctx.set_disasm(true);
+
     match &root.kind {
         NodeKind::Root { defs } => {
             // declare all functions first
@@ -172,11 +175,28 @@ pub fn codegen(
                                 had_error = true;
                                 continue;
                             }
+
+                            // compile just for asm
+                            let mut ctrl_plane = ControlPlane::default();
+                            if let Err(e) = info.ctx.compile(info.module.isa(), &mut ctrl_plane) {
+                                eprintln!("!!! cranelift compile error: {:?}", e);
+                                return Err(e.into());
+                            }
+
+                            // store assembly before define_function consumes it
+                            let assembly = info.ctx.compiled_code().and_then(|code| code.vcode.clone());
+
                             if let Err(e) = info.module.define_function(func_id, &mut info.ctx) {
                                 eprintln!("!!! cranelift error: {:?}", e);
                                 return Err(e.into());
                             }
+
+                            if let Some(disasm) = assembly {
+                                println!("\n*** Assembly:\n{}", disasm);
+                            }
+
                             info.ctx.clear();
+                            info.ctx.set_disasm(true);
                         }
                         _ => {
                             return Err(TranslateError::Unsupported {
@@ -211,7 +231,6 @@ pub fn codegen(
 
     let product = info.module.finish();
     let obj_bytes = product.emit()?;
-
     std::fs::write("vtlib.o", obj_bytes).expect("Couldn't write");
     println!("Object file 'vtlib.o' emitted.");
     Ok(info.diagnostics)

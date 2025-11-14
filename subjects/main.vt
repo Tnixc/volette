@@ -11,8 +11,8 @@ fn test_not(b: i32): i32 {
 }
 
 fn ptr(x: i32): i32{
-    let a = 12345;
-    let b = 67890;
+    let a = 10;
+    let b = 20;
     let p1 = &a;
     let p2 = &b;
     let offset: usize = 8;

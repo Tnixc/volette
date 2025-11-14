@@ -1,4 +1,4 @@
-use cranelift::codegen::CodegenError;
+use cranelift::codegen::{CodegenError, CompileError};
 use cranelift::module::ModuleError;
 use cranelift::object;
 
@@ -69,6 +69,19 @@ impl From<CodegenError> for TranslateError {
         // Use a dummy span since cranelift errors don't have source locations
         TranslateError::External {
             message: format!("Cranelift codegen error: {}", err),
+            span: DisplaySpan {
+                file: "<codegen>".to_string(),
+                start: (0, 0),
+                end: (0, 0),
+            },
+        }
+    }
+}
+
+impl From<CompileError<'_>> for TranslateError {
+    fn from(err: CompileError) -> Self {
+        TranslateError::External {
+            message: format!("Cranelift compile error: {}", err.inner),
             span: DisplaySpan {
                 file: "<codegen>".to_string(),
                 start: (0, 0),
