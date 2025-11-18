@@ -82,6 +82,7 @@ pub struct Info<'a> {
     pub nodes: &'a Arena<Node>,
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
     pub func_table: HashMap<SymbolUsize, cranelift::module::FuncId>,
+    pub fn_table: &'a HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
     pub diagnostics: DiagnosticCollection,
 }
 
@@ -89,7 +90,7 @@ pub fn codegen(
     root: &Node,
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    _fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+    fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
 ) -> Result<DiagnosticCollection, TranslateError> {
     let (target_isa, call_conv) = isa();
     let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
@@ -106,6 +107,7 @@ pub fn codegen(
         nodes,
         interner,
         func_table: HashMap::new(),
+        fn_table,
         diagnostics: DiagnosticCollection::new(),
     };
 

@@ -7,7 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, error::TranslateError},
-        parser::node::{DefKind, ExprKind, NodeKind, VType},
+        parser::node::{ExprKind, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
 };
@@ -45,23 +45,11 @@ pub fn expr_call(
     let call_inst = fn_builder.ins().call(func_ref, &arg_values);
 
     // check if the function returns a zero-sized type (Nil or Never)
-    // by looking up the function definition
-    let return_type = match &func_node.kind {
-        NodeKind::Def { kind, .. } => match kind {
-            DefKind::Function { return_type, .. } => return_type,
-            _ => unreachable!(),
-        },
-        _ => unreachable!(),
-    };
+    let (_params, return_type) = info.fn_table.get(&func_name).safe();
 
-    // only get result if the function returns a non-zero-sized type
     match return_type {
-        // VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => {
-        VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => {
-            // TODO: Also check if this is right??
-            // zero-sized return, return dummy value
-            Ok(Value::from_u32(0))
-        }
+        // zero-sized return, return dummy value
+        VType::Primitive(PrimitiveTypes::Nil) | VType::Primitive(PrimitiveTypes::Never) => Ok(Value::from_u32(0)),
         _ => {
             let result = fn_builder.inst_results(call_inst)[0];
             Ok(result)
