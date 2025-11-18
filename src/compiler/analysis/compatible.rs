@@ -1,16 +1,13 @@
-use crate::{
-    compiler::{parser::node::VType, tokens::PrimitiveTypes},
-    is_float, is_int,
-};
+use crate::compiler::{parser::node::VType, tokens::PrimitiveTypes};
 
 pub fn can_convert(from: &VType, to: &VType) -> bool {
     match (from, to) {
         (VType::Primitive(from), VType::Primitive(to)) => {
-            matches!((from, to), (is_int!() | is_float!(), is_int!() | is_float!()))
-                | matches!((from, to), (PrimitiveTypes::Bool, is_int!()))
+            (from.is_int() || from.is_float()) && (to.is_int() || to.is_float()) // num to num
+                || (from == &PrimitiveTypes::Bool && to.is_int()) // bool to int
         }
-        (VType::Pointer(_any), VType::Primitive(to)) => matches!(to, PrimitiveTypes::Usize | PrimitiveTypes::Isize),
-        (VType::Primitive(from), VType::Pointer(_any)) => matches!(from, PrimitiveTypes::Usize | PrimitiveTypes::Isize),
+        (VType::Pointer(_), VType::Primitive(to)) => matches!(to, PrimitiveTypes::Usize | PrimitiveTypes::Isize),
+        (VType::Primitive(from), VType::Pointer(_)) => matches!(from, PrimitiveTypes::Usize | PrimitiveTypes::Isize),
         _ => false,
     }
 }
