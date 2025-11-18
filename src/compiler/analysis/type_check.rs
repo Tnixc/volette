@@ -78,7 +78,7 @@ pub fn type_check_root(
 /// if `expected` is `none`, it infers the expression's type.
 pub(crate) fn resolve_expr_type(
     target_idx: Index,
-    expected: Option<VType>,
+    expected: Option<&VType>,
     nodes: &mut Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
@@ -89,14 +89,14 @@ pub(crate) fn resolve_expr_type(
         let target_node = nodes.get(target_idx).safe();
         // if type is already resolved, return it and check if it matches expectations
         if let NodeKind::Expr { type_: Some(ty), .. } = &target_node.kind {
-            if let Some(expected_ty) = expected {
-                if ty != &expected_ty {
-                    return Err(AnalysisError::TypeMismatch {
-                        expected: format!("{:?}", expected_ty),
-                        got: format!("{:?}", ty),
-                        span: target_node.span.to_display(interner),
-                    });
-                }
+            if let Some(expected_ty) = expected
+                && ty != expected_ty
+            {
+                return Err(AnalysisError::TypeMismatch {
+                    expected: format!("{:?}", expected_ty),
+                    got: format!("{:?}", ty),
+                    span: target_node.span.to_display(interner),
+                });
             }
             return Ok(ty.clone());
         }
@@ -114,12 +114,12 @@ pub(crate) fn resolve_expr_type(
                 type_annotation,
                 value,
             } => {
-                let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table, diagnostics)?;
+                let value_type = resolve_expr_type(value, type_annotation.as_ref(), nodes, interner, ident_types, fn_table, diagnostics)?;
                 // println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type.clone());
                 Ok(value_type)
             }
-            ExprKind::Literal(v) => check_literal(span, interner, expected.clone(), v),
+            ExprKind::Literal(v) => check_literal(span, interner, expected, v),
             ExprKind::Assign { target, value } => {
                 let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table, diagnostics)?;
@@ -136,7 +136,7 @@ pub(crate) fn resolve_expr_type(
             ExprKind::BinOp { left, right, op } => check_binop(left, right, op, nodes, interner, ident_types, fn_table, diagnostics),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
-                    resolve_expr_type(v, expected.clone(), nodes, interner, ident_types, fn_table, diagnostics)?;
+                    resolve_expr_type(v, expected, nodes, interner, ident_types, fn_table, diagnostics)?;
                 }
                 Ok(VType::Primitive(PrimitiveTypes::Never))
             }
@@ -164,15 +164,8 @@ pub(crate) fn resolve_expr_type(
                 then_block,
                 else_block,
             } => {
-                resolve_expr_type(
-                    cond,
-                    Some(VType::Primitive(PrimitiveTypes::Bool)),
-                    nodes,
-                    interner,
-                    ident_types,
-                    fn_table,
-                    diagnostics,
-                )?;
+                let bool_type = VType::Primitive(PrimitiveTypes::Bool);
+                resolve_expr_type(cond, Some(&bool_type), nodes, interner, ident_types, fn_table, diagnostics)?;
                 let then_type = resolve_expr_type(then_block, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 if let Some(else_block) = else_block {
                     let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table, diagnostics)?;
@@ -220,15 +213,8 @@ pub(crate) fn resolve_expr_type(
 
                         // check argument types
                         for (arg_idx, expected_type) in args.iter().zip(rest.0.iter()) {
-                            let arg_type = resolve_expr_type(
-                                *arg_idx,
-                                Some(expected_type.clone()),
-                                nodes,
-                                interner,
-                                ident_types,
-                                fn_table,
-                                diagnostics,
-                            )?;
+                            let arg_type =
+                                resolve_expr_type(*arg_idx, Some(expected_type), nodes, interner, ident_types, fn_table, diagnostics)?;
                             if arg_type != *expected_type {
                                 let span = nodes.get(*arg_idx).safe().span;
                                 return Err(AnalysisError::TypeMismatch {
@@ -281,7 +267,7 @@ pub(crate) fn resolve_expr_type(
     // if an expected type was provided, check if the inferred type matches
     // TODO: probably needs to check for coercion as well
     if let Some(expected_ty) = expected {
-        if inferred_type != expected_ty {
+        if &inferred_type != expected_ty {
             return Err(AnalysisError::TypeMismatch {
                 expected: format!("{:?}", expected_ty),
                 got: format!("{:?}", inferred_type),
@@ -299,7 +285,7 @@ pub(crate) fn resolve_expr_type(
 fn check_literal(
     span: Span,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    expected: Option<VType>,
+    expected: Option<&VType>,
     literal: Literal,
 ) -> Result<VType, AnalysisError> {
     let inferred = match literal {
@@ -309,7 +295,7 @@ fn check_literal(
         Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     };
 
-    let target = expected.as_ref().unwrap_or(&inferred);
+    let target = expected.unwrap_or(&inferred);
 
     // can coerce?
     match (literal, target) {
