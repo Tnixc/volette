@@ -297,16 +297,13 @@ fn check_literal(
 
     let target = expected.unwrap_or(&inferred);
 
-    // can coerce?
-    match (literal, target) {
-        (Literal::Int(_), VType::Primitive(is_int!())) => Ok(target.clone()),
-        (Literal::Float(_), VType::Primitive(is_float!())) => Ok(target.clone()),
-        (Literal::Bool(_), VType::Primitive(PrimitiveTypes::Bool)) => Ok(target.clone()),
-        (Literal::Nil, VType::Primitive(PrimitiveTypes::Nil)) => Ok(target.clone()),
-        _ => Err(AnalysisError::TypeMismatch {
+    if can_convert(&inferred, target) || &inferred == target {
+        Ok(target.clone())
+    } else {
+        Err(AnalysisError::TypeMismatch {
             expected: format!("{:?}", target),
             got: format!("{:?}", inferred),
             span: span.to_display(interner),
-        }),
+        })
     }
 }
