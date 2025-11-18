@@ -29,6 +29,7 @@ use crate::{
 
 pub mod binary_ops;
 pub mod block;
+pub mod cast;
 pub mod control_flow;
 pub mod error;
 pub mod expr;

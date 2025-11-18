@@ -14,6 +14,7 @@ use crate::{
 use super::{
     binary_ops::expr_binop,
     block::expr_block,
+    cast::expr_cast,
     control_flow::{expr_if, expr_return},
     function_call::expr_call,
     literal::match_literal,
@@ -51,6 +52,7 @@ pub fn expr_to_val(
                 } => Some(expr_if(node_idx, *cond, *then_block, *else_block, fn_builder, scopes, info)?),
                 ExprKind::Assign { target, value } => Some(expr_assign(*target, *value, fn_builder, scopes, info)?),
                 ExprKind::UnaryOp { op, expr } => Some(expr_unaryop(*op, *expr, fn_builder, scopes, info)?),
+                ExprKind::Cast { expr, target_type } => Some(expr_cast(*expr, target_type, fn_builder, scopes, info)?),
                 _ => {
                     return Err(TranslateError::Unsupported {
                         what: format!("expression kind: {:?}", kind),

@@ -62,6 +62,30 @@ macro_rules! is_float {
     };
 }
 
+impl PrimitiveTypes {
+    pub fn is_signed(&self) -> bool {
+        matches!(
+            self,
+            PrimitiveTypes::I8 | PrimitiveTypes::I16 | PrimitiveTypes::I32 | PrimitiveTypes::I64 | PrimitiveTypes::Isize
+        )
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        matches!(
+            self,
+            PrimitiveTypes::U8 | PrimitiveTypes::U16 | PrimitiveTypes::U32 | PrimitiveTypes::U64 | PrimitiveTypes::Usize
+        )
+    }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self, is_int!())
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self, is_float!())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     pub span: Span,
