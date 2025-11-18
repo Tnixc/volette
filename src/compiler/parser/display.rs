@@ -52,7 +52,7 @@ fn format_optional_type(opt_type: Option<VType>, interner: &StringInterner<Bucke
     opt_type
         .as_ref()
         .map(|t| format_type_val(t, interner))
-        .unwrap_or_else(|| "∅".to_string())
+        .unwrap_or_else(|| "unresolved".to_string())
 }
 
 fn format_node_to_string(idx: Index, arena: &Arena<Node>, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {

@@ -1,0 +1,5 @@
+---
+source: tests/parser.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"test",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:BinOp{op:"Add",left:Expr{type:unresolved,kind:Identifier{name:"x"}},right:Expr{type:unresolved,kind:Literal{value:Int(1)}}}}}}]}},return_type:Primitive{type:"I32"}}}]}

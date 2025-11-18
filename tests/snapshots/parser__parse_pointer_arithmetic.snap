@@ -1,0 +1,5 @@
+---
+source: tests/parser.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"ptr_arith",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:LetBinding{name:"p",type_annotation:unresolved,value:Expr{type:unresolved,kind:UnaryOp{op:"AddressOf",expr:Expr{type:unresolved,kind:Identifier{name:"x"}}}}}},Expr{type:unresolved,kind:LetBinding{name:"offset",type_annotation:Primitive{type:"Usize"},value:Expr{type:unresolved,kind:Literal{value:Int(4)}}}},Expr{type:unresolved,kind:LetBinding{name:"p2",type_annotation:unresolved,value:Expr{type:unresolved,kind:BinOp{op:"Add",left:Expr{type:unresolved,kind:Identifier{name:"p"}},right:Expr{type:unresolved,kind:Identifier{name:"offset"}}}}}},Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:UnaryOp{op:"Deref",expr:Expr{type:unresolved,kind:Identifier{name:"p2"}}}}}}]}},return_type:Primitive{type:"I32"}}}]}

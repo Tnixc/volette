@@ -1,0 +1,5 @@
+---
+source: tests/analysis.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"helper",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:Primitive{type:"Never"},kind:Block{exprs:[Expr{type:Primitive{type:"Never"},kind:Return{value:Expr{type:Primitive{type:"I32"},kind:BinOp{op:"Mul",left:Expr{type:Primitive{type:"I32"},kind:Identifier{name:"x"}},right:Expr{type:Primitive{type:"I32"},kind:Literal{value:Int(2)}}}}}}]}},return_type:Primitive{type:"I32"}}},Def{kind:Function{name:"caller",params:[Param{name:"a",type:Primitive{type:"I32"}},Param{name:"b",type:Primitive{type:"I32"}}],body:Expr{type:Primitive{type:"Never"},kind:Block{exprs:[Expr{type:Primitive{type:"Never"},kind:Return{value:Expr{type:Primitive{type:"I32"},kind:BinOp{op:"Add",left:Expr{type:Primitive{type:"I32"},kind:Call{func:Expr{type:unresolved,kind:Identifier{name:"helper"}},args:[Expr{type:Primitive{type:"I32"},kind:Identifier{name:"a"}}]}},right:Expr{type:Primitive{type:"I32"},kind:Call{func:Expr{type:unresolved,kind:Identifier{name:"helper"}},args:[Expr{type:Primitive{type:"I32"},kind:Identifier{name:"b"}}]}}}}}}]}},return_type:Primitive{type:"I32"}}}]}

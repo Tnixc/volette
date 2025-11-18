@@ -1,0 +1,29 @@
+
+fn negation(x: i32): i32 {
+    return -x;
+}
+
+fn ptr(x: i32): i32{
+    let a = 10;
+    let b = 20;
+    let p1 = &a;
+    let p2 = &b;
+    let offset: usize = 8;
+    let x = p1 + offset;
+    return @x; // returns 20
+}
+
+fn v(): i32{
+    let x = { let a = 2; 32 + a }
+    return x; // returns 34
+}
+
+fn test(a: i32): i32 {
+    let x = negation(ptr(90) + a * v());
+    return x;
+}
+
+//
+//fn test_nested_negation(x: i32): i32 {
+//    return -(-x);
+//}

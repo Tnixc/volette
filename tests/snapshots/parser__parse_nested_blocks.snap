@@ -1,0 +1,5 @@
+---
+source: tests/parser.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"nested",params:[],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:LetBinding{name:"x",type_annotation:unresolved,value:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:LetBinding{name:"a",type_annotation:unresolved,value:Expr{type:unresolved,kind:Literal{value:Int(5)}}}},Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:LetBinding{name:"b",type_annotation:unresolved,value:Expr{type:unresolved,kind:Literal{value:Int(10)}}}},Expr{type:unresolved,kind:BinOp{op:"Add",left:Expr{type:unresolved,kind:Identifier{name:"a"}},right:Expr{type:unresolved,kind:Identifier{name:"b"}}}}]}}]}}}},Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:Identifier{name:"x"}}}}]}},return_type:Primitive{type:"I32"}}}]}

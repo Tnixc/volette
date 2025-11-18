@@ -1,0 +1,4 @@
+fn block_value(): i32 {
+    let x = { let a = 10; a + 20 }
+    return x;
+}

@@ -1,0 +1,5 @@
+---
+source: tests/parser.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"helper",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:BinOp{op:"Mul",left:Expr{type:unresolved,kind:Identifier{name:"x"}},right:Expr{type:unresolved,kind:Literal{value:Int(2)}}}}}}]}},return_type:Primitive{type:"I32"}}},Def{kind:Function{name:"caller",params:[Param{name:"a",type:Primitive{type:"I32"}},Param{name:"b",type:Primitive{type:"I32"}}],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:BinOp{op:"Add",left:Expr{type:unresolved,kind:Call{func:Expr{type:unresolved,kind:Identifier{name:"helper"}},args:[Expr{type:unresolved,kind:Identifier{name:"a"}}]}},right:Expr{type:unresolved,kind:Call{func:Expr{type:unresolved,kind:Identifier{name:"helper"}},args:[Expr{type:unresolved,kind:Identifier{name:"b"}}]}}}}}}]}},return_type:Primitive{type:"I32"}}}]}

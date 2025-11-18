@@ -1,0 +1,5 @@
+---
+source: tests/analysis.rs
+expression: result.unwrap_err()
+---
+Error: Unresolved function 'nonexistent'

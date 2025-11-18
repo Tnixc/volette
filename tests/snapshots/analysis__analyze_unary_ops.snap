@@ -1,0 +1,5 @@
+---
+source: tests/analysis.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"negation",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:Primitive{type:"Never"},kind:Block{exprs:[Expr{type:Primitive{type:"Never"},kind:Return{value:Expr{type:Primitive{type:"I32"},kind:UnaryOp{op:"Neg",expr:Expr{type:Primitive{type:"I32"},kind:Identifier{name:"x"}}}}}}]}},return_type:Primitive{type:"I32"}}},Def{kind:Function{name:"address_and_deref",params:[Param{name:"x",type:Primitive{type:"I32"}}],body:Expr{type:Primitive{type:"Never"},kind:Block{exprs:[Expr{type:Pointer{to:Primitive{type:"I32"}},kind:LetBinding{name:"p",type_annotation:unresolved,value:Expr{type:Pointer{to:Primitive{type:"I32"}},kind:UnaryOp{op:"AddressOf",expr:Expr{type:Primitive{type:"I32"},kind:Identifier{name:"x"}}}}}},Expr{type:Primitive{type:"Never"},kind:Return{value:Expr{type:Primitive{type:"I32"},kind:UnaryOp{op:"Deref",expr:Expr{type:Pointer{to:Primitive{type:"I32"}},kind:Identifier{name:"p"}}}}}}]}},return_type:Primitive{type:"I32"}}}]}

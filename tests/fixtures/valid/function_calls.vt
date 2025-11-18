@@ -1,0 +1,7 @@
+fn helper(x: i32): i32 {
+    return x * 2;
+}
+
+fn caller(a: i32, b: i32): i32 {
+    return helper(a) + helper(b);
+}

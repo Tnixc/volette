@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: result.unwrap()
+---
+Full compilation successful: 43 tokens processed

@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: result.unwrap_err()
+---
+Codegen error: External error: Cranelift compile error: Verifier errors
