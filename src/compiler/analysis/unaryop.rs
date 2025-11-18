@@ -7,6 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::type_check::resolve_expr_type,
+        error::DiagnosticCollection,
         parser::node::{Node, UnaryOpKind, VType},
         tokens::PrimitiveTypes,
     },
@@ -22,8 +23,9 @@ pub(crate) fn check_unaryop(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+    diagnostics: &mut DiagnosticCollection,
 ) -> Result<VType, AnalysisError> {
-    let expr_ty = resolve_expr_type(expr, None, nodes, interner, ident_types, fn_table)?;
+    let expr_ty = resolve_expr_type(expr, None, nodes, interner, ident_types, fn_table, diagnostics)?;
     let expr_span = nodes.get(expr).safe().span;
 
     match op {

@@ -1,0 +1,5 @@
+---
+source: tests/analysis.rs
+expression: result.unwrap_err()
+---
+Error: Invalid cast: cannot cast type Primitive(I32) into Primitive(Bool)

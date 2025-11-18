@@ -6,7 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
-        analysis::{binop::check_binop, unaryop::check_unaryop},
+        analysis::{binop::check_binop, compatible::can_convert, unaryop::check_unaryop},
         error::DiagnosticCollection,
         parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
         tokens::{PrimitiveTypes, Span},
@@ -42,22 +42,27 @@ pub fn type_check_root(
 
                     // type check the function body
                     // the body is a block expression that should ultimately return the declared return_type
-                    if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table) {
+                    let error_count_before = diagnostics.diagnostics.len();
+                    if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table, &mut diagnostics) {
                         diagnostics.add_error(e);
                     }
+                    let had_body_errors = diagnostics.diagnostics.len() > error_count_before;
 
                     // a body with type never is compatible with any return type
-                    let body_node = nodes.get(body_idx).safe();
-                    if let NodeKind::Expr {
-                        type_: Some(body_type), ..
-                    } = &body_node.kind
-                    {
-                        if *body_type != VType::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
-                            diagnostics.add_error(AnalysisError::TypeMismatch {
-                                expected: format!("{:?}", return_type),
-                                got: format!("{:?}", body_type),
-                                span: body_node.span.to_display(interner),
-                            });
+                    // only check return type if there were no errors in the body (to avoid cascading errors)
+                    if !had_body_errors {
+                        let body_node = nodes.get(body_idx).safe();
+                        if let NodeKind::Expr {
+                            type_: Some(body_type), ..
+                        } = &body_node.kind
+                        {
+                            if *body_type != VType::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
+                                diagnostics.add_error(AnalysisError::TypeMismatch {
+                                    expected: format!("{:?}", return_type),
+                                    got: format!("{:?}", body_type),
+                                    span: body_node.span.to_display(interner),
+                                });
+                            }
                         }
                     }
                 }
@@ -78,6 +83,7 @@ pub(crate) fn resolve_expr_type(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+    diagnostics: &mut DiagnosticCollection,
 ) -> Result<VType, AnalysisError> {
     let (kind, span) = {
         let target_node = nodes.get(target_idx).safe();
@@ -108,15 +114,15 @@ pub(crate) fn resolve_expr_type(
                 type_annotation,
                 value,
             } => {
-                let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table)?;
+                let value_type = resolve_expr_type(value, type_annotation, nodes, interner, ident_types, fn_table, diagnostics)?;
                 // println!("Value type: {}", value_type);
                 ident_types.insert(name, value_type.clone());
                 Ok(value_type)
             }
             ExprKind::Literal(v) => check_literal(span, interner, expected.clone(), v),
             ExprKind::Assign { target, value } => {
-                let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table)?;
-                let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table)?;
+                let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table, diagnostics)?;
+                let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 if target_type != value_type {
                     Err(AnalysisError::TypeMismatch {
                         expected: format!("{:?}", target_type),
@@ -127,10 +133,10 @@ pub(crate) fn resolve_expr_type(
                     Ok(target_type)
                 }
             }
-            ExprKind::BinOp { left, right, op } => check_binop(left, right, op, nodes, interner, ident_types, fn_table),
+            ExprKind::BinOp { left, right, op } => check_binop(left, right, op, nodes, interner, ident_types, fn_table, diagnostics),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
-                    resolve_expr_type(v, expected.clone(), nodes, interner, ident_types, fn_table)?;
+                    resolve_expr_type(v, expected.clone(), nodes, interner, ident_types, fn_table, diagnostics)?;
                 }
                 Ok(VType::Primitive(PrimitiveTypes::Never))
             }
@@ -140,7 +146,13 @@ pub(crate) fn resolve_expr_type(
                 } else {
                     let mut last_expr_type = VType::Primitive(PrimitiveTypes::Nil);
                     for &expr_idx in &exprs {
-                        last_expr_type = resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table)?;
+                        match resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table, diagnostics) {
+                            Ok(ty) => last_expr_type = ty,
+                            Err(e) => {
+                                diagnostics.add_error(e);
+                                // continues
+                            }
+                        }
                     }
 
                     // the block type is the type of its last expression (??)
@@ -159,10 +171,11 @@ pub(crate) fn resolve_expr_type(
                     interner,
                     ident_types,
                     fn_table,
+                    diagnostics,
                 )?;
-                let then_type = resolve_expr_type(then_block, None, nodes, interner, ident_types, fn_table)?;
+                let then_type = resolve_expr_type(then_block, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 if let Some(else_block) = else_block {
-                    let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table)?;
+                    let else_type = resolve_expr_type(else_block, None, nodes, interner, ident_types, fn_table, diagnostics)?;
 
                     // if both branches diverge (never), the if-expression diverges
                     if then_type == VType::Primitive(PrimitiveTypes::Never) && else_type == VType::Primitive(PrimitiveTypes::Never) {
@@ -196,9 +209,26 @@ pub(crate) fn resolve_expr_type(
                 let rest = fn_table.get(&func_name);
                 match rest {
                     Some(rest) => {
+                        // check arity
+                        if args.len() != rest.0.len() {
+                            return Err(AnalysisError::TypeMismatch {
+                                expected: format!("{} argument(s)", rest.0.len()),
+                                got: format!("{} argument(s)", args.len()),
+                                span: span.to_display(interner),
+                            });
+                        }
+
+                        // check argument types
                         for (arg_idx, expected_type) in args.iter().zip(rest.0.iter()) {
-                            let arg_type =
-                                resolve_expr_type(*arg_idx, Some(expected_type.clone()), nodes, interner, ident_types, fn_table)?;
+                            let arg_type = resolve_expr_type(
+                                *arg_idx,
+                                Some(expected_type.clone()),
+                                nodes,
+                                interner,
+                                ident_types,
+                                fn_table,
+                                diagnostics,
+                            )?;
                             if arg_type != *expected_type {
                                 let span = nodes.get(*arg_idx).safe().span;
                                 return Err(AnalysisError::TypeMismatch {
@@ -218,7 +248,20 @@ pub(crate) fn resolve_expr_type(
                     }
                 }
             }
-            ExprKind::UnaryOp { op, expr } => check_unaryop(expr, op, nodes, interner, ident_types, fn_table),
+            ExprKind::Cast { expr, target_type } => {
+                let expr_type = resolve_expr_type(expr, None, nodes, interner, ident_types, fn_table, diagnostics)?;
+
+                if !can_convert(&expr_type, &target_type) {
+                    return Err(AnalysisError::Invalid {
+                        what: "cast".to_string(),
+                        reason: format!("cannot cast type {:?} into {:?}", expr_type, target_type),
+                        span: span.to_display(interner),
+                    });
+                }
+
+                Ok(target_type)
+            }
+            ExprKind::UnaryOp { op, expr } => check_unaryop(expr, op, nodes, interner, ident_types, fn_table, diagnostics),
             _ => {
                 return Err(AnalysisError::Unsupported {
                     what: format!("expression kind: {:?}", kind),

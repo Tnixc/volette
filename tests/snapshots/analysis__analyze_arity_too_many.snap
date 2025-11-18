@@ -1,0 +1,6 @@
+---
+source: tests/analysis.rs
+expression: result.unwrap_err()
+---
+Error: Type mismatch: expected 2 argument(s), got 3 argument(s)
+Error: Unresolved identifier 'x'

@@ -1,4 +1,5 @@
 mod binop;
+mod compatible;
 pub mod error;
 mod function_table;
 mod type_check;

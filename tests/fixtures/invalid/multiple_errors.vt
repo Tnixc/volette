@@ -1,0 +1,10 @@
+fn add(a: i32, b: i32): i32 {
+    return a + b;
+}
+
+fn test(): i32 {
+    let x = add(1);
+    let y = add(1, 2, 3);
+    let z: bool = 42 as bool;
+    return x;
+}

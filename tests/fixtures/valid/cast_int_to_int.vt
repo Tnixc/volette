@@ -1,0 +1,5 @@
+fn test(): i64 {
+    let a: i32 = 42;
+    let b: i64 = a as i64;
+    return b;
+}

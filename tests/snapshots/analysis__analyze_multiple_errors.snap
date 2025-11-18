@@ -1,0 +1,8 @@
+---
+source: tests/analysis.rs
+expression: result.unwrap_err()
+---
+Error: Type mismatch: expected 2 argument(s), got 1 argument(s)
+Error: Type mismatch: expected 2 argument(s), got 3 argument(s)
+Error: Invalid cast: cannot cast type Primitive(I32) into Primitive(Bool)
+Error: Unresolved identifier 'x'

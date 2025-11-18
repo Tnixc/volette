@@ -1,0 +1,5 @@
+fn test(): i32 {
+    let a: i32 = 42;
+    let b: bool = a as bool;
+    return 0;
+}

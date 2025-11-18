@@ -18,7 +18,6 @@ crate::define_errors! {
         },
 
         #[msg = "Invalid {what}: {reason}"]
-        #[help = "This construct is not valid in the current context"]
         Invalid {
             what: String,
             reason: String,

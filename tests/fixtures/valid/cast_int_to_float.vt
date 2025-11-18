@@ -1,0 +1,5 @@
+fn test(): f32 {
+    let a: i32 = 42;
+    let b: f32 = a as f32;
+    return b;
+}

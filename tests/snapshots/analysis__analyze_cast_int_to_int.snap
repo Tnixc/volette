@@ -1,0 +1,5 @@
+---
+source: tests/analysis.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"test",params:[],body:Expr{type:Primitive{type:"Never"},kind:Block{exprs:[Expr{type:Primitive{type:"I32"},kind:LetBinding{name:"a",type_annotation:Primitive{type:"I32"},value:Expr{type:Primitive{type:"I32"},kind:Literal{value:Int(42)}}}},Expr{type:Primitive{type:"I64"},kind:LetBinding{name:"b",type_annotation:Primitive{type:"I64"},value:Expr{type:Primitive{type:"I64"},kind:Cast{expr:Expr{type:Primitive{type:"I32"},kind:Identifier{name:"a"}},target_type:Primitive{type:"I64"}}}}},Expr{type:Primitive{type:"Never"},kind:Return{value:Expr{type:Primitive{type:"I64"},kind:Identifier{name:"b"}}}}]}},return_type:Primitive{type:"I64"}}}]}

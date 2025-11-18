@@ -7,6 +7,7 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::type_check::resolve_expr_type,
+        error::DiagnosticCollection,
         parser::node::{BinOpKind, Node, VType},
         tokens::PrimitiveTypes,
     },
@@ -22,9 +23,10 @@ pub(crate) fn check_binop(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
+    diagnostics: &mut DiagnosticCollection,
 ) -> Result<VType, AnalysisError> {
-    let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table)?;
-    let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table)?;
+    let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table, diagnostics)?;
+    let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table, diagnostics)?;
 
     if left_ty == VType::Primitive(PrimitiveTypes::Nil) || left_ty == VType::Primitive(PrimitiveTypes::Nil) {
         return Err(AnalysisError::Invalid {

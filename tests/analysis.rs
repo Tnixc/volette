@@ -125,3 +125,49 @@ fn test(): i32 {
     let output = analyze_source(source).unwrap();
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_analyze_arity_too_few() {
+    let source = fs::read_to_string("tests/fixtures/invalid/arity_too_few.vt").unwrap();
+    let result = analyze_source(&source);
+    assert!(result.is_err());
+    insta::assert_snapshot!(result.unwrap_err());
+}
+
+#[test]
+fn test_analyze_arity_too_many() {
+    let source = fs::read_to_string("tests/fixtures/invalid/arity_too_many.vt").unwrap();
+    let result = analyze_source(&source);
+    assert!(result.is_err());
+    insta::assert_snapshot!(result.unwrap_err());
+}
+
+#[test]
+fn test_analyze_invalid_cast() {
+    let source = fs::read_to_string("tests/fixtures/invalid/invalid_cast.vt").unwrap();
+    let result = analyze_source(&source);
+    assert!(result.is_err());
+    insta::assert_snapshot!(result.unwrap_err());
+}
+
+#[test]
+fn test_analyze_multiple_errors() {
+    let source = fs::read_to_string("tests/fixtures/invalid/multiple_errors.vt").unwrap();
+    let result = analyze_source(&source);
+    assert!(result.is_err());
+    insta::assert_snapshot!(result.unwrap_err());
+}
+
+#[test]
+fn test_analyze_cast_int_to_int() {
+    let source = fs::read_to_string("tests/fixtures/valid/cast_int_to_int.vt").unwrap();
+    let output = analyze_source(&source).unwrap();
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_analyze_cast_int_to_float() {
+    let source = fs::read_to_string("tests/fixtures/valid/cast_int_to_float.vt").unwrap();
+    let output = analyze_source(&source).unwrap();
+    insta::assert_snapshot!(output);
+}
