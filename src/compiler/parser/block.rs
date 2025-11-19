@@ -20,8 +20,7 @@ impl<'a> Parser<'a> {
             let expr = self.parse_expr()?;
             expressions.push(expr);
 
-            // Handle optional semicolon after expression
-            if self.current().kind == TokenKind::Punctuation(Punctuation::Semicolon) {
+            while self.current().kind == TokenKind::Punctuation(Punctuation::Semicolon) {
                 self.advance(); // consume ';'
             }
         }
