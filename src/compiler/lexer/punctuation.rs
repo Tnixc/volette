@@ -27,10 +27,9 @@ impl<'a> Lexer<'a> {
         self.tokens.push(Token::new(TokenKind::Punctuation(punct), span));
     }
 
-    pub fn check_punctuation(&mut self) -> bool {
+    const PATTERNS: &'static [(&'static str, Punctuation, usize)] = {
         use crate::compiler::tokens::Punctuation::*;
-
-        const PATTERNS: &[(&str, Punctuation, usize)] = &[
+        &[
             ("<<=", LeftLeftEq, 3),
             (">>=", RightRightEq, 3),
             ("<<", LeftLeft, 3),
@@ -39,21 +38,28 @@ impl<'a> Lexer<'a> {
             (">=", GreaterThanOrEq, 3),
             ("<", LessThan, 3),
             (">", GreaterThan, 3),
+            ("**=", StarStarEq, 3),
+            ("**", StarStar, 3),
+            ("*", Star, 3),
             // 2-char ops (checked first)
             ("&&", AmpAmp, 2),
+            ("&=", AmpEq, 2),
             ("!=", NotEq, 2),
-            ("**", StarStar, 2),
+            ("^=", CaretEq, 2),
+            ("~=", TildeEq, 2),
             ("==", EqEq, 2),
             ("||", PipePipe, 2),
+            ("|=", PipeEq, 2),
             ("=>", FatArrow, 2),
             ("->", Arrow, 2),
             // 1-char ops that require 2 chars (for precedence)
             ("&", Amp, 2),
             ("!", Bang, 2),
-            ("*", Star, 2),
             ("=", Eq, 2),
             ("|", Pipe, 2),
             ("-", Minus, 2),
+            ("^", Caret, 2),
+            ("~", Tilde, 2),
             // 1-char ops that only require 1 char
             (")", CloseParen, 1),
             ("(", OpenParen, 1),
@@ -69,11 +75,11 @@ impl<'a> Lexer<'a> {
             ("%", Percent, 1),
             ("+", Plus, 1),
             ("@", At, 1),
-            ("^", Caret, 2),
-            ("~", Tilde, 1),
-        ];
+        ]
+    };
 
-        for &(pattern, punctuation, min_chars) in PATTERNS {
+    pub fn check_punctuation(&mut self) -> bool {
+        for &(pattern, punctuation, min_chars) in Self::PATTERNS {
             let pattern_len = pattern.len();
 
             if self.current_chars.len() >= min_chars {
@@ -87,6 +93,24 @@ impl<'a> Lexer<'a> {
                     self.current_chars.drain(..pattern_len);
                     return true;
                 }
+            }
+        }
+
+        false
+    }
+
+    /// Check for single-char punctuation, ignoring min_chars requirement.
+    /// Used when we know the next char won't form a multi-char operator (e.g., before a digit).
+    pub fn check_single_char_punctuation(&mut self) -> bool {
+        if self.current_chars.len() != 1 {
+            return false;
+        }
+
+        for &(pattern, punctuation, _) in Self::PATTERNS {
+            if pattern.len() == 1 && self.current_chars[0].1 as u8 == pattern.as_bytes()[0] {
+                self.push_punctuation(punctuation, 1);
+                self.current_chars.drain(..1);
+                return true;
             }
         }
 

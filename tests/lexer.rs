@@ -273,7 +273,7 @@ fn test_lex_punctuation() {
 *    =  <>    |    ) (
     {   }  [  ]   , .  :
 ;   /   %   +   -
-=>"#;
+=> **= &= ^= ~="#;
     let mut lexer = Lexer::new(&mut interner, file);
 
     let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
@@ -309,6 +309,10 @@ fn test_lex_punctuation() {
         (Punctuation(Plus), 5, (13, 13)),
         (Punctuation(Minus), 5, (17, 17)),
         (Punctuation(FatArrow), 6, (1, 2)),
+        (Punctuation(StarStarEq), 6, (4, 6)),
+        (Punctuation(AmpEq), 6, (8, 9)),
+        (Punctuation(CaretEq), 6, (11, 12)),
+        (Punctuation(TildeEq), 6, (14, 15)),
     ];
 
     let tokens = lexer

@@ -103,13 +103,26 @@ impl<'a> Lexer<'a> {
 
         match self.state {
             LexerState::Normal => {
-                if c.is_numeric()
-                    && (self.current_chars.is_empty() || (self.current_chars.len() == 1 && !self.current_chars[0].1.is_alphanumeric()))
-                {
+                // check if we should start number parsing
+                let should_start_number = if c.is_numeric() {
+                    // strip trailing whitespace
+                    while self.current_chars.back().is_some_and(|(_, ch)| ch.is_whitespace()) {
+                        self.current_chars.pop_back();
+                    }
+                    self.current_chars.is_empty() || (self.current_chars.len() == 1 && !self.current_chars[0].1.is_alphanumeric())
+                } else {
+                    false
+                };
+
+                if should_start_number {
                     // if current_chars has a single non-alphanumeric character (like punctuation),
                     // process it first, then start number parsing
                     if !self.current_chars.is_empty() {
-                        self.check_punctuation();
+                        // force emit single-char punctuation even if min_chars isn't met
+                        // since we know the next char is a digit, not part of a multi-char operator
+                        if !self.check_punctuation() {
+                            self.check_single_char_punctuation();
+                        }
                     }
                     self.state = LexerState::Number(c == '.', numbers::NumberBase::Decimal);
                     self.current_chars.push_back(((self.cursor.line, self.cursor.col), c));

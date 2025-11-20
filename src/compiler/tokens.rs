@@ -35,6 +35,7 @@ pub enum Punctuation {
     Colon,
     Semicolon,
     AmpAmp,
+    AmpEq,
     Bang,
     At,
     Caret,
@@ -49,10 +50,13 @@ pub enum Punctuation {
     Eq,
     EqEq,
     NotEq,
+    CaretEq,
+    TildeEq,
     LessThan, // generics ahh
     LessThanOrEq,
     GreaterThan,
     GreaterThanOrEq,
+    StarStarEq,
     LeftLeft,
     LeftLeftEq,
     RightRight,
@@ -60,6 +64,7 @@ pub enum Punctuation {
 
     Amp,
     Pipe,
+    PipeEq,
     PipePipe,
 
     FatArrow,
