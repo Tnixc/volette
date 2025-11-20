@@ -11,7 +11,6 @@ use crate::{
         parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
         tokens::{PrimitiveTypes, Span},
     },
-    is_float, is_int,
 };
 
 use super::error::AnalysisError;

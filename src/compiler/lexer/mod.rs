@@ -230,35 +230,3 @@ impl<'a> Lexer<'a> {
             .collect::<Vec<_>>()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
-    type Interner = StringInterner<BucketBackend<SymbolUsize>>;
-
-    #[test]
-    fn test_lex_identifiers_with_keywords() {
-        let mut interner = Interner::new();
-        let f = interner.get_or_intern("");
-        let contents = "let__ use some_ident normal";
-        let mut lexer = Lexer::new(&mut interner, f);
-
-        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-        lexer.tokenize(chars);
-
-        let expected_tokens = vec![
-            ("Identifier(let__)".to_string(), 1, (1, 5)),
-            ("Keyword(Use)".to_string(), 1, (7, 9)),
-            ("Identifier(some_ident)".to_string(), 1, (11, 20)),
-            ("Identifier(normal)".to_string(), 1, (22, 27)),
-        ];
-
-        let tokens = lexer.format_tokens();
-        assert_eq!(tokens.len() - 1, expected_tokens.len());
-
-        for (i, token) in tokens.iter().skip(1).enumerate() {
-            assert_eq!(token, &expected_tokens[i]);
-        }
-    }
-}

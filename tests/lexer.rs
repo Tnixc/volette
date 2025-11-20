@@ -1,5 +1,9 @@
 use string_interner::StringInterner;
 use volette::compiler::lexer::Lexer;
+use volette::compiler::tokens::Keyword::*;
+use volette::compiler::tokens::PrimitiveTypes::*;
+use volette::compiler::tokens::Punctuation::*;
+use volette::compiler::tokens::TokenKind::*;
 
 const CONTENTS: &str = r#"fn add(u32)(a: u32, b: u32): u32 {
     return a + b;
@@ -237,6 +241,288 @@ fn test_lexer() {
 
     assert_eq!(tokens.len() - 1, expected_tokens.len());
     for (i, token) in tokens.iter().skip(1).enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_consecutive_semicolons_collapsed() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = "x;;;; y;;;;; return x;;;";
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let semicolon_count = lexer
+        .tokens
+        .iter()
+        .filter(|t| format!("{:?}", t.kind).contains("Semicolon"))
+        .count();
+
+    assert_eq!(semicolon_count, 3, "Expected 3 semicolons, got {}", semicolon_count);
+}
+
+#[test]
+fn test_lex_punctuation() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = r#"&&  !=   ** ==  <=
+>=   ||    &    !
+*    =  <>    |    ) (
+    {   }  [  ]   , .  :
+;   /   %   +   -
+=>"#;
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        (Punctuation(AmpAmp), 1, (1, 2)),
+        (Punctuation(NotEq), 1, (5, 6)),
+        (Punctuation(StarStar), 1, (10, 11)),
+        (Punctuation(EqEq), 1, (13, 14)),
+        (Punctuation(LessThanOrEq), 1, (17, 18)),
+        (Punctuation(GreaterThanOrEq), 2, (1, 2)),
+        (Punctuation(PipePipe), 2, (6, 7)),
+        (Punctuation(Amp), 2, (12, 12)),
+        (Punctuation(Bang), 2, (17, 17)),
+        (Punctuation(Star), 3, (1, 1)),
+        (Punctuation(Eq), 3, (6, 6)),
+        (Punctuation(LessThan), 3, (9, 9)),
+        (Punctuation(GreaterThan), 3, (10, 10)),
+        (Punctuation(Pipe), 3, (15, 15)),
+        (Punctuation(CloseParen), 3, (20, 20)),
+        (Punctuation(OpenParen), 3, (22, 22)),
+        (Punctuation(OpenBrace), 4, (5, 5)),
+        (Punctuation(CloseBrace), 4, (9, 9)),
+        (Punctuation(OpenBracket), 4, (12, 12)),
+        (Punctuation(CloseBracket), 4, (15, 15)),
+        (Punctuation(Comma), 4, (19, 19)),
+        (Punctuation(Dot), 4, (21, 21)),
+        (Punctuation(Colon), 4, (24, 24)),
+        (Punctuation(Semicolon), 5, (1, 1)),
+        (Punctuation(Slash), 5, (5, 5)),
+        (Punctuation(Percent), 5, (9, 9)),
+        (Punctuation(Plus), 5, (13, 13)),
+        (Punctuation(Minus), 5, (17, 17)),
+        (Punctuation(FatArrow), 6, (1, 2)),
+    ];
+
+    let tokens = lexer
+        .tokens
+        .iter()
+        .skip(1)
+        .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+        .collect::<Vec<_>>();
+
+    assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
+    for (i, token) in tokens.iter().enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_keywords() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = r#"fn use const let loop break return struct alloc free pub local self as in"#;
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        (Keyword(Fn), 1, (1, 2)),
+        (Keyword(Use), 1, (4, 6)),
+        (Keyword(Const), 1, (8, 12)),
+        (Keyword(Let), 1, (14, 16)),
+        (Keyword(Loop), 1, (18, 21)),
+        (Keyword(Break), 1, (23, 27)),
+        (Keyword(Return), 1, (29, 34)),
+        (Keyword(Struct), 1, (36, 41)),
+        (Keyword(Alloc), 1, (43, 47)),
+        (Keyword(Free), 1, (49, 52)),
+        (Keyword(Pub), 1, (54, 56)),
+        (Keyword(Local), 1, (58, 62)),
+        (Keyword(Self_), 1, (64, 67)),
+        (Keyword(As), 1, (69, 70)),
+        (Keyword(In), 1, (72, 73)),
+    ];
+
+    let tokens = lexer
+        .tokens
+        .iter()
+        .skip(1)
+        .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+        .collect::<Vec<_>>();
+    for (i, token) in tokens.iter().enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_identifiers_with_keywords() {
+    let mut interner = StringInterner::new();
+    let f = interner.get_or_intern("");
+    let contents = "let__ use some_ident normal";
+    let mut lexer = Lexer::new(&mut interner, f);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        ("Identifier(let__)".to_string(), 1, (1, 5)),
+        ("Keyword(Use)".to_string(), 1, (7, 9)),
+        ("Identifier(some_ident)".to_string(), 1, (11, 20)),
+        ("Identifier(normal)".to_string(), 1, (22, 27)),
+    ];
+
+    let tokens = lexer.format_tokens();
+    assert_eq!(tokens.len() - 1, expected_tokens.len());
+
+    for (i, token) in tokens.iter().skip(1).enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_numbers() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = "123 + 2 0xff 3.14 2.71 0 0o234";
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        (IntLiteral(123), 1, (1, 3)),
+        (Punctuation(Plus), 1, (5, 5)),
+        (IntLiteral(2), 1, (7, 7)),
+        (IntLiteral(255), 1, (9, 12)),
+        (FloatLiteral(3.14), 1, (14, 17)),
+        (FloatLiteral(2.71), 1, (19, 22)),
+        (IntLiteral(0), 1, (24, 24)),
+        (IntLiteral(156), 1, (26, 30)),
+    ];
+
+    assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
+    let tokens = lexer
+        .tokens
+        .iter()
+        .skip(1)
+        .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+        .collect::<Vec<_>>();
+    for (i, token) in tokens.iter().enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_simple_float() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = "1.0";
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![("FloatLiteral(1.0)".to_string(), 1, (1, 3))];
+
+    let tokens = lexer.format_tokens();
+    assert_eq!(tokens.len() - 1, expected_tokens.len());
+
+    for (i, token) in tokens.iter().skip(1).enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_float_in_function_call() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = "test(1.0)";
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        ("Identifier(test)".to_string(), 1, (1, 4)),
+        ("Punctuation(OpenParen)".to_string(), 1, (5, 5)),
+        ("FloatLiteral(1.0)".to_string(), 1, (6, 8)),
+        ("Punctuation(CloseParen)".to_string(), 1, (9, 9)),
+    ];
+
+    let tokens = lexer.format_tokens();
+    assert_eq!(tokens.len() - 1, expected_tokens.len());
+
+    for (i, token) in tokens.iter().skip(1).enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_bool() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = r#"true false"#;
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![(BoolLiteral(true), 1, (1, 4)), (BoolLiteral(false), 1, (6, 10))];
+
+    let tokens = lexer
+        .tokens
+        .iter()
+        .skip(1)
+        .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+        .collect::<Vec<_>>();
+    for (i, token) in tokens.iter().enumerate() {
+        assert_eq!(token, &expected_tokens[i]);
+    }
+}
+
+#[test]
+fn test_lex_types() {
+    let mut interner = StringInterner::new();
+    let file = interner.get_or_intern("");
+    let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool Nil"#;
+    let mut lexer = Lexer::new(&mut interner, file);
+
+    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
+    lexer.tokenize(chars);
+
+    let expected_tokens = vec![
+        (TypeLiteral(I8), 1, (1, 2)),
+        (TypeLiteral(I16), 1, (4, 6)),
+        (TypeLiteral(I32), 1, (8, 10)),
+        (TypeLiteral(I64), 1, (12, 14)),
+        (TypeLiteral(U8), 1, (16, 17)),
+        (TypeLiteral(U16), 1, (19, 21)),
+        (TypeLiteral(U32), 1, (23, 25)),
+        (TypeLiteral(U64), 1, (27, 29)),
+        (TypeLiteral(F32), 1, (31, 33)),
+        (TypeLiteral(F64), 1, (35, 37)),
+        (TypeLiteral(Bool), 1, (39, 42)),
+        (TypeLiteral(Nil), 1, (44, 46)),
+    ];
+
+    let tokens = lexer
+        .tokens
+        .iter()
+        .skip(1)
+        .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
+        .collect::<Vec<_>>();
+
+    assert_eq!(lexer.tokens.len() - 1, expected_tokens.len());
+    for (i, token) in tokens.iter().enumerate() {
         assert_eq!(token, &expected_tokens[i]);
     }
 }

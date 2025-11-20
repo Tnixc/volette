@@ -10,9 +10,9 @@ impl<'a> Parser<'a> {
     /// the core pratt parsing loop.
     /// parses an expression whose components have at least `min_bp` binding power.
     pub fn pratt_parse_expression(&mut self, min_bp: BindingPower) -> Result<Index, ParserError> {
-        while self.current().kind == TokenKind::Punctuation(Punctuation::Semicolon) {
-            self.advance();
-        }
+        // while self.current().kind == TokenKind::Punctuation(Punctuation::Semicolon) {
+        //     self.advance();
+        // }
 
         // 1. handle nud (null denotation) for the current token (prefix context)
         let mut left_expr_idx: Index;
@@ -60,7 +60,6 @@ impl<'a> Parser<'a> {
                 });
             }
         }
-
 
         // 2. handle led (left denotation) for subsequent tokens (infix/postfix context)
         loop {

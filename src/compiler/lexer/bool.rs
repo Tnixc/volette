@@ -89,34 +89,3 @@ impl<'a> Lexer<'a> {
         false
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
-    type Interner = StringInterner<BucketBackend<SymbolUsize>>;
-    use crate::compiler::tokens::TokenKind::*;
-
-    #[test]
-    fn test_lex_bool() {
-        let mut interner = Interner::new();
-        let file = interner.get_or_intern("");
-        let contents = r#"true false"#;
-        let mut lexer = Lexer::new(&mut interner, file);
-
-        let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-        lexer.tokenize(chars);
-
-        let expected_tokens = vec![(BoolLiteral(true), 1, (1, 4)), (BoolLiteral(false), 1, (6, 10))];
-
-        let tokens = lexer
-            .tokens
-            .iter()
-            .skip(1)
-            .map(|t| (t.kind, t.span.start.0, (t.span.start.1, t.span.end.1)))
-            .collect::<Vec<_>>();
-        for (i, token) in tokens.iter().enumerate() {
-            assert_eq!(token, &expected_tokens[i]);
-        }
-    }
-}
