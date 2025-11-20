@@ -114,3 +114,50 @@ fn ptr_arith(x: i32): i32 {
     let output = parse_source(source);
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_parse_compound_assignment() {
+    let source = r#"
+fn compound(x: i32): i32 {
+    let a = 10;
+    a += 5;
+    a -= 2;
+    a *= 3;
+    a /= 2;
+    a %= 7;
+    return a;
+}
+"#;
+    let output = parse_source(source);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_parse_compound_assignment_bitwise() {
+    let source = r#"
+fn bitwise(x: i32): i32 {
+    let a = 255;
+    a &= 15;
+    a |= 16;
+    a ^= 8;
+    a <<= 2;
+    a >>= 1;
+    return a;
+}
+"#;
+    let output = parse_source(source);
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_parse_compound_assignment_expr() {
+    let source = r#"
+fn expr_value(): i32 {
+    let a = 5;
+    let b = (a += 10);
+    return b;
+}
+"#;
+    let output = parse_source(source);
+    insta::assert_snapshot!(output);
+}

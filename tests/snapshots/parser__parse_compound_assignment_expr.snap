@@ -1,0 +1,5 @@
+---
+source: tests/parser.rs
+expression: output
+---
+Root{defs:[Def{kind:Function{name:"expr_value",params:[],body:Expr{type:unresolved,kind:Block{exprs:[Expr{type:unresolved,kind:LetBinding{name:"a",type_annotation:unresolved,value:Expr{type:unresolved,kind:Literal{value:Int(5)}}}},Expr{type:unresolved,kind:LetBinding{name:"b",type_annotation:unresolved,value:Expr{type:unresolved,kind:CompoundAssign{op:"Add",target:Expr{type:unresolved,kind:Identifier{name:"a"}},value:Expr{type:unresolved,kind:Literal{value:Int(10)}}}}}},Expr{type:unresolved,kind:Return{value:Expr{type:unresolved,kind:Identifier{name:"b"}}}}]}},return_type:Primitive{type:"I32"}}}]}
