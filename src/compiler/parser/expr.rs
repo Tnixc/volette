@@ -65,7 +65,17 @@ impl<'a> Parser<'a> {
         loop {
             let next_token = *self.current();
             let (left_bp, is_right_associative) = match next_token.kind {
-                TokenKind::Punctuation(Punctuation::Eq) => (BindingPower::Assignment, true),
+                TokenKind::Punctuation(Punctuation::Eq)
+                | TokenKind::Punctuation(Punctuation::PlusEq)
+                | TokenKind::Punctuation(Punctuation::MinusEq)
+                | TokenKind::Punctuation(Punctuation::StarEq)
+                | TokenKind::Punctuation(Punctuation::SlashEq)
+                | TokenKind::Punctuation(Punctuation::PercentEq)
+                | TokenKind::Punctuation(Punctuation::AmpEq)
+                | TokenKind::Punctuation(Punctuation::PipeEq)
+                | TokenKind::Punctuation(Punctuation::CaretEq)
+                | TokenKind::Punctuation(Punctuation::LeftLeftEq)
+                | TokenKind::Punctuation(Punctuation::RightRightEq) => (BindingPower::Assignment, true),
 
                 TokenKind::Punctuation(Punctuation::Plus) | TokenKind::Punctuation(Punctuation::Minus) => (BindingPower::Term, false),
 
@@ -87,6 +97,9 @@ impl<'a> Parser<'a> {
                 TokenKind::Punctuation(Punctuation::Pipe) => (BindingPower::BitwiseOr, false),
                 TokenKind::Punctuation(Punctuation::Caret) => (BindingPower::BitwiseXor, false),
 
+                TokenKind::Punctuation(Punctuation::LeftLeft) => (BindingPower::BitwiseAnd, false),
+                TokenKind::Punctuation(Punctuation::RightRight) => (BindingPower::BitwiseAnd, false),
+
                 TokenKind::Keyword(Keyword::As) => (BindingPower::Cast, false),
 
                 TokenKind::Punctuation(Punctuation::OpenParen) => (BindingPower::Call, false),
@@ -104,6 +117,18 @@ impl<'a> Parser<'a> {
                 TokenKind::Punctuation(Punctuation::Eq) => {
                     left_expr_idx = self.parse_assignment_led(next_token, left_expr_idx, is_right_associative)?;
                 }
+                TokenKind::Punctuation(Punctuation::PlusEq)
+                | TokenKind::Punctuation(Punctuation::MinusEq)
+                | TokenKind::Punctuation(Punctuation::StarEq)
+                | TokenKind::Punctuation(Punctuation::SlashEq)
+                | TokenKind::Punctuation(Punctuation::PercentEq)
+                | TokenKind::Punctuation(Punctuation::AmpEq)
+                | TokenKind::Punctuation(Punctuation::PipeEq)
+                | TokenKind::Punctuation(Punctuation::CaretEq)
+                | TokenKind::Punctuation(Punctuation::LeftLeftEq)
+                | TokenKind::Punctuation(Punctuation::RightRightEq) => {
+                    left_expr_idx = self.parse_compound_assignment_led(next_token, left_expr_idx)?;
+                }
                 TokenKind::Punctuation(Punctuation::Plus)
                 | TokenKind::Punctuation(Punctuation::Minus)
                 | TokenKind::Punctuation(Punctuation::Star)
@@ -119,7 +144,9 @@ impl<'a> Parser<'a> {
                 | TokenKind::Punctuation(Punctuation::PipePipe)
                 | TokenKind::Punctuation(Punctuation::Amp)
                 | TokenKind::Punctuation(Punctuation::Pipe)
-                | TokenKind::Punctuation(Punctuation::Caret) => {
+                | TokenKind::Punctuation(Punctuation::Caret)
+                | TokenKind::Punctuation(Punctuation::LeftLeft)
+                | TokenKind::Punctuation(Punctuation::RightRight) => {
                     left_expr_idx = self.parse_binary_infix_op_led(next_token, left_expr_idx, left_bp, is_right_associative)?;
                 }
                 TokenKind::Keyword(Keyword::As) => {

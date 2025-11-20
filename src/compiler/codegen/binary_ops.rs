@@ -66,6 +66,8 @@ pub fn expr_binop(
                 BinOpKind::BitwiseAnd => fn_builder.ins().band(left_value, right_value),
                 BinOpKind::BitwiseOr => fn_builder.ins().bor(left_value, right_value),
                 BinOpKind::BitwiseXor => fn_builder.ins().bxor(left_value, right_value),
+                BinOpKind::BitwiseShLeft => fn_builder.ins().ishl(left_value, right_value),
+                BinOpKind::BitwiseShRight => fn_builder.ins().sshr(left_value, right_value),
                 _ => {
                     return Err(TranslateError::Unsupported {
                         what: format!("binary operation '{:?}' on integers", op),

@@ -54,8 +54,7 @@ pub(crate) fn check_binop(
             // TODO??
             Ok(left_ty)
         }
-        BinOpKind::BitwiseAnd | BinOpKind::BitwiseOr | BinOpKind::BitwiseXor => {
-            // Bitwise operators return the same type as operands
+        BinOpKind::BitwiseAnd | BinOpKind::BitwiseOr | BinOpKind::BitwiseXor | BinOpKind::BitwiseShLeft | BinOpKind::BitwiseShRight => {
             Ok(left_ty)
         }
         BinOpKind::Eq

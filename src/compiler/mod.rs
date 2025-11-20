@@ -62,7 +62,9 @@ pub fn build(file: &Path) {
     };
 
     all_diagnostics.extend(parse_result.diagnostics);
-    let (root, mut tree) = (parse_result.value.0, parse_result.value.1);
+    let (mut root, mut tree) = (parse_result.value.0, parse_result.value.1);
+
+    parser::desugar::desugar(&mut root, &mut tree, &interner);
 
     root.print_tree(&tree, &interner);
 

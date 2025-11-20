@@ -28,6 +28,8 @@ impl Display for BinOpKind {
             BinOpKind::BitwiseOr => write!(f, "|"),
             BinOpKind::BitwiseXor => write!(f, "^"),
             BinOpKind::Pow => write!(f, "**"),
+            BinOpKind::BitwiseShLeft => write!(f, "<<"),
+            BinOpKind::BitwiseShRight => write!(f, ">>"),
         }
     }
 }
@@ -137,6 +139,12 @@ impl ExprKind {
             }
             ExprKind::Assign { target, value } => format!(
                 "Assign{{target:{},value:{}}}",
+                format_node_to_string(*target, arena, interner),
+                format_node_to_string(*value, arena, interner)
+            ),
+            ExprKind::CompoundAssign { target, value, op } => format!(
+                "CompoundAssign{{op:\"{:?}\",target:{},value:{}}}",
+                op,
                 format_node_to_string(*target, arena, interner),
                 format_node_to_string(*value, arena, interner)
             ),

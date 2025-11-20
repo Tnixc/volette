@@ -125,6 +125,8 @@ pub enum BinOpKind {
     BitwiseXor,
     BitwiseAnd,
     BitwiseOr,
+    BitwiseShLeft,
+    BitwiseShRight,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -155,6 +157,11 @@ pub enum ExprKind {
     Assign {
         target: Index,
         value: Index,
+    },
+    CompoundAssign {
+        target: Index,
+        value: Index,
+        op: BinOpKind,
     },
     LetBinding {
         name: SymbolUsize,

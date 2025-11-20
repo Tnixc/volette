@@ -12,6 +12,7 @@ pub mod binary_ops;
 pub mod block;
 pub mod control_flow;
 pub mod definitions;
+pub mod desugar;
 pub mod display;
 pub mod error;
 pub mod expr;
