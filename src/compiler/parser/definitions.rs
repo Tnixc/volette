@@ -21,9 +21,9 @@ impl<'a> Parser<'a> {
     pub fn parse_type(&mut self) -> Result<(VType, Span), ParserError> {
         let start_span = self.current().span;
 
-        // count leading carets (^) for pointer depth
+        // count leading amps (&) for pointer depth
         let mut pointer_depth = 0;
-        while let TokenKind::Punctuation(Punctuation::Caret) = self.current().kind {
+        while let TokenKind::Punctuation(Punctuation::Amp) = self.current().kind {
             pointer_depth += 1;
             self.advance();
         }
