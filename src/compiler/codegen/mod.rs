@@ -4,11 +4,11 @@ use std::{
 };
 
 use cranelift::{
-    codegen::{Context, control::ControlPlane},
+    codegen::{Context, control::ControlPlane, ir::StackSlot},
     module::{Linkage, Module, default_libcall_names},
     object::{self, ObjectModule},
     prelude::{
-        AbiParam, Signature, Variable,
+        AbiParam, Signature,
         isa::{self, CallConv, TargetIsa},
         settings::{self, Flags},
         types::{I32, I64},
@@ -74,7 +74,7 @@ pub struct BuildConfig {
     pub call_conv: CallConv,
 }
 
-pub type Scopes = Vec<HashMap<SymbolUsize, (VType, Variable)>>;
+pub type Scopes = Vec<HashMap<SymbolUsize, (VType, StackSlot)>>;
 
 pub struct Info<'a> {
     pub module: ObjectModule,
@@ -195,7 +195,9 @@ pub fn codegen(
                             }
 
                             if let Some(disasm) = assembly {
+                                println!("------------------------------");
                                 println!("\n*** Assembly:\n{}", disasm);
+                                println!("==============================");
                             }
 
                             info.ctx.clear();

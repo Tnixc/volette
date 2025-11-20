@@ -9,7 +9,7 @@ use crate::{
 use cranelift::{
     codegen::ir::{Function, UserFuncName},
     module::FuncId,
-    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature},
+    prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, StackSlotData, StackSlotKind},
 };
 use std::collections::HashMap;
 
@@ -59,16 +59,15 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             // -- Body --
             let mut scopes: Scopes = vec![HashMap::new()];
 
-            // collect block parameters into a vector to avoid borrowing conflicts
             let block_params: Vec<_> = fn_builder.block_params(entry).to_vec();
 
             for (i, param) in params.iter().enumerate() {
                 let val = block_params[i];
-                // let var = Variable::new(i);
                 let ty = param.1.to_clif(ptr_width());
-                let var = fn_builder.declare_var(ty);
-                fn_builder.def_var(var, val);
-                scopes.last_mut().safe().insert(param.0, (param.1.clone(), var));
+                let size = ty.bytes();
+                let slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, 0));
+                fn_builder.ins().stack_store(val, slot, 0);
+                scopes.last_mut().safe().insert(param.0, (param.1.clone(), slot));
             }
 
             let (maybe_body_val, body_type) = expr_to_val(*body, &mut fn_builder, &mut scopes, info)?;

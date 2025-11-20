@@ -1,4 +1,4 @@
-use cranelift::prelude::{FunctionBuilder, Value};
+use cranelift::prelude::{FunctionBuilder, InstBuilder, StackSlotData, StackSlotKind, Value};
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
@@ -20,17 +20,14 @@ pub fn expr_let_binding(
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
     let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
-    // TODO: allow binding to Nil/ other zero-sized value
-    let var_val = var_val.expect("TODO: let binding requires non-zero-sized value. This will change later");
+    let var_val = var_val.expect("TODO: let binding requires non-zero-sized value");
     let ty = actual_type.to_clif(ptr_width());
 
-    // Create a unique variable index across all scopes
-    // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
-    // let var = Variable::new(var_index);
-    let var = fn_builder.declare_var(ty);
-    fn_builder.def_var(var, var_val);
+    let size = ty.bytes();
+    let slot = fn_builder.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, 0));
+    fn_builder.ins().stack_store(var_val, slot, 0);
 
-    scopes.last_mut().safe().insert(name, (actual_type, var));
+    scopes.last_mut().safe().insert(name, (actual_type, slot));
 
     Ok(var_val)
 }
@@ -44,7 +41,10 @@ pub fn expr_identifier(
     let var = scopes.iter().rev().find_map(|scope| scope.get(&sym));
 
     match var {
-        Some((_, variable)) => Ok(fn_builder.use_var(*variable)),
+        Some((vtype, slot)) => {
+            let ty = vtype.to_clif(ptr_width());
+            Ok(fn_builder.ins().stack_load(ty, *slot, 0))
+        }
         None => {
             use crate::compiler::tokens::DisplaySpan;
             Err(TranslateError::NotFound {
@@ -66,15 +66,9 @@ pub fn expr_assign(
     scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
-    let (maybe_var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
+    let (maybe_var_val, _) = expr_to_val(value, fn_builder, scopes, info)?;
     let var_val = maybe_var_val.expect("assignment requires non-zero-sized value");
-    let ty = actual_type.to_clif(ptr_width());
 
-    // Create a unique variable index across all scopes
-    // let var_index = scopes.iter().map(|s| s.len()).sum::<usize>();
-    // let var = Variable::new(var_index);
-    let var = fn_builder.declare_var(ty);
-    fn_builder.def_var(var, var_val);
     let symbol = match &info.nodes.get(target).safe().kind {
         NodeKind::Expr { kind, .. } => match kind {
             ExprKind::Identifier(k) => k,
@@ -83,7 +77,14 @@ pub fn expr_assign(
         _ => unreachable!(),
     };
 
-    scopes.last_mut().safe().insert(*symbol, (actual_type, var));
+    let slot = scopes
+        .iter()
+        .rev()
+        .find_map(|scope| scope.get(symbol))
+        .map(|(_, slot)| *slot)
+        .expect("assignment to undeclared variable");
+
+    fn_builder.ins().stack_store(var_val, slot, 0);
 
     Ok(var_val)
 }

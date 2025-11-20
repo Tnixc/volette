@@ -8,7 +8,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, Scopes, error::TranslateError, expr::expr_to_val, ptr_width},
-        parser::node::{UnaryOpKind, VType},
+        parser::node::{ExprKind, NodeKind, UnaryOpKind, VType},
     },
 };
 
@@ -19,6 +19,24 @@ pub fn expr_unaryop(
     scopes: &mut Scopes,
     info: &mut Info,
 ) -> Result<Value, TranslateError> {
+    if op == UnaryOpKind::AddressOf {
+        let node = info.nodes.get(expr).safe();
+        if let NodeKind::Expr {
+            kind: ExprKind::Identifier(sym),
+            ..
+        } = &node.kind
+        {
+            let slot = scopes
+                .iter()
+                .rev()
+                .find_map(|scope| scope.get(sym))
+                .map(|(_, slot)| *slot)
+                .expect("address of undeclared variable");
+            let addr = fn_builder.ins().stack_addr(ptr_width().to_clif(), slot, 0);
+            return Ok(addr);
+        }
+    }
+
     let (item, item_type) = expr_to_val(expr, fn_builder, scopes, info)?;
     if item.is_none() {};
     let item = item.safe();
@@ -38,6 +56,6 @@ pub fn expr_unaryop(
             let loaded = fn_builder.ins().load(ty, MemFlags::new(), item, 0);
             Ok(loaded)
         }
-        _ => todo!(), // ERROR: unsupported op
+        _ => todo!(),
     }
 }
