@@ -24,51 +24,67 @@ pub enum Keyword {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Punctuation {
+    LeftLeftEq,
+    LeftLeft,
+    LessThanOrEq,
+    LessThan,
+
+    RightRightEq,
+    RightRight,
+    GreaterThanOrEq,
+    GreaterThan,
+
+    StarStarEq,
+    StarStar,
+    StarEq,
+    Star,
+
+    AmpAmp,
+    AmpEq,
+    Amp,
+
+    PipePipe,
+    PipeEq,
+    Pipe,
+
+    CaretEq,
+    Caret,
+
+    TildeEq,
+    Tilde,
+
+    EqEq,
+    FatArrow,
+    Eq,
+
+    NotEq,
+    Bang,
+
+    Arrow,
+    MinusEq,
+    Minus,
+
     OpenParen,
     CloseParen,
     OpenBrace,
     CloseBrace,
     OpenBracket,
     CloseBracket,
+
+    PlusEq,
+    Plus,
+
+    SlashEq,
+    Slash,
+
+    PercentEq,
+    Percent,
+
+    Semicolon,
     Comma,
     Dot,
     Colon,
-    Semicolon,
-    AmpAmp,
-    AmpEq,
-    Bang,
     At,
-    Caret,
-    Tilde,
-
-    Plus,
-    Minus, // Binop and Unary
-    Star,
-    StarStar,
-    Slash,
-    Percent,
-    Eq,
-    EqEq,
-    NotEq,
-    CaretEq,
-    TildeEq,
-    LessThan, // generics ahh
-    LessThanOrEq,
-    GreaterThan,
-    GreaterThanOrEq,
-    StarStarEq,
-    LeftLeft,
-    LeftLeftEq,
-    RightRight,
-    RightRightEq,
-
-    Amp,
-    Pipe,
-    PipeEq,
-    PipePipe,
-
-    FatArrow,
-    Arrow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
