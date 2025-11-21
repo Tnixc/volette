@@ -2,5 +2,12 @@
 source: tests/analysis.rs
 expression: result.unwrap_err()
 ---
-Error: Type mismatch: expected 2 argument(s), got 1 argument(s)
-Error: Unresolved identifier 'x'
+ [97m● [1merror[Analysis]: Type mismatch: expected 2 argument(s), got 1 argument(s)[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:6:13-18
+ ╰ help: Ensure the types match or add an explicit conversion
+━━
+ [97m● [1merror[Analysis]: Unresolved identifier 'x'[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:7:12-12
+ ╰ help: This identifier or symbol was not found in the current scope

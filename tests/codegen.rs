@@ -25,7 +25,7 @@ fn codegen_source(source: &str) -> Result<String, String> {
     let (root, mut tree, parse_errors) = {
         let mut parser = Parser::new(lexer.tokens, &mut interner);
         let root = parser.parse();
-        let parse_errors = parser.parse_errors.clone();
+        let parse_errors = std::mem::take(&mut parser.parse_errors);
         (root, parser.tree, parse_errors)
     };
 
@@ -36,28 +36,15 @@ fn codegen_source(source: &str) -> Result<String, String> {
     let analysis_result = analysis_pass(&root, &interner, &mut tree);
 
     if analysis_result.has_errors() {
-        let errors = analysis_result
-            .diagnostics
-            .diagnostics
-            .iter()
-            .map(|d| format!("{:?}: {}", d.severity, d.message))
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Err(errors);
+        return Err(format!("{:?}", analysis_result.diagnostics));
     }
 
     let fn_table = analysis_result.value;
 
     match codegen::codegen(&root, &tree, &interner, &fn_table) {
         Ok(diag) => {
-            if diag.has_errors() {
-                let errors = diag
-                    .diagnostics
-                    .iter()
-                    .map(|d| format!("{:?}: {}", d.severity, d.message))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-                return Err(errors);
+            if !diag.is_empty() {
+                return Err(format!("{:?}", diag));
             }
             Ok("Codegen successful".to_string())
         }

@@ -2,4 +2,7 @@
 source: tests/integration.rs
 expression: result.unwrap_err()
 ---
-Codegen error: External error: Cranelift compile error: Verifier errors
+Codegen error: 
+ [97m● [1merror[Code Generation]: Cranelift compile error: Verifier(VerifierErrors([VerifierError { location: inst4, context: Some("return v2"), message: "result 0 has type i64, must match function signature of i32" }]))[0m
+ ├ src/compiler/error.rs:212
+ ╰ test.vt:1:1-2

@@ -27,7 +27,7 @@ fn compile_full_pipeline(source: &str) -> Result<String, String> {
     let (root, mut tree, parse_errors) = {
         let mut parser = Parser::new(lexer.tokens, &mut interner);
         let root = parser.parse();
-        let parse_errors = parser.parse_errors.clone();
+        let parse_errors = std::mem::take(&mut parser.parse_errors);
         (root, parser.tree, parse_errors)
     };
 
@@ -45,7 +45,7 @@ fn compile_full_pipeline(source: &str) -> Result<String, String> {
 
     match codegen::codegen(&root, &tree, &interner, &fn_table) {
         Ok(diag) => {
-            if diag.has_errors() {
+            if !diag.is_empty() {
                 return Err(format!("Codegen failed: {:?}", diag));
             }
             Ok(format!("Full compilation successful: {} tokens processed", token_count))

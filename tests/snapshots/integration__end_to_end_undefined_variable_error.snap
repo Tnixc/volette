@@ -2,4 +2,8 @@
 source: tests/integration.rs
 expression: result.unwrap_err()
 ---
-Analysis failed: DiagnosticCollection { diagnostics: [Diagnostic { severity: Error, message: "Unresolved identifier 'x'", span: Some(DisplaySpan { file: "test.vt", start: (2, 12), end: (2, 12) }), phase: Analysis, help: Some("This identifier or symbol was not found in the current scope"), note: None }] }
+Analysis failed: 
+ [97m● [1merror[Analysis]: Unresolved identifier 'x'[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:2:12-12
+ ╰ help: This identifier or symbol was not found in the current scope

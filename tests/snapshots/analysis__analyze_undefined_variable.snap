@@ -2,4 +2,7 @@
 source: tests/analysis.rs
 expression: result.unwrap_err()
 ---
-Error: Unresolved identifier 'x'
+ [97m● [1merror[Analysis]: Unresolved identifier 'x'[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:2:12-12
+ ╰ help: This identifier or symbol was not found in the current scope

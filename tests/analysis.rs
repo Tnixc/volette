@@ -24,7 +24,7 @@ fn analyze_source(source: &str) -> Result<String, String> {
     let (root, mut tree, parse_errors) = {
         let mut parser = Parser::new(lexer.tokens, &mut interner);
         let root = parser.parse();
-        let parse_errors = parser.parse_errors.clone();
+        let parse_errors = std::mem::take(&mut parser.parse_errors);
         (root, parser.tree, parse_errors)
     };
 
@@ -35,14 +35,7 @@ fn analyze_source(source: &str) -> Result<String, String> {
     let result = analysis_pass(&root, &interner, &mut tree);
 
     if result.has_errors() {
-        let errors = result
-            .diagnostics
-            .diagnostics
-            .iter()
-            .map(|d| format!("{:?}: {}", d.severity, d.message))
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Err(errors);
+        return Err(format!("{:?}", result.diagnostics));
     }
 
     Ok(root.to_json_like_string(&tree, &interner))

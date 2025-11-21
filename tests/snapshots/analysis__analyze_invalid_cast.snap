@@ -2,4 +2,7 @@
 source: tests/analysis.rs
 expression: result.unwrap_err()
 ---
-Error: Invalid cast: cannot cast type Primitive(I32) into Primitive(Bool)
+ [97m● [1merror[Analysis]: Invalid cast: cannot cast type Primitive(I32) into Primitive(Bool)[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:3:19-27
+ ╰ help: This construct is not valid in the current context
