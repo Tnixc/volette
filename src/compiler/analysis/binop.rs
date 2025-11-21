@@ -1,19 +1,18 @@
 use std::collections::HashMap;
 
 use generational_arena::{Arena, Index};
+use rootcause::prelude::*;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use crate::{
     SafeConvert,
     compiler::{
         analysis::type_check::resolve_expr_type,
-        error::DiagnosticCollection,
+        error::{Help, ReportCollection},
         parser::node::{BinOpKind, Node, VType},
         tokens::PrimitiveTypes,
     },
 };
-
-use super::error::AnalysisError;
 
 pub(crate) fn check_binop(
     left: Index,
@@ -23,30 +22,36 @@ pub(crate) fn check_binop(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
-    diagnostics: &mut DiagnosticCollection,
-) -> Result<VType, AnalysisError> {
+    diagnostics: &mut ReportCollection,
+) -> Result<VType, Report> {
     let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table, diagnostics)?;
     let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table, diagnostics)?;
 
     if left_ty == VType::Primitive(PrimitiveTypes::Nil) || left_ty == VType::Primitive(PrimitiveTypes::Nil) {
-        return Err(AnalysisError::Invalid {
-            what: format!("binary operation '{:?}'", op),
-            reason: format!("cannot be used with type {:?}", left_ty),
-            span: nodes
-                .get(left)
-                .safe()
-                .span
-                .connect_new(&nodes.get(right).safe().span)
-                .to_display(interner),
-        });
+        return Err(crate::analysis_err!(
+            "Invalid binary operation '{:?}': cannot be used with type {:?}",
+            Some(
+                nodes
+                    .get(left)
+                    .safe()
+                    .span
+                    .connect_new(&nodes.get(right).safe().span)
+                    .to_display(interner),
+            ),
+            op,
+            left_ty
+        )
+        .attach(Help("This construct is not valid in the current context".into())));
     }
 
     if left_ty.coerced() != right_ty.coerced() {
-        return Err(AnalysisError::TypeMismatch {
-            expected: format!("{:?}", left_ty),
-            got: format!("{:?}", right_ty),
-            span: nodes.get(right).safe().span.to_display(interner),
-        });
+        return Err(crate::analysis_err!(
+            "Type mismatch: expected {:?}, got {:?}",
+            Some(nodes.get(right).safe().span.to_display(interner)),
+            left_ty,
+            right_ty
+        )
+        .attach(Help("Ensure the types match or add an explicit conversion".into())));
     }
 
     match op {
@@ -65,14 +70,18 @@ pub(crate) fn check_binop(
         | BinOpKind::LessThanOrEq
         | BinOpKind::LogicalAnd
         | BinOpKind::LogicalOr => Ok(VType::Primitive(PrimitiveTypes::Bool)),
-        _ => Err(AnalysisError::Unsupported {
-            what: format!("binary operator '{:?}'", op),
-            span: nodes
-                .get(left)
-                .safe()
-                .span
-                .connect_new(&nodes.get(right).safe().span)
-                .to_display(interner),
-        }),
+        _ => Err(crate::analysis_err!(
+            "Unsupported binary operator '{:?}'",
+            Some(
+                nodes
+                    .get(left)
+                    .safe()
+                    .span
+                    .connect_new(&nodes.get(right).safe().span)
+                    .to_display(interner),
+            ),
+            op
+        )
+        .attach(Help("This feature is not yet implemented".into()))),
     }
 }

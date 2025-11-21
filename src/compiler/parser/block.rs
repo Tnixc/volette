@@ -1,15 +1,18 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Punctuation, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Punctuation, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{ExprKind, Node, NodeKind},
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_block_body(&mut self) -> Result<Index, ParserError> {
+    pub fn parse_block_body(&mut self) -> Result<Index, Report> {
         let start_span = self.current().span;
 
         self.advance(); // consume '{'
@@ -26,11 +29,12 @@ impl<'a> Parser<'a> {
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::CloseBrace) {
-            return Err(ParserError::Expected {
-                what: "closing brace '}'".to_string(),
-                got: format!("{:?}", self.current().kind),
-                span: self.current().span.to_display(self.interner),
-            });
+            return Err(crate::parse_err!(
+                "Expected closing brace '}}', got {:?}",
+                Some(self.current().span.to_display(self.interner)),
+                self.current().kind
+            )
+            .attach(Help("Check the syntax - the parser expected something different here".into())));
         }
 
         let end_span = self.current().span;

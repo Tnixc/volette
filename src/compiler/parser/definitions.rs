@@ -4,21 +4,22 @@ use string_interner::symbol::SymbolUsize;
 use crate::{
     SafeConvert,
     compiler::{
+        error::Help,
         parser::node::VType,
         tokens::{Keyword, PrimitiveTypes, Punctuation, Span, TokenKind},
     },
 };
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{DefKind, Node, NodeKind},
 };
 
 impl<'a> Parser<'a> {
     /// Parse a type annotation and return both the type and its span.
     /// Advances the cursor past the type.
-    pub fn parse_type(&mut self) -> Result<(VType, Span), ParserError> {
+    pub fn parse_type(&mut self) -> Result<(VType, Span), Report> {
         let start_span = self.current().span;
 
         // count leading amps (&) for pointer depth
@@ -32,11 +33,12 @@ impl<'a> Parser<'a> {
             TokenKind::TypeLiteral(ty) => VType::Primitive(ty),
             TokenKind::Identifier(name) => VType::Custom(name),
             _ => {
-                return Err(ParserError::Expected {
-                    what: "type (primitive or identifier)".to_string(),
-                    got: format!("{:?}", self.current().kind),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected type (primitive or identifier), got {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         };
 
@@ -52,31 +54,33 @@ impl<'a> Parser<'a> {
         Ok((base_type, type_span))
     }
 
-    pub fn parse_def(&mut self) -> Result<Index, ParserError> {
+    pub fn parse_def(&mut self) -> Result<Index, Report> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),
             _ => {
-                return Err(ParserError::Unexpected {
-                    what: format!("token at top level: {:?}", self.current().kind),
-                    context: "Only function and struct definitions are allowed at the top level".to_string(),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Unexpected token at top level: {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Only function and struct definitions are allowed at the top level".into())));
             }
         }
     }
 
-    fn parse_fn_def(&mut self) -> Result<Index, ParserError> {
+    fn parse_fn_def(&mut self) -> Result<Index, Report> {
         let start_span = self.current().span;
         self.advance(); // we know there's a fn keyword
 
         let name = match self.current().kind {
             TokenKind::Identifier(name) => name,
             _ => {
-                return Err(ParserError::Expected {
-                    what: "identifier after 'fn'".to_string(),
-                    got: format!("{:?}", self.current().kind),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected identifier after 'fn', got {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         };
         self.advance();
@@ -84,11 +88,12 @@ impl<'a> Parser<'a> {
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::OpenParen) => {} // it's a function
             _ => {
-                return Err(ParserError::Expected {
-                    what: "opening parenthesis after function name".to_string(),
-                    got: format!("{:?}", self.current().kind),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected opening parenthesis after function name, got {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         };
 
@@ -117,11 +122,14 @@ impl<'a> Parser<'a> {
                     }
                     _ => {
                         mode = ParamMode::Colon;
-                        self.parse_errors.push(ParserError::Expected {
-                            what: "parameter name".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
+                        self.parse_errors.push(
+                            crate::parse_err!(
+                                "Expected parameter name, got {:?}",
+                                Some(self.current().span.to_display(self.interner)),
+                                self.current().kind
+                            )
+                            .attach(Help("Check the syntax - the parser expected something different here".into())),
+                        );
                         self.advance();
                     }
                 },
@@ -134,11 +142,14 @@ impl<'a> Parser<'a> {
                     }
                     _ => {
                         mode = ParamMode::Type;
-                        self.parse_errors.push(ParserError::Expected {
-                            what: "colon after parameter name".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
+                        self.parse_errors.push(
+                            crate::parse_err!(
+                                "Expected colon after parameter name, got {:?}",
+                                Some(self.current().span.to_display(self.interner)),
+                                self.current().kind
+                            )
+                            .attach(Help("Check the syntax - the parser expected something different here".into())),
+                        );
                         self.advance();
                     }
                 },
@@ -171,11 +182,14 @@ impl<'a> Parser<'a> {
                     }
                     _ => {
                         mode = ParamMode::Name;
-                        self.parse_errors.push(ParserError::Expected {
-                            what: "comma between parameters".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
+                        self.parse_errors.push(
+                            crate::parse_err!(
+                                "Expected comma between parameters, got {:?}",
+                                Some(self.current().span.to_display(self.interner)),
+                                self.current().kind
+                            )
+                            .attach(Help("Check the syntax - the parser expected something different here".into())),
+                        );
                         self.advance();
                     }
                 },
@@ -185,19 +199,22 @@ impl<'a> Parser<'a> {
         match self.current().kind {
             TokenKind::Punctuation(Punctuation::CloseParen) => {
                 if mode != ParamMode::Comma && !params.is_empty() {
-                    self.parse_errors.push(ParserError::Invalid {
-                        what: "function parameter".to_string(),
-                        reason: "Parameter must have both a name and a type".to_string(),
-                        span: self.current().span.to_display(self.interner),
-                    });
+                    self.parse_errors.push(
+                        crate::parse_err!(
+                            "Invalid function parameter: Parameter must have both a name and a type",
+                            Some(self.current().span.to_display(self.interner))
+                        )
+                        .attach(Help("This construct is not valid in the current context".into())),
+                    );
                 }
             }
             _ => {
-                return Err(ParserError::Expected {
-                    what: "closing parenthesis".to_string(),
-                    got: format!("{:?}", self.current().kind),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected closing parenthesis, got {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         };
 
@@ -229,11 +246,12 @@ impl<'a> Parser<'a> {
                 Ok(self.push(node))
             }
             _ => {
-                return Err(ParserError::Expected {
-                    what: "function body (opening brace)".to_string(),
-                    got: format!("{:?}", self.current().kind),
-                    span: self.current().span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected function body (opening brace), got {:?}",
+                    Some(self.current().span.to_display(self.interner)),
+                    self.current().kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         }
     }

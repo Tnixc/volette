@@ -2,8 +2,8 @@ use std::path::Path;
 
 pub mod analysis;
 pub mod codegen;
-#[macro_use]
-pub mod diagnostic_macros;
+// #[macro_use]
+// pub mod diagnostic_macros;
 pub mod error;
 pub mod lexer;
 #[macro_use]
@@ -12,24 +12,20 @@ pub mod tokens;
 
 use analysis::analysis_pass;
 use colored::Colorize;
-use error::{CompilerPhase, Diagnostic, DiagnosticCollection, ResultWithDiagnostics, Severity};
+use error::{ReportCollection, ResultWithDiagnostics, print_reports};
 use lexer::Lexer;
 use parser::Parser;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use tokens::{Span, Token, TokenKind};
 
 pub fn build(file: &Path) {
-    let mut all_diagnostics = DiagnosticCollection::new();
+    let mut all_diagnostics = ReportCollection::new();
 
     let contents = match std::fs::read_to_string(file) {
         Ok(contents) => contents,
         Err(e) => {
-            all_diagnostics.push(Diagnostic::new(
-                Severity::Fatal,
-                format!("Failed to read file: {}", e),
-                CompilerPhase::Lexing,
-            ));
-            all_diagnostics.print_all();
+            all_diagnostics.push(crate::lex_err!("Failed to read file: {}", None, e).into_cloneable());
+            print_reports(&all_diagnostics);
             return;
         }
     };
@@ -43,7 +39,7 @@ pub fn build(file: &Path) {
         Ok(tokens) => tokens,
         Err(diagnostics) => {
             all_diagnostics.extend(diagnostics);
-            all_diagnostics.print_all();
+            print_reports(&all_diagnostics);
             return;
         }
     };
@@ -56,7 +52,7 @@ pub fn build(file: &Path) {
         Ok(result) => result,
         Err(diagnostics) => {
             all_diagnostics.extend(diagnostics);
-            all_diagnostics.print_all();
+            print_reports(&all_diagnostics);
             return;
         }
     };
@@ -74,7 +70,7 @@ pub fn build(file: &Path) {
         Ok(result) => result,
         Err(diagnostics) => {
             all_diagnostics.extend(diagnostics);
-            all_diagnostics.print_all();
+            print_reports(&all_diagnostics);
             return;
         }
     };
@@ -83,8 +79,8 @@ pub fn build(file: &Path) {
     let fn_table = analysis_result.value;
 
     // stop if we have any errors
-    if all_diagnostics.has_errors() {
-        all_diagnostics.print_all();
+    if !all_diagnostics.is_empty() {
+        print_reports(&all_diagnostics);
         return;
     }
 
@@ -97,12 +93,12 @@ pub fn build(file: &Path) {
             all_diagnostics.extend(diag);
         }
         Err(e) => {
-            all_diagnostics.add_error(e);
+            all_diagnostics.push(e.into_cloneable());
         }
     }
 
-    all_diagnostics.print_all();
-    if !all_diagnostics.has_errors() {
+    print_reports(&all_diagnostics);
+    if all_diagnostics.is_empty() {
         println!("{}", "Compilation successful!".green().bold());
     }
 }
@@ -111,7 +107,7 @@ fn lex_phase(
     contents: &str,
     interner: &mut StringInterner<BucketBackend<SymbolUsize>>,
     file_name: SymbolUsize,
-) -> Result<Vec<Token>, DiagnosticCollection> {
+) -> Result<Vec<Token>, ReportCollection> {
     let mut lexer = Lexer::new(interner, file_name);
     lexer.tokenize(contents.chars().collect());
 
@@ -128,8 +124,7 @@ fn lex_phase(
     ));
 
     if !lexer.errors.is_empty() {
-        let diagnostics = lexer.errors.into_iter().map(|e| e.into()).collect();
-        return Err(diagnostics);
+        return Err(lexer.errors);
     }
 
     Ok(lexer.tokens)
@@ -143,18 +138,15 @@ fn parse_phase(
         crate::compiler::parser::node::Node,
         generational_arena::Arena<crate::compiler::parser::node::Node>,
     )>,
-    DiagnosticCollection,
+    ReportCollection,
 > {
     let mut parser = Parser::new(tokens, interner);
     let root = parser.parse();
 
-    let mut diagnostics = DiagnosticCollection::new();
     let parse_errors = std::mem::take(&mut parser.parse_errors);
-    for error in parse_errors {
-        diagnostics.add_error(error);
-    }
+    let diagnostics: ReportCollection = parse_errors.into_iter().collect();
 
-    if diagnostics.has_errors() {
+    if !diagnostics.is_empty() {
         return Err(diagnostics);
     }
 
@@ -169,7 +161,7 @@ fn analysis_phase(
     ResultWithDiagnostics<
         std::collections::HashMap<SymbolUsize, (Box<Vec<crate::compiler::parser::node::VType>>, crate::compiler::parser::node::VType)>,
     >,
-    DiagnosticCollection,
+    ReportCollection,
 > {
     let analysis_result = analysis_pass(root, interner, nodes);
 

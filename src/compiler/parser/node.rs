@@ -1,4 +1,5 @@
 use cranelift::prelude::types;
+use derive_more::Display;
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
@@ -7,10 +8,13 @@ use crate::compiler::{
     tokens::{PrimitiveTypes, Span},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Display)]
 pub enum VType {
+    #[display("{:?}", _0)]
     Primitive(PrimitiveTypes),
+    #[display("Custom({:?})", _0)]
     Custom(SymbolUsize),
+    #[display("Pointer({:?})", _0)]
     Pointer(Box<VType>),
 }
 
@@ -106,26 +110,45 @@ pub enum NodeKind {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Display)]
 pub enum BinOpKind {
+    #[display("+")]
     Add,
+    #[display("-")]
     Sub,
+    #[display("*")]
     Mul,
+    #[display("/")]
     Div,
+    #[display("**")]
     Pow,
+    #[display("%")]
     Mod,
+    #[display("==")]
     Eq,
+    #[display("!=")]
     NotEq,
+    #[display("<")]
     LessThan,
+    #[display("<=")]
     LessThanOrEq,
+    #[display(">")]
     GreaterThan,
+    #[display(">=")]
     GreaterThanOrEq,
+    #[display("&&")]
     LogicalAnd,
+    #[display("||")]
     LogicalOr,
+    #[display("^")]
     BitwiseXor,
+    #[display("&")]
     BitwiseAnd,
+    #[display("|")]
     BitwiseOr,
+    #[display("<<")]
     BitwiseShLeft,
+    #[display(">>")]
     BitwiseShRight,
 }
 

@@ -21,17 +21,18 @@ use target_lexicon::{PointerWidth as TargetPointerWidth, Triple};
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{error::TranslateError, function::lower_fn},
-        error::DiagnosticCollection,
+        codegen::function::lower_fn,
+        error::{Help, ReportCollection},
         parser::node::{DefKind, Node, NodeKind, VType},
     },
 };
+use rootcause::prelude::*;
 
 pub mod binary_ops;
 pub mod block;
 pub mod cast;
 pub mod control_flow;
-pub mod error;
+// pub mod error;
 pub mod expr;
 pub mod function;
 pub mod function_call;
@@ -84,7 +85,7 @@ pub struct Info<'a> {
     pub interner: &'a StringInterner<BucketBackend<SymbolUsize>>,
     pub func_table: HashMap<SymbolUsize, cranelift::module::FuncId>,
     pub fn_table: &'a HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
-    pub diagnostics: DiagnosticCollection,
+    pub diagnostics: ReportCollection,
 }
 
 pub fn codegen(
@@ -92,9 +93,10 @@ pub fn codegen(
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
-) -> Result<DiagnosticCollection, TranslateError> {
+) -> Result<ReportCollection, Report> {
     let (target_isa, call_conv) = isa();
-    let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())?;
+    let builder = object::ObjectBuilder::new(target_isa, "vtlib", default_libcall_names())
+        .map_err(|e| crate::codegen_err!("Object builder error: {:?}", None, e))?;
 
     let module = ObjectModule::new(builder);
     let ctx = Context::new();
@@ -109,7 +111,7 @@ pub fn codegen(
         interner,
         func_table: HashMap::new(),
         fn_table,
-        diagnostics: DiagnosticCollection::new(),
+        diagnostics: ReportCollection::new(),
     };
 
     info.ctx.want_disasm = true;
@@ -134,24 +136,26 @@ pub fn codegen(
                             }
                             sig.returns.push(AbiParam::new(return_type.to_clif(ptr_width())));
 
-                            let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig)?;
+                            let func_id = info.module.declare_function(fn_name, Linkage::Export, &sig).map_err(|e| {
+                                crate::codegen_err!("Cranelift module error: {:?}", Some(def_node.span.to_display(interner)), e)
+                            })?;
                             func_ids.push(func_id);
                             info.func_table.insert(*name, func_id);
                         }
                         _ => {
-                            return Err(TranslateError::Unsupported {
-                                what: "non-function definition".to_string(),
-                                reason: "only function definitions are currently supported".to_string(),
-                                span: def_node.span.to_display(interner),
-                            });
+                            return Err(crate::codegen_err!(
+                                "Unsupported non-function definition: only function definitions are currently supported",
+                                Some(def_node.span.to_display(interner))
+                            )
+                            .attach(Help("This feature is not yet implemented".into())));
                         }
                     },
                     _ => {
-                        return Err(TranslateError::Invalid {
-                            what: "node".to_string(),
-                            reason: "only definition nodes are currently supported".to_string(),
-                            span: def_node.span.to_display(interner),
-                        });
+                        return Err(crate::codegen_err!(
+                            "Invalid node: only definition nodes are currently supported",
+                            Some(def_node.span.to_display(interner))
+                        )
+                        .attach(Help("This construct is not valid in the current context".into())));
                     }
                 }
             }
@@ -165,16 +169,7 @@ pub fn codegen(
                         DefKind::Function { .. } => {
                             let func_id = func_ids[i];
                             if let Err(e) = lower_fn(def_node, &mut info, func_id) {
-                                use crate::compiler::error::{CompilerPhase, Diagnostic, Severity};
-                                let diagnostic = Diagnostic {
-                                    severity: Severity::Error,
-                                    message: e.to_string(),
-                                    span: Some(e.span().clone()),
-                                    phase: CompilerPhase::Codegen,
-                                    help: None,
-                                    note: None,
-                                };
-                                info.diagnostics.push(diagnostic);
+                                info.diagnostics.push(e.into_cloneable());
                                 had_error = true;
                                 continue;
                             }
@@ -183,7 +178,11 @@ pub fn codegen(
                             let mut ctrl_plane = ControlPlane::default();
                             if let Err(e) = info.ctx.compile(info.module.isa(), &mut ctrl_plane) {
                                 eprintln!("!!! cranelift compile error: {:?}", e);
-                                return Err(e.into());
+                                return Err(crate::codegen_err!(
+                                    "Cranelift compile error: {:?}",
+                                    Some(def_node.span.to_display(interner)),
+                                    e
+                                ));
                             }
 
                             // store assembly before define_function consumes it
@@ -191,7 +190,11 @@ pub fn codegen(
 
                             if let Err(e) = info.module.define_function(func_id, &mut info.ctx) {
                                 eprintln!("!!! cranelift error: {:?}", e);
-                                return Err(e.into());
+                                return Err(crate::codegen_err!(
+                                    "Cranelift module error: {:?}",
+                                    Some(def_node.span.to_display(interner)),
+                                    e
+                                ));
                             }
 
                             if let Some(disasm) = assembly {
@@ -204,19 +207,19 @@ pub fn codegen(
                             info.ctx.set_disasm(true);
                         }
                         _ => {
-                            return Err(TranslateError::Unsupported {
-                                what: "non-function definition".to_string(),
-                                reason: "only function definitions are currently supported".to_string(),
-                                span: def_node.span.to_display(interner),
-                            });
+                            return Err(crate::codegen_err!(
+                                "Unsupported non-function definition: only function definitions are currently supported",
+                                Some(def_node.span.to_display(interner))
+                            )
+                            .attach(Help("This feature is not yet implemented".into())));
                         }
                     },
                     _ => {
-                        return Err(TranslateError::Invalid {
-                            what: "node".to_string(),
-                            reason: "only definition nodes are currently supported".to_string(),
-                            span: def_node.span.to_display(interner),
-                        });
+                        return Err(crate::codegen_err!(
+                            "Invalid node: only definition nodes are currently supported",
+                            Some(def_node.span.to_display(interner))
+                        )
+                        .attach(Help("This construct is not valid in the current context".into())));
                     }
                 }
             }
@@ -226,16 +229,17 @@ pub fn codegen(
             }
         }
         _ => {
-            return Err(TranslateError::Invalid {
-                what: "node".to_string(),
-                reason: "expected root node in codegen".to_string(),
-                span: root.span.to_display(interner),
-            });
+            return Err(
+                crate::codegen_err!("Invalid node: expected root node in codegen", Some(root.span.to_display(interner)))
+                    .attach(Help("This construct is not valid in the current context".into())),
+            );
         }
     }
 
     let product = info.module.finish();
-    let obj_bytes = product.emit()?;
+    let obj_bytes = product
+        .emit()
+        .map_err(|e| crate::codegen_err!("Object emit error: {:?}", None, e))?;
     std::fs::write("vtlib.o", obj_bytes).expect("Couldn't write");
     println!("Object file 'vtlib.o' emitted.");
     Ok(info.diagnostics)

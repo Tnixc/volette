@@ -1,26 +1,30 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{ExprKind, Literal, Node, NodeKind},
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_literal_nud(&mut self, literal_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_literal_nud(&mut self, literal_token: Token) -> Result<Index, Report> {
         let literal_kind = match literal_token.kind {
             TokenKind::IntLiteral(i) => Literal::Int(i),
             TokenKind::FloatLiteral(f) => Literal::Float(f),
             TokenKind::BoolLiteral(b) => Literal::Bool(b),
             TokenKind::NilLiteral => Literal::Nil,
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "token in literal context".to_string(),
-                    reason: format!("Expected literal, got {:?}", literal_token.kind),
-                    span: literal_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid token in literal context: Expected literal, got {:?}",
+                    Some(literal_token.span.to_display(self.interner)),
+                    literal_token.kind
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         };
 

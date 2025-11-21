@@ -1,27 +1,26 @@
 use std::collections::HashMap;
 
 use generational_arena::{Arena, Index};
+use rootcause::prelude::*;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use crate::{
     SafeConvert,
     compiler::{
         analysis::{binop::check_binop, compatible::can_convert, unaryop::check_unaryop},
-        error::DiagnosticCollection,
+        error::{Help, ReportCollection},
         parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
         tokens::{PrimitiveTypes, Span},
     },
 };
-
-use super::error::AnalysisError;
 
 pub fn type_check_root(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut Arena<Node>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
-) -> Result<(), DiagnosticCollection> {
-    let mut diagnostics = DiagnosticCollection::new();
+) -> Result<(), ReportCollection> {
+    let mut diagnostics = ReportCollection::new();
 
     if let NodeKind::Root { defs } = &root.kind {
         for idx in defs {
@@ -41,11 +40,11 @@ pub fn type_check_root(
 
                     // type check the function body
                     // the body is a block expression that should ultimately return the declared return_type
-                    let error_count_before = diagnostics.diagnostics.len();
+                    let error_count_before = diagnostics.len();
                     if let Err(e) = resolve_expr_type(body_idx, None, nodes, interner, &mut ident_types, &fn_table, &mut diagnostics) {
-                        diagnostics.add_error(e);
+                        diagnostics.push(e.into_cloneable());
                     }
-                    let had_body_errors = diagnostics.diagnostics.len() > error_count_before;
+                    let had_body_errors = diagnostics.len() > error_count_before;
 
                     // a body with type never is compatible with any return type
                     // only check return type if there were no errors in the body (to avoid cascading errors)
@@ -56,11 +55,16 @@ pub fn type_check_root(
                         } = &body_node.kind
                         {
                             if *body_type != VType::Primitive(PrimitiveTypes::Never) && *body_type != return_type {
-                                diagnostics.add_error(AnalysisError::TypeMismatch {
-                                    expected: format!("{:?}", return_type),
-                                    got: format!("{:?}", body_type),
-                                    span: body_node.span.to_display(interner),
-                                });
+                                diagnostics.push(
+                                    crate::analysis_err!(
+                                        "Type mismatch: expected {:?}, got {:?}",
+                                        Some(body_node.span.to_display(interner)),
+                                        return_type,
+                                        body_type
+                                    )
+                                    .attach(Help("Ensure the types match or add an explicit conversion".into()))
+                                    .into_cloneable(),
+                                );
                             }
                         }
                     }
@@ -69,7 +73,7 @@ pub fn type_check_root(
         }
     }
 
-    if diagnostics.has_errors() { Err(diagnostics) } else { Ok(()) }
+    if !diagnostics.is_empty() { Err(diagnostics) } else { Ok(()) }
 }
 
 /// resolves the type of an expression.
@@ -82,8 +86,8 @@ pub(crate) fn resolve_expr_type(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     ident_types: &mut HashMap<SymbolUsize, VType>,
     fn_table: &HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>,
-    diagnostics: &mut DiagnosticCollection,
-) -> Result<VType, AnalysisError> {
+    diagnostics: &mut ReportCollection,
+) -> Result<VType, Report> {
     let (kind, span) = {
         let target_node = nodes.get(target_idx).safe();
         // if type is already resolved, return it and check if it matches expectations
@@ -91,11 +95,13 @@ pub(crate) fn resolve_expr_type(
             if let Some(expected_ty) = expected
                 && ty != expected_ty
             {
-                return Err(AnalysisError::TypeMismatch {
-                    expected: format!("{:?}", expected_ty),
-                    got: format!("{:?}", ty),
-                    span: target_node.span.to_display(interner),
-                });
+                return Err(crate::analysis_err!(
+                    "Type mismatch: expected {:?}, got {:?}",
+                    Some(target_node.span.to_display(interner)),
+                    expected_ty,
+                    ty
+                )
+                .attach(Help("Ensure the types match or add an explicit conversion".into())));
             }
             return Ok(ty.clone());
         }
@@ -104,9 +110,13 @@ pub(crate) fn resolve_expr_type(
 
     let inferred_type = match kind {
         NodeKind::Expr { kind, .. } => match kind {
-            ExprKind::Identifier(symbol) => ident_types.get(&symbol).cloned().ok_or_else(|| AnalysisError::Unresolved {
-                what: format!("identifier '{}'", interner.resolve(symbol).unwrap_or("<unknown>")),
-                span: span.to_display(interner),
+            ExprKind::Identifier(symbol) => ident_types.get(&symbol).cloned().ok_or_else(|| {
+                crate::analysis_err!(
+                    "Unresolved identifier '{}'",
+                    Some(span.to_display(interner)),
+                    interner.resolve(symbol).unwrap_or("<unknown>")
+                )
+                .attach(Help("This identifier or symbol was not found in the current scope".into()))
             }),
             ExprKind::LetBinding {
                 name,
@@ -123,11 +133,13 @@ pub(crate) fn resolve_expr_type(
                 let target_type = resolve_expr_type(target, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 let value_type = resolve_expr_type(value, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 if target_type != value_type {
-                    Err(AnalysisError::TypeMismatch {
-                        expected: format!("{:?}", target_type),
-                        got: format!("{:?}", value_type),
-                        span: span.to_display(interner),
-                    })
+                    Err(crate::analysis_err!(
+                        "Type mismatch: expected {:?}, got {:?}",
+                        Some(span.to_display(interner)),
+                        target_type,
+                        value_type
+                    )
+                    .attach(Help("Ensure the types match or add an explicit conversion".into())))
                 } else {
                     Ok(target_type)
                 }
@@ -148,7 +160,7 @@ pub(crate) fn resolve_expr_type(
                         match resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table, diagnostics) {
                             Ok(ty) => last_expr_type = ty,
                             Err(e) => {
-                                diagnostics.add_error(e);
+                                diagnostics.push(e.into_cloneable());
                                 // continues
                             }
                         }
@@ -175,11 +187,13 @@ pub(crate) fn resolve_expr_type(
                     } else if then_type == else_type {
                         Ok(then_type)
                     } else {
-                        Err(AnalysisError::TypeMismatch {
-                            expected: format!("{:?}", then_type),
-                            got: format!("{:?}", else_type),
-                            span: nodes.get(else_block).safe().span.to_display(interner),
-                        })
+                        Err(crate::analysis_err!(
+                            "Type mismatch: expected {:?}, got {:?}",
+                            Some(nodes.get(else_block).safe().span.to_display(interner)),
+                            then_type,
+                            else_type
+                        )
+                        .attach(Help("Ensure the types match or add an explicit conversion".into())))
                     }
                 } else {
                     // if without else should return nil when condition is false
@@ -192,10 +206,11 @@ pub(crate) fn resolve_expr_type(
                     ..
                 } = &nodes.get(func).safe().kind
                 else {
-                    return Err(AnalysisError::Unsupported {
-                        what: "function call target must be an identifier".to_string(),
-                        span: span.to_display(interner),
-                    });
+                    return Err(crate::analysis_err!(
+                        "Unsupported function call target: must be an identifier",
+                        Some(span.to_display(interner))
+                    )
+                    .attach(Help("This feature is not yet implemented".into())));
                 };
 
                 let rest = fn_table.get(&func_name);
@@ -203,11 +218,13 @@ pub(crate) fn resolve_expr_type(
                     Some(rest) => {
                         // check arity
                         if args.len() != rest.0.len() {
-                            return Err(AnalysisError::TypeMismatch {
-                                expected: format!("{} argument(s)", rest.0.len()),
-                                got: format!("{} argument(s)", args.len()),
-                                span: span.to_display(interner),
-                            });
+                            return Err(crate::analysis_err!(
+                                "Type mismatch: expected {} argument(s), got {} argument(s)",
+                                Some(span.to_display(interner)),
+                                rest.0.len(),
+                                args.len()
+                            )
+                            .attach(Help("Ensure the types match or add an explicit conversion".into())));
                         }
 
                         // check argument types
@@ -216,20 +233,24 @@ pub(crate) fn resolve_expr_type(
                                 resolve_expr_type(*arg_idx, Some(expected_type), nodes, interner, ident_types, fn_table, diagnostics)?;
                             if arg_type != *expected_type {
                                 let span = nodes.get(*arg_idx).safe().span;
-                                return Err(AnalysisError::TypeMismatch {
-                                    expected: format!("{:?}", expected_type),
-                                    got: format!("{:?}", arg_type),
-                                    span: span.to_display(interner),
-                                });
+                                return Err(crate::analysis_err!(
+                                    "Type mismatch: expected {:?}, got {:?}",
+                                    Some(span.to_display(interner)),
+                                    expected_type,
+                                    arg_type
+                                )
+                                .attach(Help("Ensure the types match or add an explicit conversion".into())));
                             }
                         }
                         Ok(rest.1.clone())
                     }
                     None => {
-                        return Err(AnalysisError::Unresolved {
-                            what: format!("function '{}'", interner.resolve(*func_name).safe()),
-                            span: span.to_display(interner),
-                        });
+                        return Err(crate::analysis_err!(
+                            "Unresolved function '{}'",
+                            Some(span.to_display(interner)),
+                            interner.resolve(*func_name).safe()
+                        )
+                        .attach(Help("This identifier or symbol was not found in the current scope".into())));
                     }
                 }
             }
@@ -237,29 +258,31 @@ pub(crate) fn resolve_expr_type(
                 let expr_type = resolve_expr_type(expr, None, nodes, interner, ident_types, fn_table, diagnostics)?;
 
                 if !can_convert(&expr_type, &target_type) {
-                    return Err(AnalysisError::Invalid {
-                        what: "cast".to_string(),
-                        reason: format!("cannot cast type {:?} into {:?}", expr_type, target_type),
-                        span: span.to_display(interner),
-                    });
+                    return Err(crate::analysis_err!(
+                        "Invalid cast: cannot cast type {:?} into {:?}",
+                        Some(span.to_display(interner)),
+                        expr_type,
+                        target_type
+                    )
+                    .attach(Help("This construct is not valid in the current context".into())));
                 }
 
                 Ok(target_type)
             }
             ExprKind::UnaryOp { op, expr } => check_unaryop(expr, op, nodes, interner, ident_types, fn_table, diagnostics),
             _ => {
-                return Err(AnalysisError::Unsupported {
-                    what: format!("expression kind: {:?}", kind),
-                    span: span.to_display(interner),
-                });
+                return Err(
+                    crate::analysis_err!("Unsupported expression kind: {:?}", Some(span.to_display(interner)), kind)
+                        .attach(Help("This feature is not yet implemented".into())),
+                );
             }
         },
         _ => {
-            return Err(AnalysisError::Invalid {
-                what: "node".to_string(),
-                reason: "expected expression node for type resolution".to_string(),
-                span: span.to_display(interner),
-            });
+            return Err(crate::analysis_err!(
+                "Invalid node: expected expression node for type resolution",
+                Some(span.to_display(interner))
+            )
+            .attach(Help("This construct is not valid in the current context".into())));
         }
     }?;
 
@@ -267,11 +290,13 @@ pub(crate) fn resolve_expr_type(
     // TODO: probably needs to check for coercion as well
     if let Some(expected_ty) = expected {
         if &inferred_type != expected_ty {
-            return Err(AnalysisError::TypeMismatch {
-                expected: format!("{:?}", expected_ty),
-                got: format!("{:?}", inferred_type),
-                span: span.to_display(interner),
-            });
+            return Err(crate::analysis_err!(
+                "Type mismatch: expected {:?}, got {:?}",
+                Some(span.to_display(interner)),
+                expected_ty,
+                inferred_type
+            )
+            .attach(Help("Ensure the types match or add an explicit conversion".into())));
         }
     }
 
@@ -286,7 +311,7 @@ fn check_literal(
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     expected: Option<&VType>,
     literal: Literal,
-) -> Result<VType, AnalysisError> {
+) -> Result<VType, Report> {
     let inferred = match literal {
         Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
         Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
@@ -299,10 +324,12 @@ fn check_literal(
     if can_convert(&inferred, target) || &inferred == target {
         Ok(target.clone())
     } else {
-        Err(AnalysisError::TypeMismatch {
-            expected: format!("{:?}", target),
-            got: format!("{:?}", inferred),
-            span: span.to_display(interner),
-        })
+        Err(crate::analysis_err!(
+            "Type mismatch: expected {:?}, got {:?}",
+            Some(span.to_display(interner)),
+            target,
+            inferred
+        )
+        .attach(Help("Ensure the types match or add an explicit conversion".into())))
     }
 }

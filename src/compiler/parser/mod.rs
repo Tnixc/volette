@@ -1,6 +1,6 @@
-use error::ParserError;
 use generational_arena::{Arena, Index};
 use node::{Node, NodeKind};
+use rootcause::prelude::*;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 use super::tokens::{Keyword, Token, TokenKind};
@@ -14,7 +14,7 @@ pub mod control_flow;
 pub mod definitions;
 pub mod desugar;
 pub mod display;
-pub mod error;
+// pub mod error;
 pub mod expr;
 pub mod identifier;
 pub mod literal;
@@ -30,7 +30,7 @@ pub struct Parser<'a> {
     pub tokens: Vec<Token>,
     pub current_idx: usize,
     pub current_token: Token,
-    pub parse_errors: Vec<ParserError>,
+    pub parse_errors: Vec<Report>,
 }
 
 impl<'a> Parser<'a> {

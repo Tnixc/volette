@@ -1,3 +1,6 @@
-fn test(){
-    return 1;
+fn ok(a: i32, b:i8): i8{
+    return a + b;
+}
+fn k(a: i32, b:i8): i8{
+    return z + y;
 }

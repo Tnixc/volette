@@ -1,25 +1,29 @@
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::tokens::{Punctuation, Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Punctuation, Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{ExprKind, Node, NodeKind},
     precedence::BindingPower,
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_identifier_nud(&mut self, ident_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_identifier_nud(&mut self, ident_token: Token) -> Result<Index, Report> {
         let name_symbol = match ident_token.kind {
             TokenKind::Identifier(s) => s,
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "token in identifier context".to_string(),
-                    reason: format!("Expected identifier, got {:?}", ident_token.kind),
-                    span: ident_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid token in identifier context: Expected identifier, got {:?}",
+                    Some(ident_token.span.to_display(self.interner)),
+                    ident_token.kind
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         };
 
@@ -39,7 +43,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_function_call(&mut self, ident_token: Token, name_symbol: SymbolUsize) -> Result<Index, ParserError> {
+    pub fn parse_function_call(&mut self, ident_token: Token, name_symbol: SymbolUsize) -> Result<Index, Report> {
         let mut call_span = ident_token.span;
 
         self.advance(); // consume '('
@@ -69,11 +73,12 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     _ => {
-                        return Err(ParserError::Expected {
-                            what: "closing parenthesis or comma".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
+                        return Err(crate::parse_err!(
+                            "Expected closing parenthesis or comma, got {:?}",
+                            Some(self.current().span.to_display(self.interner)),
+                            self.current().kind
+                        )
+                        .attach(Help("Check the syntax - the parser expected something different here".into())));
                     }
                 }
             }
@@ -97,12 +102,15 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_call_led(&mut self, _open_paren_token: Token, func_idx: Index) -> Result<Index, ParserError> {
+    pub fn parse_call_led(&mut self, _open_paren_token: Token, func_idx: Index) -> Result<Index, Report> {
         let func_node = self
             .node(&func_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "function node for call".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: function node for call",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
         let mut call_span = func_node.span;
@@ -131,11 +139,12 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     _ => {
-                        return Err(ParserError::Expected {
-                            what: "closing parenthesis or comma".to_string(),
-                            got: format!("{:?}", self.current().kind),
-                            span: self.current().span.to_display(self.interner),
-                        });
+                        return Err(crate::parse_err!(
+                            "Expected closing parenthesis or comma, got {:?}",
+                            Some(self.current().span.to_display(self.interner)),
+                            self.current().kind
+                        )
+                        .attach(Help("Check the syntax - the parser expected something different here".into())));
                     }
                 }
             }

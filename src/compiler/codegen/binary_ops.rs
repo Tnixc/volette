@@ -1,10 +1,12 @@
 use cranelift::prelude::{FunctionBuilder, InstBuilder, Value};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError},
+        codegen::{Info, Scopes},
+        error::Help,
         parser::node::{BinOpKind, VType},
     },
     is_float, is_int,
@@ -19,7 +21,7 @@ pub fn expr_binop(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let (left_value, left_type) = expr_to_val(left, fn_builder, scopes, info)?;
     let left_value = left_value.safe(); // type checker should catch bin ops with Nil/zero sized types?
     let (right_value, right_type) = expr_to_val(right, fn_builder, scopes, info)?;
@@ -41,11 +43,12 @@ pub fn expr_binop(
                 BinOpKind::LessThan => fn_builder.ins().fcmp(FloatCC::LessThan, left_value, right_value),
                 BinOpKind::LessThanOrEq => fn_builder.ins().fcmp(FloatCC::LessThanOrEqual, left_value, right_value),
                 _ => {
-                    return Err(TranslateError::Unsupported {
-                        what: format!("binary operation '{:?}' on floats", op),
-                        reason: "this operation is not supported for floating-point types".to_string(),
-                        span: info.nodes.get(left).safe().span.to_display(info.interner),
-                    });
+                    return Err(crate::codegen_err!(
+                        "Unsupported binary operation '{:?}' on floats",
+                        Some(info.nodes.get(left).safe().span.to_display(info.interner)),
+                        op
+                    )
+                    .attach(Help("This operation is not supported for floating-point types".into())));
                 }
             }
         }
@@ -69,22 +72,26 @@ pub fn expr_binop(
                 BinOpKind::BitwiseShLeft => fn_builder.ins().ishl(left_value, right_value),
                 BinOpKind::BitwiseShRight => fn_builder.ins().sshr(left_value, right_value),
                 _ => {
-                    return Err(TranslateError::Unsupported {
-                        what: format!("binary operation '{:?}' on integers", op),
-                        reason: "this operation is not supported for integer types".to_string(),
-                        span: info.nodes.get(left).safe().span.to_display(info.interner),
-                    });
+                    return Err(crate::codegen_err!(
+                        "Unsupported binary operation '{:?}' on integers",
+                        Some(info.nodes.get(left).safe().span.to_display(info.interner)),
+                        op
+                    )
+                    .attach(Help("This operation is not supported for integer types".into())));
                 }
             }
         }
 
         _ => {
             eprintln!("TYPE LEFT, {:?}, OPERAND: {:?}, TYPE RIGHT, {:?}", left_type, op, right_type);
-            return Err(TranslateError::Unsupported {
-                what: format!("binary operation '{:?}' with types {:?} and {:?}", op, left_type, right_type),
-                reason: "this type combination is not supported".to_string(),
-                span: info.nodes.get(left).safe().span.to_display(info.interner),
-            });
+            return Err(crate::codegen_err!(
+                "Unsupported binary operation '{:?}' with types {:?} and {:?}",
+                Some(info.nodes.get(left).safe().span.to_display(info.interner)),
+                op,
+                left_type,
+                right_type
+            )
+            .attach(Help("This type combination is not supported".into())));
         }
     };
 

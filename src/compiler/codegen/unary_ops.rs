@@ -3,11 +3,12 @@ use crate::{is_float, is_int};
 use cranelift::prelude::{FunctionBuilder, IntCC, MemFlags, StackSlotData, StackSlotKind};
 use cranelift::prelude::{InstBuilder, Value};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError, expr::expr_to_val, ptr_width},
+        codegen::{Info, Scopes, expr::expr_to_val, ptr_width},
         parser::node::{ExprKind, NodeKind, UnaryOpKind, VType},
     },
 };
@@ -18,7 +19,7 @@ pub fn expr_unaryop(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     if op == UnaryOpKind::AddressOf {
         let node = info.nodes.get(expr).safe();
         if let NodeKind::Expr {

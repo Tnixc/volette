@@ -1,12 +1,13 @@
 use cranelift::module::Module;
 use cranelift::prelude::{FunctionBuilder, InstBuilder, Value};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::compiler::codegen::Scopes;
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, error::TranslateError},
+        codegen::Info,
         parser::node::{ExprKind, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
@@ -20,7 +21,7 @@ pub fn expr_call(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let func_node = info.nodes.get(func).safe();
 
     let func_name = match &func_node.kind {

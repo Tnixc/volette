@@ -1,6 +1,8 @@
 use crate::compiler::tokens::{Token, TokenKind};
 
-use super::{Lexer, LexerState, error::LexError};
+use super::{Lexer, LexerState};
+use crate::compiler::error::Help;
+use rootcause::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberBase {
@@ -60,11 +62,14 @@ impl<'a> Lexer<'a> {
 
         if float {
             if base != NumberBase::Decimal {
-                self.errors.push(LexError::Invalid {
-                    what: "float literal".to_string(),
-                    reason: "floating-point literals must use decimal notation".to_string(),
-                    span: span.to_display(&self.interner),
-                });
+                self.errors.push(
+                    crate::lex_err!(
+                        "Invalid float literal: floating-point literals must use decimal notation",
+                        Some(span.to_display(&self.interner))
+                    )
+                    .attach(Help("Check the syntax of this token".into()))
+                    .into_cloneable(),
+                );
             } else if let Ok(n) = self.lex_float() {
                 self.tokens.push(Token::new(TokenKind::FloatLiteral(n), span));
             }
@@ -76,7 +81,7 @@ impl<'a> Lexer<'a> {
         self.current_chars.drain(..self.current_chars.len()).for_each(|_| {});
     }
 
-    pub fn lex_float(&mut self) -> Result<f64, LexError> {
+    pub fn lex_float(&mut self) -> Result<f64, Report> {
         let current_string = self.current_chars.iter().map(|(_, ch)| *ch).collect::<String>();
         let filtered_str: String = current_string.chars().filter(|&c| c != '_').collect();
 
@@ -89,17 +94,20 @@ impl<'a> Lexer<'a> {
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
-            let err = LexError::Invalid {
-                what: format!("float '{}'", filtered_str),
-                reason: "cannot be parsed as a floating-point number".to_string(),
-                span: span.to_display(&self.interner),
-            };
-            self.errors.push(err.clone());
-            err
+            let msg = format!("Invalid float '{}': cannot be parsed as a floating-point number", filtered_str);
+            let display_span = span.to_display(&self.interner);
+
+            self.errors.push(
+                crate::lex_err!(msg.clone(), Some(display_span.clone()))
+                    .attach(Help("Check the syntax of this token".into()))
+                    .into_cloneable(),
+            );
+
+            crate::lex_err!(msg, Some(display_span)).attach(Help("Check the syntax of this token".into()))
         })
     }
 
-    pub fn lex_int(&mut self, base: NumberBase) -> Result<i64, LexError> {
+    pub fn lex_int(&mut self, base: NumberBase) -> Result<i64, Report> {
         let radix = match base {
             NumberBase::Decimal => 10,
             NumberBase::Hex => 16,
@@ -131,13 +139,16 @@ impl<'a> Lexer<'a> {
             let end_pos = self.current_chars.back().map(|(pos, _)| *pos).unwrap_or(start_pos);
             let span = self.create_span(start_pos.0, start_pos.1, end_pos.0, end_pos.1);
 
-            let err = LexError::Invalid {
-                what: format!("integer '{}'", filtered_str),
-                reason: "cannot be parsed as an integer".to_string(),
-                span: span.to_display(&self.interner),
-            };
-            self.errors.push(err.clone());
-            err
+            let msg = format!("Invalid integer '{}': cannot be parsed as an integer", filtered_str);
+            let display_span = span.to_display(&self.interner);
+
+            self.errors.push(
+                crate::lex_err!(msg.clone(), Some(display_span.clone()))
+                    .attach(Help("Check the syntax of this token".into()))
+                    .into_cloneable(),
+            );
+
+            crate::lex_err!(msg, Some(display_span)).attach(Help("Check the syntax of this token".into()))
         })
     }
 }

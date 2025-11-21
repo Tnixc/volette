@@ -2,6 +2,7 @@ use crate::{
     SafeConvert,
     compiler::{
         codegen::{Info, Scopes, expr::expr_to_val, ptr_width},
+        error::Help,
         parser::node::{DefKind, Node, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
@@ -11,11 +12,10 @@ use cranelift::{
     module::FuncId,
     prelude::{AbiParam, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature, StackSlotData, StackSlotKind},
 };
+use rootcause::prelude::*;
 use std::collections::HashMap;
 
-use super::error::TranslateError;
-
-pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), TranslateError> {
+pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Report> {
     match &node.kind {
         NodeKind::Def {
             kind:
@@ -89,11 +89,11 @@ pub fn lower_fn(node: &Node, info: &mut Info, _func_id: FuncId) -> Result<(), Tr
             Ok(())
         }
         _ => {
-            return Err(TranslateError::Unsupported {
-                what: "non-function definition".to_string(),
-                reason: "only function definitions are currently supported".to_string(),
-                span: node.span.to_display(info.interner),
-            });
+            return Err(crate::codegen_err!(
+                "Unsupported non-function definition: only function definitions are currently supported",
+                Some(node.span.to_display(info.interner))
+            )
+            .attach(Help("This feature is not yet implemented".into())));
         }
     }
 }

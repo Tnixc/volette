@@ -1,15 +1,19 @@
-use super::{Parser, error::ParserError, precedence::BindingPower};
-use crate::compiler::tokens::{Keyword, Punctuation, TokenKind};
+use super::{Parser, precedence::BindingPower};
+use crate::compiler::{
+    error::Help,
+    tokens::{Keyword, Punctuation, TokenKind},
+};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 impl<'a> Parser<'a> {
-    pub fn parse_expr(&mut self) -> Result<Index, ParserError> {
+    pub fn parse_expr(&mut self) -> Result<Index, Report> {
         self.pratt_parse_expression(BindingPower::None)
     }
 
     /// the core pratt parsing loop.
     /// parses an expression whose components have at least `min_bp` binding power.
-    pub fn pratt_parse_expression(&mut self, min_bp: BindingPower) -> Result<Index, ParserError> {
+    pub fn pratt_parse_expression(&mut self, min_bp: BindingPower) -> Result<Index, Report> {
         // while self.current().kind == TokenKind::Punctuation(Punctuation::Semicolon) {
         //     self.advance();
         // }
@@ -53,11 +57,12 @@ impl<'a> Parser<'a> {
                 left_expr_idx = self.parse_unary_op_nud(current_token)?;
             }
             _ => {
-                return Err(ParserError::Expected {
-                    what: "expression".to_string(),
-                    got: format!("{:?}", current_token.kind),
-                    span: current_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected expression, got {:?}",
+                    Some(current_token.span.to_display(self.interner)),
+                    current_token.kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         }
 
@@ -157,10 +162,12 @@ impl<'a> Parser<'a> {
                 }
 
                 _ => {
-                    return Err(ParserError::NotFound {
-                        what: format!("handler for infix/postfix token: {:?}", next_token.kind),
-                        span: next_token.span.to_display(self.interner),
-                    });
+                    return Err(crate::parse_err!(
+                        "Node not found: handler for infix/postfix token: {:?}",
+                        Some(next_token.span.to_display(self.interner)),
+                        next_token.kind
+                    )
+                    .attach(Help("This is likely a parser bug - please report it".into())));
                 }
             }
         }

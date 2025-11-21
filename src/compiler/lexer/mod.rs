@@ -3,9 +3,8 @@ use std::collections::VecDeque;
 use crate::compiler::tokens::TokenKind;
 
 use super::tokens::{Span, Token};
-pub mod error;
-use error::LexError;
 mod bool;
+use crate::compiler::error::{Help, ReportCollection};
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 mod keywords;
 mod numbers;
@@ -33,7 +32,7 @@ pub struct Cursor {
 pub struct Lexer<'a> {
     pub tokens: Vec<Token>,
     pub state: LexerState,
-    pub errors: Vec<LexError>,
+    pub errors: ReportCollection,
     pub cursor: Cursor,
     pub interner: &'a mut StringInterner<BucketBackend<SymbolUsize>>,
     pub newline: bool,
@@ -45,7 +44,7 @@ impl<'a> Lexer<'a> {
         Lexer {
             tokens: vec![Token::new(TokenKind::Start, Span::new(path, 0, 0, 0, 0))],
             state: LexerState::Normal,
-            errors: Vec::new(),
+            errors: ReportCollection::new(),
             cursor: Cursor {
                 file: path,
                 line: 1,
@@ -91,13 +90,18 @@ impl<'a> Lexer<'a> {
         }
 
         if !c.is_allowed_char() {
-            self.errors.push(LexError::Unexpected {
-                what: format!("character '{}'", c),
-                context: "lexing".to_string(),
-                span: self
-                    .create_span(self.cursor.line, self.cursor.col, self.cursor.line, self.cursor.col)
-                    .to_display(&self.interner),
-            });
+            self.errors.push(
+                crate::lex_err!(
+                    "Unexpected character '{}'",
+                    Some(
+                        self.create_span(self.cursor.line, self.cursor.col, self.cursor.line, self.cursor.col)
+                            .to_display(&self.interner)
+                    ),
+                    c
+                )
+                .attach(Help("This character or sequence is not valid at this location".into()))
+                .into_cloneable(),
+            );
             return;
         }
 

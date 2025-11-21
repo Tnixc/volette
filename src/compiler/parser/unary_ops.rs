@@ -1,27 +1,31 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Punctuation, Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Punctuation, Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{ExprKind, Node, NodeKind, UnaryOpKind},
     precedence::BindingPower,
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_unary_op_nud(&mut self, op_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_unary_op_nud(&mut self, op_token: Token) -> Result<Index, Report> {
         let op_kind = match op_token.kind {
             TokenKind::Punctuation(Punctuation::Bang) => UnaryOpKind::Not,
             TokenKind::Punctuation(Punctuation::Minus) => UnaryOpKind::Neg,
             TokenKind::Punctuation(Punctuation::At) => UnaryOpKind::Deref,
             TokenKind::Punctuation(Punctuation::Amp) => UnaryOpKind::AddressOf,
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "unary operator".to_string(),
-                    reason: format!("Token {:?} is not a unary prefix operator", op_token.kind),
-                    span: op_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid unary operator: Token {:?} is not a unary prefix operator",
+                    Some(op_token.span.to_display(self.interner)),
+                    op_token.kind
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         };
 
@@ -32,9 +36,12 @@ impl<'a> Parser<'a> {
 
         let expr_node = self
             .node(&expr_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "unary operand node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: unary operand node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
 

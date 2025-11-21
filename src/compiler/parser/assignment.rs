@@ -1,10 +1,13 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Punctuation, Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Punctuation, Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{BinOpKind, ExprKind, Node, NodeKind},
     precedence::BindingPower,
 };
@@ -15,13 +18,16 @@ impl<'a> Parser<'a> {
         _eq_token: Token,
         target_idx: Index,
         _is_right_assoc: bool, /* should be true */
-    ) -> Result<Index, ParserError> {
+    ) -> Result<Index, Report> {
         // L-value check (target must be assignable)
         let target_node_cloned = self
             .node(&target_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "assignment target node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: assignment target node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
         match target_node_cloned.kind {
@@ -31,20 +37,23 @@ impl<'a> Parser<'a> {
             } => { /* OK */ }
             // TODO: Add other valid L-values (field access, array index)
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "assignment target".to_string(),
-                    reason: "Only variables can be assigned to".to_string(),
-                    span: target_node_cloned.span.to_display(&self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid assignment target: Only variables can be assigned to",
+                    Some(target_node_cloned.span.to_display(&self.interner))
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         }
 
         // for right-associativity, parse rhs with the same binding power.
         let value_idx = self.pratt_parse_expression(BindingPower::Assignment)?;
 
-        let value_node_cloned = self.node(&value_idx).ok_or_else(|| ParserError::NotFound {
-            what: "assignment value node".to_string(),
-            span: self.current().span.to_display(self.interner),
+        let value_node_cloned = self.node(&value_idx).ok_or_else(|| {
+            crate::parse_err!(
+                "Node not found: assignment value node",
+                Some(self.current().span.to_display(self.interner))
+            )
+            .attach(Help("This is likely a parser bug - please report it".into()))
         })?;
         let assignment_span = target_node_cloned.span.connect_new(&value_node_cloned.span);
 
@@ -60,13 +69,16 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_compound_assignment_led(&mut self, op_token: Token, target_idx: Index) -> Result<Index, ParserError> {
+    pub fn parse_compound_assignment_led(&mut self, op_token: Token, target_idx: Index) -> Result<Index, Report> {
         // Lvalue check (target must be assignable)
         let target_node_cloned = self
             .node(&target_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "assignment target node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: assignment target node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
         match target_node_cloned.kind {
@@ -75,11 +87,11 @@ impl<'a> Parser<'a> {
                 ..
             } => { /* OK */ }
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "assignment target".to_string(),
-                    reason: "Only variables can be assigned to".to_string(),
-                    span: target_node_cloned.span.to_display(&self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid assignment target: Only variables can be assigned to",
+                    Some(target_node_cloned.span.to_display(&self.interner))
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         }
 
@@ -95,20 +107,24 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::LeftLeftEq) => BinOpKind::BitwiseShLeft,
             TokenKind::Punctuation(Punctuation::RightRightEq) => BinOpKind::BitwiseShRight,
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "compound assignment operator".to_string(),
-                    reason: format!("Unknown operator {:?}", op_token.kind),
-                    span: op_token.span.to_display(&self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid compound assignment operator: Unknown operator {:?}",
+                    Some(op_token.span.to_display(&self.interner)),
+                    op_token.kind
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         };
 
         // parse rhs with right-associativity
         let value_idx = self.pratt_parse_expression(BindingPower::Assignment)?;
 
-        let value_node_cloned = self.node(&value_idx).ok_or_else(|| ParserError::NotFound {
-            what: "assignment value node".to_string(),
-            span: self.current().span.to_display(self.interner),
+        let value_node_cloned = self.node(&value_idx).ok_or_else(|| {
+            crate::parse_err!(
+                "Node not found: assignment value node",
+                Some(self.current().span.to_display(self.interner))
+            )
+            .attach(Help("This is likely a parser bug - please report it".into()))
         })?;
         let assignment_span = target_node_cloned.span.connect_new(&value_node_cloned.span);
 

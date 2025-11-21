@@ -2,11 +2,13 @@ use std::cmp::Ordering;
 
 use cranelift::prelude::{FunctionBuilder, InstBuilder, Value, types};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError, ptr_width},
+        codegen::{Info, Scopes, ptr_width},
+        error::Help,
         parser::node::VType,
         tokens::PrimitiveTypes,
     },
@@ -21,7 +23,7 @@ pub fn expr_cast(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let (expr_val, expr_type) = expr_to_val(expr, fn_builder, scopes, info)?;
     let expr_val = expr_val.safe();
 
@@ -78,11 +80,13 @@ pub fn expr_cast(
         | (VType::Primitive(PrimitiveTypes::Usize | PrimitiveTypes::Isize), VType::Pointer(_)) => expr_val,
 
         _ => {
-            return Err(TranslateError::Invalid {
-                what: "cast".to_string(),
-                reason: format!("cannot cast from {:?} to {:?}", expr_type, target_type),
-                span: info.nodes.get(expr).safe().span.to_display(info.interner),
-            });
+            return Err(crate::codegen_err!(
+                "Invalid cast: cannot cast from {:?} to {:?}",
+                Some(info.nodes.get(expr).safe().span.to_display(info.interner)),
+                expr_type,
+                target_type
+            )
+            .attach(Help("This construct is not valid in the current context".into())));
         }
     };
 

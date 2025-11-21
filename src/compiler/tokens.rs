@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use derive_more::Display;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -196,15 +196,10 @@ pub enum TokenName {
     Bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
+#[display("{}:{}:{}-{}", file, start.0, start.1, end.1)]
 pub struct DisplaySpan {
     pub file: String,
     pub start: (usize, usize),
     pub end: (usize, usize),
-}
-
-impl Display for DisplaySpan {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}-{}", self.file, self.start.0, self.start.1, self.end.1)
-    }
 }

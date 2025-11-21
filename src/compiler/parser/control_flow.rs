@@ -1,28 +1,32 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Keyword::Else, Punctuation, Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Keyword::Else, Punctuation, Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{ExprKind, Node, NodeKind, VType},
     precedence::BindingPower,
 };
 
 impl<'a> Parser<'a> {
     /// parses `let name [: type] = value` as an expression (nud for 'let' keyword)
-    pub fn parse_let_expr_nud(&mut self, let_keyword_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_let_expr_nud(&mut self, let_keyword_token: Token) -> Result<Index, Report> {
         self.advance(); // consume 'let'
 
         let name_token = *self.current();
         let name_symbol = match name_token.kind {
             TokenKind::Identifier(s) => s,
             _ => {
-                return Err(ParserError::Expected {
-                    what: "identifier after 'let'".to_string(),
-                    got: format!("{:?}", name_token.kind),
-                    span: name_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Expected identifier after 'let', got {:?}",
+                    Some(name_token.span.to_display(self.interner)),
+                    name_token.kind
+                )
+                .attach(Help("Check the syntax - the parser expected something different here".into())));
             }
         };
 
@@ -39,11 +43,12 @@ impl<'a> Parser<'a> {
         }
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::Eq) {
-            return Err(ParserError::Expected {
-                what: "initializer '='".to_string(),
-                got: format!("{:?}", self.current().kind),
-                span: self.current().span.to_display(self.interner),
-            });
+            return Err(crate::parse_err!(
+                "Expected initializer '=', got {:?}",
+                Some(self.current().span.to_display(self.interner)),
+                self.current().kind
+            )
+            .attach(Help("Check the syntax - the parser expected something different here".into())));
         }
 
         let eq_token = *self.current();
@@ -52,9 +57,12 @@ impl<'a> Parser<'a> {
 
         // the value is an expression, parse it with full precedence.
         let value_expr_idx = self.pratt_parse_expression(BindingPower::None)?;
-        let value_expr_node_cloned = self.node(&value_expr_idx).ok_or_else(|| ParserError::NotFound {
-            what: "let binding value node".to_string(),
-            span: self.current().span.to_display(self.interner),
+        let value_expr_node_cloned = self.node(&value_expr_idx).ok_or_else(|| {
+            crate::parse_err!(
+                "Node not found: let binding value node",
+                Some(self.current().span.to_display(self.interner))
+            )
+            .attach(Help("This is likely a parser bug - please report it".into()))
         })?;
         current_span.connect_mut(&value_expr_node_cloned.span);
 
@@ -71,7 +79,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_return_expr_nud(&mut self, return_keyword_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_return_expr_nud(&mut self, return_keyword_token: Token) -> Result<Index, Report> {
         self.advance();
 
         let mut value_idx_opt = None;
@@ -81,9 +89,12 @@ impl<'a> Parser<'a> {
             let value_idx = self.pratt_parse_expression(BindingPower::None)?;
             let value_node = self
                 .node(&value_idx)
-                .ok_or_else(|| ParserError::NotFound {
-                    what: "return value node".to_string(),
-                    span: self.current().span.to_display(self.interner),
+                .ok_or_else(|| {
+                    crate::parse_err!(
+                        "Node not found: return value node",
+                        Some(self.current().span.to_display(self.interner))
+                    )
+                    .attach(Help("This is likely a parser bug - please report it".into()))
                 })?
                 .clone();
             current_span.connect_mut(&value_node.span);
@@ -99,7 +110,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_break_expr_nud(&mut self, break_keyword_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_break_expr_nud(&mut self, break_keyword_token: Token) -> Result<Index, Report> {
         self.advance();
 
         Ok(self.push(Node::new(
@@ -111,21 +122,25 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_loop_expr_nud(&mut self, loop_keyword_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_loop_expr_nud(&mut self, loop_keyword_token: Token) -> Result<Index, Report> {
         self.advance();
 
         if self.current().kind != TokenKind::Punctuation(Punctuation::OpenBrace) {
-            return Err(ParserError::Expected {
-                what: "loop body (opening brace)".to_string(),
-                got: format!("{:?}", self.current().kind),
-                span: self.current().span.to_display(self.interner),
-            });
+            return Err(crate::parse_err!(
+                "Expected loop body (opening brace), got {:?}",
+                Some(self.current().span.to_display(self.interner)),
+                self.current().kind
+            )
+            .attach(Help("Check the syntax - the parser expected something different here".into())));
         }
         let body_idx = self.parse_block_body()?;
 
-        let body_node = self.node(&body_idx).ok_or_else(|| ParserError::NotFound {
-            what: "loop body node".to_string(),
-            span: self.current().span.to_display(self.interner),
+        let body_node = self.node(&body_idx).ok_or_else(|| {
+            crate::parse_err!(
+                "Node not found: loop body node",
+                Some(self.current().span.to_display(self.interner))
+            )
+            .attach(Help("This is likely a parser bug - please report it".into()))
         })?;
         let loop_span = loop_keyword_token.span.connect_new(&body_node.span);
 
@@ -138,15 +153,15 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_if_expr_nud(&mut self, if_keyword_token: Token) -> Result<Index, ParserError> {
+    pub fn parse_if_expr_nud(&mut self, if_keyword_token: Token) -> Result<Index, Report> {
         self.advance(); // consume 'if'
 
         let condition_idx = self.pratt_parse_expression(BindingPower::None)?;
 
         let then_block_idx = self.parse_block_body()?;
-        let then_block_node = self.node(&then_block_idx).ok_or_else(|| ParserError::NotFound {
-            what: "if body node".to_string(),
-            span: self.current().span.to_display(self.interner),
+        let then_block_node = self.node(&then_block_idx).ok_or_else(|| {
+            crate::parse_err!("Node not found: if body node", Some(self.current().span.to_display(self.interner)))
+                .attach(Help("This is likely a parser bug - please report it".into()))
         })?;
         let mut span = if_keyword_token.span.connect_new(&then_block_node.span);
 
@@ -154,9 +169,12 @@ impl<'a> Parser<'a> {
         if self.current().kind == TokenKind::Keyword(Else) {
             self.advance(); // consume 'else'
             let else_block_idx = self.parse_block_body()?;
-            let else_block_node = self.node(&else_block_idx).ok_or_else(|| ParserError::NotFound {
-                what: "else body node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            let else_block_node = self.node(&else_block_idx).ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: else body node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?;
             span.connect_mut(&else_block_node.span);
             else_block_idx_opt = Some(else_block_idx);

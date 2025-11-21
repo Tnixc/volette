@@ -1,11 +1,13 @@
 use cranelift::prelude::{FunctionBuilder, Value};
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::{
     SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{Info, Scopes, error::TranslateError, unary_ops::expr_unaryop, variable::expr_assign},
+        codegen::{Info, Scopes, unary_ops::expr_unaryop, variable::expr_assign},
+        error::Help,
         parser::node::{ExprKind, NodeKind, VType},
         tokens::PrimitiveTypes,
     },
@@ -26,7 +28,7 @@ pub fn expr_to_val(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<(Option<Value>, VType), TranslateError> {
+) -> Result<(Option<Value>, VType), Report> {
     let node_idx = node; // Save the index before reassignment
     let node = info.nodes.get(node).safe();
     match &node.kind {
@@ -54,11 +56,10 @@ pub fn expr_to_val(
                 ExprKind::UnaryOp { op, expr } => Some(expr_unaryop(*op, *expr, fn_builder, scopes, info)?),
                 ExprKind::Cast { expr, target_type } => Some(expr_cast(*expr, target_type, fn_builder, scopes, info)?),
                 _ => {
-                    return Err(TranslateError::Unsupported {
-                        what: format!("expression kind: {:?}", kind),
-                        reason: "this expression type is not yet implemented".to_string(),
-                        span: node.span.to_display(info.interner),
-                    });
+                    return Err(
+                        crate::codegen_err!("Unsupported expression kind: {:?}", Some(node.span.to_display(info.interner)), kind)
+                            .attach(Help("This feature is not yet implemented".into())),
+                    );
                 }
             };
 
@@ -69,11 +70,11 @@ pub fn expr_to_val(
             }
         }
         _ => {
-            return Err(TranslateError::Invalid {
-                what: "node".to_string(),
-                reason: "expected expression node in expr_to_val".to_string(),
-                span: node.span.to_display(info.interner),
-            });
+            return Err(crate::codegen_err!(
+                "Invalid node: expected expression node in expr_to_val",
+                Some(node.span.to_display(info.interner))
+            )
+            .attach(Help("This construct is not valid in the current context".into())));
         }
     }
 }

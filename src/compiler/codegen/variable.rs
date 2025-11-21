@@ -1,11 +1,13 @@
 use cranelift::prelude::{FunctionBuilder, InstBuilder, StackSlotData, StackSlotKind, Value};
 use generational_arena::Index;
+use rootcause::prelude::*;
 use string_interner::symbol::SymbolUsize;
 
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError, ptr_width},
+        codegen::{Info, Scopes, ptr_width},
+        error::Help,
         parser::node::{ExprKind, NodeKind},
     },
 };
@@ -18,7 +20,7 @@ pub fn expr_let_binding(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let (var_val, actual_type) = expr_to_val(value, fn_builder, scopes, info)?;
     let var_val = var_val.expect("TODO: let binding requires non-zero-sized value");
     let ty = actual_type.to_clif(ptr_width());
@@ -32,12 +34,7 @@ pub fn expr_let_binding(
     Ok(var_val)
 }
 
-pub fn expr_identifier(
-    sym: SymbolUsize,
-    fn_builder: &mut FunctionBuilder,
-    scopes: &mut Scopes,
-    info: &Info,
-) -> Result<Value, TranslateError> {
+pub fn expr_identifier(sym: SymbolUsize, fn_builder: &mut FunctionBuilder, scopes: &mut Scopes, info: &Info) -> Result<Value, Report> {
     let var = scopes.iter().rev().find_map(|scope| scope.get(&sym));
 
     match var {
@@ -45,17 +42,12 @@ pub fn expr_identifier(
             let ty = vtype.to_clif(ptr_width());
             Ok(fn_builder.ins().stack_load(ty, *slot, 0))
         }
-        None => {
-            use crate::compiler::tokens::DisplaySpan;
-            Err(TranslateError::NotFound {
-                what: format!("identifier '{}'", info.interner.resolve(sym).unwrap_or("<unknown>")),
-                span: DisplaySpan {
-                    file: "<internal>".to_string(),
-                    start: (0, 0),
-                    end: (0, 0),
-                },
-            })
-        }
+        None => Err(crate::codegen_err!(
+            "Unresolved identifier '{}'",
+            None,
+            info.interner.resolve(sym).unwrap_or("<unknown>")
+        )
+        .attach(Help("This identifier or symbol was not found in the current scope".into()))),
     }
 }
 
@@ -65,7 +57,7 @@ pub fn expr_assign(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let (maybe_var_val, _) = expr_to_val(value, fn_builder, scopes, info)?;
     let var_val = maybe_var_val.expect("assignment requires non-zero-sized value");
 

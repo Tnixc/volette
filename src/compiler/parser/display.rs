@@ -6,33 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 
 use crate::compiler::tokens::Span;
 
-use super::node::{BinOpKind, DefKind, ExprKind, Node, NodeKind, VType};
-
-impl Display for BinOpKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            BinOpKind::Add => write!(f, "+"),
-            BinOpKind::Sub => write!(f, "-"),
-            BinOpKind::Mul => write!(f, "*"),
-            BinOpKind::Div => write!(f, "/"),
-            BinOpKind::Mod => write!(f, "%"),
-            BinOpKind::Eq => write!(f, "=="),
-            BinOpKind::NotEq => write!(f, "!="),
-            BinOpKind::LessThan => write!(f, "<"),
-            BinOpKind::LessThanOrEq => write!(f, "<="),
-            BinOpKind::GreaterThan => write!(f, ">"),
-            BinOpKind::GreaterThanOrEq => write!(f, ">="),
-            BinOpKind::LogicalAnd => write!(f, "&&"),
-            BinOpKind::LogicalOr => write!(f, "||"),
-            BinOpKind::BitwiseAnd => write!(f, "&"),
-            BinOpKind::BitwiseOr => write!(f, "|"),
-            BinOpKind::BitwiseXor => write!(f, "^"),
-            BinOpKind::Pow => write!(f, "**"),
-            BinOpKind::BitwiseShLeft => write!(f, "<<"),
-            BinOpKind::BitwiseShRight => write!(f, ">>"),
-        }
-    }
-}
+use super::node::{DefKind, ExprKind, Node, NodeKind, VType};
 
 fn format_symbol(sym: SymbolUsize, interner: &StringInterner<BucketBackend<SymbolUsize>>) -> String {
     interner.resolve(sym).unwrap_or("<unknown>").to_string()

@@ -3,11 +3,12 @@ use cranelift::{
     prelude::{FunctionBuilder, InstBuilder, Value},
 };
 use generational_arena::Index;
+use rootcause::prelude::*;
 
 use crate::{
     SafeConvert,
     compiler::{
-        codegen::{Info, Scopes, error::TranslateError, ptr_width},
+        codegen::{Info, Scopes, ptr_width},
         parser::node::{ExprKind, NodeKind},
     },
 };
@@ -44,7 +45,7 @@ pub fn expr_return(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Option<Value>, TranslateError> {
+) -> Result<Option<Value>, Report> {
     if let Some(ret_val) = ret_val {
         let (value, _) = expr_to_val(ret_val, fn_builder, scopes, info)?;
         match value {
@@ -65,7 +66,7 @@ pub fn expr_if(
     fn_builder: &mut FunctionBuilder,
     scopes: &mut Scopes,
     info: &mut Info,
-) -> Result<Value, TranslateError> {
+) -> Result<Value, Report> {
     let then_block = fn_builder.create_block();
     let else_block = fn_builder.create_block();
 
@@ -179,6 +180,6 @@ pub fn expr_if(
         Ok(result)
     } else {
         // dummy value
-        Ok(Value::from_u32(0)) // FIXME: idkkkkk 
+        Ok(Value::from_u32(0)) // FIXME: idkkkkk
     }
 }

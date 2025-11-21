@@ -1,10 +1,13 @@
 use generational_arena::Index;
 
-use crate::compiler::tokens::{Punctuation, Token, TokenKind};
+use crate::compiler::{
+    error::Help,
+    tokens::{Punctuation, Token, TokenKind},
+};
+use rootcause::prelude::*;
 
 use super::{
     Parser,
-    error::ParserError,
     node::{BinOpKind, ExprKind, Node, NodeKind},
     precedence::BindingPower,
 };
@@ -16,7 +19,7 @@ impl<'a> Parser<'a> {
         left_idx: Index,
         op_bp: BindingPower,
         is_right_assoc: bool,
-    ) -> Result<Index, ParserError> {
+    ) -> Result<Index, Report> {
         let op_kind = match op_token.kind {
             TokenKind::Punctuation(Punctuation::Plus) => BinOpKind::Add,
             TokenKind::Punctuation(Punctuation::Minus) => BinOpKind::Sub,
@@ -37,11 +40,12 @@ impl<'a> Parser<'a> {
             TokenKind::Punctuation(Punctuation::LeftLeft) => BinOpKind::BitwiseShLeft,
             TokenKind::Punctuation(Punctuation::RightRight) => BinOpKind::BitwiseShRight,
             _ => {
-                return Err(ParserError::Invalid {
-                    what: "binary operator".to_string(),
-                    reason: format!("Token {:?} is not a binary infix operator", op_token.kind),
-                    span: op_token.span.to_display(self.interner),
-                });
+                return Err(crate::parse_err!(
+                    "Invalid binary operator: Token {:?} is not a binary infix operator",
+                    Some(op_token.span.to_display(self.interner)),
+                    op_token.kind
+                )
+                .attach(Help("This construct is not valid in the current context".into())));
             }
         };
 
@@ -50,16 +54,22 @@ impl<'a> Parser<'a> {
 
         let left_node_cloned = self
             .node(&left_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "left operand node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: left operand node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
         let right_node_cloned = self
             .node(&right_idx)
-            .ok_or_else(|| ParserError::NotFound {
-                what: "right operand node".to_string(),
-                span: self.current().span.to_display(self.interner),
+            .ok_or_else(|| {
+                crate::parse_err!(
+                    "Node not found: right operand node",
+                    Some(self.current().span.to_display(self.interner))
+                )
+                .attach(Help("This is likely a parser bug - please report it".into()))
             })?
             .clone();
         let combined_span = left_node_cloned.span.connect_new(&right_node_cloned.span);

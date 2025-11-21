@@ -1,21 +1,17 @@
 use cranelift::prelude::{FunctionBuilder, InstBuilder, Value, types};
 use generational_arena::Index;
+use rootcause::prelude::*;
 use std::collections::HashMap;
 
 use crate::compiler::{
-    codegen::{Info, Scopes, error::TranslateError},
+    codegen::{Info, Scopes},
     parser::node::VType,
     tokens::PrimitiveTypes,
 };
 
 use super::expr::expr_to_val;
 
-pub fn expr_block(
-    exprs: &[Index],
-    fn_builder: &mut FunctionBuilder,
-    scopes: &mut Scopes,
-    info: &mut Info,
-) -> Result<Value, TranslateError> {
+pub fn expr_block(exprs: &[Index], fn_builder: &mut FunctionBuilder, scopes: &mut Scopes, info: &mut Info) -> Result<Value, Report> {
     scopes.push(HashMap::new());
     let mut last_res: Option<(Option<Value>, VType)> = None;
     for expr in exprs {
