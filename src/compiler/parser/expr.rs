@@ -38,11 +38,11 @@ impl<'a> Parser<'a> {
             TokenKind::Keyword(Keyword::Break) => {
                 left_expr_idx = self.parse_break_expr_nud(current_token)?;
             }
-            TokenKind::Keyword(Keyword::Loop) => {
-                left_expr_idx = self.parse_loop_expr_nud(current_token)?;
-            }
             TokenKind::Keyword(Keyword::If) => {
                 left_expr_idx = self.parse_if_expr_nud(current_token)?;
+            }
+            TokenKind::Keyword(Keyword::While) => {
+                left_expr_idx = self.parse_while(current_token)?;
             }
             TokenKind::Punctuation(Punctuation::OpenParen) => {
                 left_expr_idx = self.parse_paren_expr_nud(current_token)?;

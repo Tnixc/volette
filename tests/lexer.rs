@@ -332,7 +332,7 @@ fn test_lex_punctuation() {
 fn test_lex_keywords() {
     let mut interner = StringInterner::new();
     let file = interner.get_or_intern("");
-    let contents = r#"fn use const let loop break return struct alloc free pub local self as in"#;
+    let contents = r#"fn use const let while break return struct alloc free pub local self as in"#;
     let mut lexer = Lexer::new(&mut interner, file);
 
     let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
@@ -343,7 +343,7 @@ fn test_lex_keywords() {
         (Keyword(Use), 1, (4, 6)),
         (Keyword(Const), 1, (8, 12)),
         (Keyword(Let), 1, (14, 16)),
-        (Keyword(Loop), 1, (18, 21)),
+        (Keyword(While), 1, (18, 21)),
         (Keyword(Break), 1, (23, 27)),
         (Keyword(Return), 1, (29, 34)),
         (Keyword(Struct), 1, (36, 41)),

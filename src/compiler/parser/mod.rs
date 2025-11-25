@@ -6,7 +6,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use super::tokens::{Keyword, Token, TokenKind};
 use crate::{SafeConvert, compiler::tokens::Punctuation};
 
-pub mod as_;
+pub mod r#as;
 pub mod assignment;
 pub mod binary_ops;
 pub mod block;
@@ -14,10 +14,10 @@ pub mod control_flow;
 pub mod definitions;
 pub mod desugar;
 pub mod display;
-// pub mod error;
 pub mod expr;
 pub mod identifier;
 pub mod literal;
+pub mod r#while;
 #[macro_use]
 pub mod node;
 pub mod paren_block;

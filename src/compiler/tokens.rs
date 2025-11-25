@@ -7,7 +7,7 @@ pub enum Keyword {
     Use,
     Const,
     Let,
-    Loop,
+    While,
     Break,
     Return,
     Struct,

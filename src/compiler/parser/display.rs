@@ -167,7 +167,11 @@ impl ExprKind {
             ),
             ExprKind::Return { value } => format!("Return{{value:{}}}", format_optional_node_to_string(*value, arena, interner)),
             ExprKind::Break => "Break{}".to_string(),
-            ExprKind::Loop { body } => format!("Loop{{body:{}}}", format_node_to_string(*body, arena, interner)),
+            ExprKind::While { cond, body } => format!(
+                "While{{cond:{}}},{{body:{}}}",
+                format_node_to_string(*cond, arena, interner),
+                format_node_to_string(*body, arena, interner)
+            ),
             ExprKind::BlockReturn { value } => format!("BlockReturn{{value:{}}}", format_optional_node_to_string(*value, arena, interner)),
         }
     }

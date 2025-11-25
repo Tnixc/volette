@@ -32,7 +32,7 @@ impl<'a> Lexer<'a> {
             ("local", Local),
             ("alloc", Alloc),
             ("else", Else),
-            ("loop", Loop),
+            ("while", While),
             ("free", Free),
             ("self", Self_),
             ("pub", Pub),

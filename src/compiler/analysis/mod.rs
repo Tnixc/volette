@@ -1,7 +1,7 @@
 mod binop;
 mod compatible;
-// pub mod error;
 mod function_table;
+mod literal;
 mod type_check;
 mod unaryop;
 

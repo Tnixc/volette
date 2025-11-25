@@ -97,9 +97,6 @@ fn desugar_expr(expr_idx: Index, tree: &mut Arena<Node>) {
                         desugar_expr(*v, tree);
                     }
                 }
-                ExprKind::Loop { body } => {
-                    desugar_expr(*body, tree);
-                }
                 ExprKind::BlockReturn { value } => {
                     if let Some(v) = value {
                         desugar_expr(*v, tree);
@@ -118,6 +115,10 @@ fn desugar_expr(expr_idx: Index, tree: &mut Arena<Node>) {
                     if let Some(eb) = else_block {
                         desugar_expr(*eb, tree);
                     }
+                }
+                ExprKind::While { cond, body } => {
+                    desugar_expr(*cond, tree);
+                    desugar_expr(*body, tree);
                 }
                 ExprKind::Cast { expr, .. } => {
                     desugar_expr(*expr, tree);

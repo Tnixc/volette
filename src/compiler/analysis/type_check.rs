@@ -7,10 +7,10 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
-        analysis::{binop::check_binop, compatible::can_convert, unaryop::check_unaryop},
+        analysis::{binop::check_binop, compatible::can_convert, literal::check_literal, unaryop::check_unaryop},
         error::{Help, ReportCollection},
-        parser::node::{DefKind, ExprKind, Literal, Node, NodeKind, VType},
-        tokens::{PrimitiveTypes, Span},
+        parser::node::{DefKind, ExprKind, Node, NodeKind, VType},
+        tokens::PrimitiveTypes,
     },
 };
 
@@ -108,6 +108,8 @@ pub(crate) fn resolve_expr_type(
         (target_node.kind.clone(), target_node.span)
     };
 
+    // NOTE: here is resolve expr type
+    //
     let inferred_type = match kind {
         NodeKind::Expr { kind, .. } => match kind {
             ExprKind::Identifier(symbol) => ident_types.get(&symbol).cloned().ok_or_else(|| {
@@ -188,17 +190,22 @@ pub(crate) fn resolve_expr_type(
                         Ok(then_type)
                     } else {
                         Err(crate::analysis_err!(
-                            "Type mismatch: expected {:?}, got {:?}",
+                            "If-Else branches do not match: expected {:?}, got {:?}",
                             Some(nodes.get(else_block).safe().span.to_display(interner)),
                             then_type,
                             else_type
                         )
-                        .attach(Help("Ensure the types match or add an explicit conversion".into())))
+                        .attach(Help("Ensure the branches match".into())))
                     }
                 } else {
                     // if without else should return nil when condition is false
                     Ok(VType::Primitive(PrimitiveTypes::Nil))
                 }
+            }
+            ExprKind::While { cond, .. } => {
+                let bool_type = VType::Primitive(PrimitiveTypes::Bool);
+                resolve_expr_type(cond, Some(&bool_type), nodes, interner, ident_types, fn_table, diagnostics)?;
+                Ok(VType::Primitive(PrimitiveTypes::Nil))
             }
             ExprKind::Call { func, args } => {
                 let NodeKind::Expr {
@@ -304,32 +311,4 @@ pub(crate) fn resolve_expr_type(
     nodes.get_mut(target_idx).safe().set_type(inferred_type.clone());
 
     Ok(inferred_type)
-}
-
-fn check_literal(
-    span: Span,
-    interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    expected: Option<&VType>,
-    literal: Literal,
-) -> Result<VType, Report> {
-    let inferred = match literal {
-        Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
-        Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
-        Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
-        Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
-    };
-
-    let target = expected.unwrap_or(&inferred);
-
-    if can_convert(&inferred, target) || &inferred == target {
-        Ok(target.clone())
-    } else {
-        Err(crate::analysis_err!(
-            "Type mismatch: expected {:?}, got {:?}",
-            Some(span.to_display(interner)),
-            target,
-            inferred
-        )
-        .attach(Help("Ensure the types match or add an explicit conversion".into())))
-    }
 }

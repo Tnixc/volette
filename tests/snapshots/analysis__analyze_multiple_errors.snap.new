@@ -1,0 +1,24 @@
+---
+source: tests/analysis.rs
+assertion_line: 151
+expression: result.unwrap_err()
+---
+ [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mType mismatch: expected 2 argument(s), got 1 argument(s)[0m[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:6:13-18
+ ╰ [1;32mhelp:[0m Ensure the types match or add an explicit conversion
+━━
+ [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mType mismatch: expected 2 argument(s), got 3 argument(s)[0m[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:7:13-24
+ ╰ [1;32mhelp:[0m Ensure the types match or add an explicit conversion
+━━
+ [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mInvalid cast: cannot cast type Primitive(I32) into Primitive(Bool)[0m[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:8:19-28
+ ╰ [1;32mhelp:[0m This construct is not valid in the current context
+━━
+ [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mUnresolved identifier 'x'[0m[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:9:12-12
+ ╰ [1;32mhelp:[0m This identifier or symbol was not found in the current scope

@@ -1,0 +1,9 @@
+---
+source: tests/analysis.rs
+assertion_line: 92
+expression: result.unwrap_err()
+---
+ [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mUnresolved function 'nonexistent'[0m[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:2:12-26
+ ╰ [1;32mhelp:[0m This identifier or symbol was not found in the current scope

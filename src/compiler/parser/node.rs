@@ -202,7 +202,8 @@ pub enum ExprKind {
         value: Option<Index>,
     },
     Break,
-    Loop {
+    While {
+        cond: Index,
         body: Index,
     },
     BlockReturn {

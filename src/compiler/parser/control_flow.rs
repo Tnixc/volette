@@ -122,37 +122,6 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    pub fn parse_loop_expr_nud(&mut self, loop_keyword_token: Token) -> Result<Index, Report> {
-        self.advance();
-
-        if self.current().kind != TokenKind::Punctuation(Punctuation::OpenBrace) {
-            return Err(crate::parse_err!(
-                "Expected loop body (opening brace), got {:?}",
-                Some(self.current().span.to_display(self.interner)),
-                self.current().kind
-            )
-            .attach(Help("Check the syntax - the parser expected something different here".into())));
-        }
-        let body_idx = self.parse_block_body()?;
-
-        let body_node = self.node(&body_idx).ok_or_else(|| {
-            crate::parse_err!(
-                "Node not found: loop body node",
-                Some(self.current().span.to_display(self.interner))
-            )
-            .attach(Help("This is likely a parser bug - please report it".into()))
-        })?;
-        let loop_span = loop_keyword_token.span.connect_new(&body_node.span);
-
-        Ok(self.push(Node::new(
-            NodeKind::Expr {
-                kind: ExprKind::Loop { body: body_idx },
-                type_: None,
-            },
-            loop_span,
-        )))
-    }
-
     pub fn parse_if_expr_nud(&mut self, if_keyword_token: Token) -> Result<Index, Report> {
         self.advance(); // consume 'if'
 
