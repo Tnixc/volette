@@ -41,9 +41,7 @@ fn compile_full_pipeline(source: &str) -> Result<String, String> {
         return Err(format!("Analysis failed: {:?}", analysis_result.diagnostics));
     }
 
-    let fn_table = analysis_result.value;
-
-    match codegen::codegen(&root, &tree, &interner, &fn_table) {
+    match codegen::codegen(&root, &tree, &interner) {
         Ok(diag) => {
             if !diag.is_empty() {
                 return Err(format!("Codegen failed: {:?}", diag));

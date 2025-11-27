@@ -1,8 +1,0 @@
-[package]
-name = "codegen"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-cranelift = { version = "0.125.3", features = ["core", "module", "native", "object"] }
-target-lexicon = "0.13.2"

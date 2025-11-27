@@ -1,12 +1,8 @@
-use cranelift::prelude::types;
 use derive_more::Display;
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::{
-    codegen::PtrWidth,
-    tokens::{PrimitiveTypes, Span},
-};
+use crate::compiler::tokens::{PrimitiveTypes, Span};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum VType {
@@ -19,24 +15,8 @@ pub enum VType {
 }
 
 impl VType {
-    pub fn to_clif(&self, ptr_bits: PtrWidth) -> types::Type {
-        match self {
-            VType::Primitive(pt) => pt.to_clif(ptr_bits),
-            VType::Custom(_) => panic!("Custom types are not yet supported in codegen"),
-            VType::Pointer(_) => match ptr_bits {
-                PtrWidth::X64 => types::I64,
-                PtrWidth::X32 => types::I32,
-            }, // yeah idk
-        }
-    }
-
     pub fn coerced(&self) -> &VType {
         match self {
-            // VType::Pointer(_) => match ptr_width() {
-            //     // PtrWidth::X64 => &VType::Primitive(PrimitiveTypes::IS),
-            //     // PtrWidth::X32 => &VType::Primitive(PrimitiveTypes::I32),
-            //     //
-            // }, // yeah idk
             VType::Pointer(_) => &VType::Primitive(PrimitiveTypes::Usize),
             _ => self,
         }

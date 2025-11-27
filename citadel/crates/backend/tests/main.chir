@@ -1,0 +1,7 @@
+entry {
+    exit call %main()
+}
+
+func @main() i32 {
+    
+}

@@ -2,4 +2,4 @@
 source: tests/integration.rs
 expression: result.unwrap()
 ---
-Full compilation successful: 38 tokens processed
+Full compilation successful: 17 tokens processed

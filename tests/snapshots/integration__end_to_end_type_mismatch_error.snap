@@ -2,7 +2,13 @@
 source: tests/integration.rs
 expression: result.unwrap_err()
 ---
-Codegen error: 
- [97m● [1m[31merror[0m[2m[Code Generation][0m: [1;97mCranelift compile error: Verifier(VerifierErrors([VerifierError { location: inst4, context: Some("return v2"), message: "result 0 has type i64, must match function signature of i32" }]))[0m[0m
+Analysis failed: 
+ [97m● [1merror[Analysis]: Type mismatch: expected Primitive(Bool), got Primitive(I32)[0m
  ├ src/compiler/error.rs:212
- ╰ test.vt:1:1-2
+ ├ test.vt:2:19-20
+ ╰ help: Ensure the types match or add an explicit conversion
+━━
+ [97m● [1merror[Analysis]: Unresolved identifier 'b'[0m
+ ├ src/compiler/error.rs:212
+ ├ test.vt:3:12-12
+ ╰ help: This identifier or symbol was not found in the current scope

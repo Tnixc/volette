@@ -1,0 +1,16 @@
+[package]
+name = "citadel-backend"
+version = "0.0.12"
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+description = "The backend/codegenerator of the citadel compiler backend"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bumpalo = "3.16.0"
+citadel-frontend = { path = "../frontend",  version = "0.0.12" }
+
+[dev-dependencies]
+citadel-irparser = { path = "../irparser" }

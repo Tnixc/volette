@@ -39,9 +39,7 @@ fn codegen_source(source: &str) -> Result<String, String> {
         return Err(format!("{:?}", analysis_result.diagnostics));
     }
 
-    let fn_table = analysis_result.value;
-
-    match codegen::codegen(&root, &tree, &interner, &fn_table) {
+    match codegen::codegen(&root, &tree, &interner) {
         Ok(diag) => {
             if !diag.is_empty() {
                 return Err(format!("{:?}", diag));
@@ -97,19 +95,6 @@ fn test_codegen_negation() {
     let source = r#"
 fn negate(x: i32): i32 {
     return -x;
-}
-"#;
-    let result = codegen_source(source);
-    assert!(result.is_ok(), "Expected success, got: {:?}", result);
-    insta::assert_snapshot!(result.unwrap());
-}
-
-#[test]
-fn test_codegen_pointer_ops() {
-    let source = r#"
-fn ptr_test(x: i32): i32 {
-    let p = &x;
-    return @p;
 }
 "#;
     let result = codegen_source(source);

@@ -76,7 +76,6 @@ pub fn build(file: &Path) {
     };
 
     all_diagnostics.extend(analysis_result.diagnostics);
-    let fn_table = analysis_result.value;
 
     // stop if we have any errors
     if !all_diagnostics.is_empty() {
@@ -88,7 +87,7 @@ pub fn build(file: &Path) {
     println!("{}", "=== Code Generation Phase ===".bright_blue());
     root.print_tree(&tree, &interner);
 
-    match codegen::codegen(&root, &tree, &interner, &fn_table) {
+    match codegen::codegen(&root, &tree, &interner) {
         Ok(diag) => {
             all_diagnostics.extend(diag);
         }

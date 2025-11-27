@@ -3,7 +3,7 @@ source: tests/integration.rs
 expression: result.unwrap_err()
 ---
 Analysis failed: 
- [97m● [1m[31merror[0m[2m[Analysis][0m: [1;97mUnresolved function 'nonexistent'[0m[0m
+ [97m● [1merror[Analysis]: Unresolved function 'nonexistent'[0m
  ├ src/compiler/error.rs:212
  ├ test.vt:2:12-26
- ╰ [1;32mhelp:[0m This identifier or symbol was not found in the current scope
+ ╰ help: This identifier or symbol was not found in the current scope

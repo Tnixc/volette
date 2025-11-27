@@ -1,3 +1,14 @@
+[workspace]
+members = [
+    ".",
+    "citadel/crates/api",
+    "citadel/crates/frontend",
+    "citadel/crates/middleend",
+    "citadel/crates/backend",
+    "citadel/crates/irparser",
+]
+resolver = "2"
+
 [package]
 name = "volette"
 version = "0.1.0"
@@ -6,13 +17,13 @@ edition = "2024"
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
 colored = "3.0.0"
-cranelift = { version = "0.125.3", features = ["core", "module", "native", "object"] }
 derive_more = { version = "2.0.1", features = ["display"] }
 generational-arena = "0.2.9"
 rootcause = "0.8.1"
 string-interner = "0.19.0"
-target-lexicon = "0.13.2"
 thiserror = "2.0.12"
+citadel-api = { path = "citadel/crates/api" }
+bumpalo = "3.16"
 
 [dev-dependencies]
 insta = "1.43.2"

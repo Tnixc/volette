@@ -1,13 +1,7 @@
 #include <stdio.h>
-extern int t(int);
-// extern int test_negation(int);
-// extern int test_not(int);
-// extern long ptr(int);
-// extern int v();
-// extern int test_nested_negation(int);
+extern int test(int);
 
 int main() {
-  int a = 10;
-  printf("test(%d) = %d \n", a, t(a));
-  return 0;
+    printf("test() = %d\n", test(11));
+    return 0;
 }

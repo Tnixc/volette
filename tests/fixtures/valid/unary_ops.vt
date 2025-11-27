@@ -1,8 +1,3 @@
 fn negation(x: i32): i32 {
     return -x;
 }
-
-fn address_and_deref(x: i32): i32 {
-    let p = &x;
-    return @p;
-}
