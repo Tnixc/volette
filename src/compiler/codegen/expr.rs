@@ -6,7 +6,7 @@ use crate::{
     SafeConvert,
     compiler::{
         analysis::literal_default_types,
-        codegen::{Info, Scopes, unary_ops::expr_unaryop, variable::expr_assign},
+        codegen::{Info, Scopes, unary_ops::expr_unaryop, variable::expr_assign, r#while::expr_while},
         error::Help,
         parser::node::{ExprKind, NodeKind, VType},
         tokens::PrimitiveTypes,
@@ -55,6 +55,10 @@ pub fn expr_to_val(
                 ExprKind::Assign { target, value } => Some(expr_assign(*target, *value, fn_builder, scopes, info)?),
                 ExprKind::UnaryOp { op, expr } => Some(expr_unaryop(*op, *expr, fn_builder, scopes, info)?),
                 ExprKind::Cast { expr, target_type } => Some(expr_cast(*expr, target_type, fn_builder, scopes, info)?),
+                ExprKind::While { .. } => {
+                    expr_while(node_idx, fn_builder, scopes, info)?;
+                    None
+                }
                 _ => {
                     return Err(
                         crate::codegen_err!("Unsupported expression kind: {:?}", Some(node.span.to_display(info.interner)), kind)

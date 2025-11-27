@@ -1,6 +1,9 @@
-fn t(){
-    let cond = true;
-        while cond {
-                1;
-            }
-    }
+fn t(): i32{
+    let i = 1;
+    let sum = 0
+    while i < 10 {
+        sum += i * i;
+        i += 1;
+    };
+    return sum;
+}

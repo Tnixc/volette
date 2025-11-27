@@ -13,7 +13,6 @@ impl<'a> Parser<'a> {
     pub fn parse_while(&mut self, while_token: Token) -> Result<Index, Report> {
         self.advance(); // consume 'while'
 
-        // the value is an expression, parse it with full precedence.
         let cond = self.pratt_parse_expression(BindingPower::None)?;
         let loop_content = self.parse_block_body()?;
         let start_span = while_token.span;

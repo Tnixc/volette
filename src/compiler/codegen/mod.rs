@@ -28,18 +28,18 @@ use crate::{
 };
 use rootcause::prelude::*;
 
-pub mod binary_ops;
-pub mod block;
-pub mod cast;
-pub mod control_flow;
-// pub mod error;
-pub mod expr;
-pub mod function;
-pub mod function_call;
-pub mod literal;
-pub mod translate;
-pub mod unary_ops;
-pub mod variable;
+mod binary_ops;
+mod block;
+mod cast;
+mod control_flow;
+mod expr;
+mod function;
+mod function_call;
+mod literal;
+mod translate;
+mod unary_ops;
+mod variable;
+mod r#while;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PtrWidth {

@@ -202,9 +202,10 @@ pub(crate) fn resolve_expr_type(
                     Ok(VType::Primitive(PrimitiveTypes::Nil))
                 }
             }
-            ExprKind::While { cond, .. } => {
+            ExprKind::While { cond, body } => {
                 let bool_type = VType::Primitive(PrimitiveTypes::Bool);
                 resolve_expr_type(cond, Some(&bool_type), nodes, interner, ident_types, fn_table, diagnostics)?;
+                resolve_expr_type(body, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 Ok(VType::Primitive(PrimitiveTypes::Nil))
             }
             ExprKind::Call { func, args } => {
