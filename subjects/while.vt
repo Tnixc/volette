@@ -1,18 +1,43 @@
-fn t(): i32{
-    let i = 1;
-    let sum = 0
-    while i < 10 {
-        sum += i * i;
-        i += 1;
-    };
-    return sum;
+fn w(): i32 {
+    let count = 0;
+    let sum = 0;
+
+    while count < 20 {
+        count += 1;
+
+        if count % 3 == 0 {
+            continue;
+        }
+
+        if count >= 15 {
+            break;
+        }
+
+        sum += count;
+    }
+
+    return count;
 }
-fn t2(): i32{
+
+fn factorial(n: i32): i32 {
+    let result = 1;
     let i = 1;
-    let sum = 0
-    while i < 10 {
-        sum += i * i;
+    while i <= n {
+        result *= i;
         i += 1;
-    };
-    return sum;
+    }
+    return result;
+}
+
+fn fib(n: i32): i32 {
+    let a = 0;
+    let b = 1;
+    let i = 0;
+    while i < n {
+        let tmp = a + b;
+        a = b;
+        b = tmp;
+        i += 1;
+    }
+    return a;
 }

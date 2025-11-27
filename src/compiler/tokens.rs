@@ -9,6 +9,7 @@ pub enum Keyword {
     Let,
     While,
     Break,
+    Continue,
     Return,
     Struct,
     Alloc,

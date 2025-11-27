@@ -167,6 +167,7 @@ impl ExprKind {
             ),
             ExprKind::Return { value } => format!("Return{{value:{}}}", format_optional_node_to_string(*value, arena, interner)),
             ExprKind::Break => "Break{}".to_string(),
+            ExprKind::Continue => "While{}".to_string(),
             ExprKind::While { cond, body } => format!(
                 "While{{cond:{}}},{{body:{}}}",
                 format_node_to_string(*cond, arena, interner),

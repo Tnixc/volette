@@ -182,6 +182,7 @@ pub enum ExprKind {
         value: Option<Index>,
     },
     Break,
+    Continue,
     While {
         cond: Index,
         body: Index,

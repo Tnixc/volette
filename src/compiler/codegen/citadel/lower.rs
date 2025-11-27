@@ -14,6 +14,11 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 
 use crate::compiler::parser::node::{BinOpKind, DefKind, ExprKind, Node, NodeKind, UnaryOpKind, VType};
 
+struct LoopContext<'a> {
+    break_label: &'a str,
+    continue_label: &'a str,
+}
+
 pub struct CitadelLowering<'a> {
     arena: &'a Bump,
     nodes: &'a Arena<Node>,
@@ -22,6 +27,7 @@ pub struct CitadelLowering<'a> {
     label_counter: usize,
     scopes: Vec<HashMap<SymbolUsize, (&'a str, Type<'a>)>>,
     var_counter: usize,
+    loop_stack: Vec<LoopContext<'a>>,
 }
 
 impl<'a> CitadelLowering<'a> {
@@ -34,6 +40,7 @@ impl<'a> CitadelLowering<'a> {
             label_counter: 0,
             scopes: Vec::new(),
             var_counter: 0,
+            loop_stack: Vec::new(),
         }
     }
 
@@ -548,6 +555,22 @@ impl<'a> CitadelLowering<'a> {
 
                     ExprKind::While { cond, body } => self.lower_while(*cond, *body),
 
+                    ExprKind::Break => {
+                        let ctx = self
+                            .loop_stack
+                            .last()
+                            .ok_or_else(|| crate::codegen_err!("'break' outside of loop", Some(node.span.to_display(self.interner))))?;
+                        Ok(vec![IRStmt::Jump(JumpStmt { label: ctx.break_label })])
+                    }
+
+                    ExprKind::Continue => {
+                        let ctx = self
+                            .loop_stack
+                            .last()
+                            .ok_or_else(|| crate::codegen_err!("'continue' outside of loop", Some(node.span.to_display(self.interner))))?;
+                        Ok(vec![IRStmt::Jump(JumpStmt { label: ctx.continue_label })])
+                    }
+
                     ExprKind::Block { exprs } => {
                         self.push_scope();
                         let mut stmts = Vec::new();
@@ -621,6 +644,11 @@ impl<'a> CitadelLowering<'a> {
         let loop_body = self.fresh_label("while_body");
         let loop_end = self.fresh_label("while_end");
 
+        self.loop_stack.push(LoopContext {
+            break_label: loop_end,
+            continue_label: loop_start,
+        });
+
         let mut stmts = Vec::new();
 
         // Loop start label
@@ -643,6 +671,8 @@ impl<'a> CitadelLowering<'a> {
 
         // Loop end
         stmts.push(IRStmt::Label(LabelStmt { name: loop_end }));
+
+        self.loop_stack.pop();
 
         Ok(stmts)
     }

@@ -122,6 +122,18 @@ impl<'a> Parser<'a> {
         )))
     }
 
+    pub fn parse_continue_expr_nud(&mut self, continue_keyword_token: Token) -> Result<Index, Report> {
+        self.advance();
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::Continue,
+                type_: None,
+            },
+            continue_keyword_token.span,
+        )))
+    }
+
     pub fn parse_if_expr_nud(&mut self, if_keyword_token: Token) -> Result<Index, Report> {
         self.advance(); // consume 'if'
 

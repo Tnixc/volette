@@ -33,6 +33,7 @@ impl<'a> Lexer<'a> {
             ("alloc", Alloc),
             ("else", Else),
             ("while", While),
+            ("continue", Continue),
             ("free", Free),
             ("self", Self_),
             ("pub", Pub),

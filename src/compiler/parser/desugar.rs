@@ -126,7 +126,7 @@ fn desugar_expr(expr_idx: Index, tree: &mut Arena<Node>) {
                 ExprKind::UnaryOp { expr, .. } => {
                     desugar_expr(*expr, tree);
                 }
-                ExprKind::Literal(_) | ExprKind::Identifier(_) | ExprKind::Break => {}
+                _ => {}
             }
         }
         _ => {}

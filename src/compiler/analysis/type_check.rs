@@ -208,6 +208,7 @@ pub(crate) fn resolve_expr_type(
                 resolve_expr_type(body, None, nodes, interner, ident_types, fn_table, diagnostics)?;
                 Ok(VType::Primitive(PrimitiveTypes::Nil))
             }
+            ExprKind::Break | ExprKind::Continue => Ok(VType::Primitive(PrimitiveTypes::Never)),
             ExprKind::Call { func, args } => {
                 let NodeKind::Expr {
                     kind: ExprKind::Identifier(func_name),
