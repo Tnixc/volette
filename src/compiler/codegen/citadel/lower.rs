@@ -52,6 +52,14 @@ impl<'a> CitadelLowering<'a> {
         self.scopes.pop();
     }
 
+    fn is_diverging(&self, idx: Index) -> bool {
+        let node = self.nodes.get(idx).unwrap();
+        match &node.kind {
+            NodeKind::Expr { kind, .. } => matches!(kind, ExprKind::Return { .. } | ExprKind::Break | ExprKind::Continue),
+            _ => false,
+        }
+    }
+
     fn declare_var(&mut self, sym: SymbolUsize, ty: Type<'a>) -> &'a str {
         let base_name = self.interner.resolve(sym).unwrap_or("var");
         let mangled = self.arena.alloc_str(&format!("{}_{}", base_name, self.var_counter));
@@ -150,7 +158,7 @@ impl<'a> CitadelLowering<'a> {
             })
             .collect();
 
-        let block = self.lower_block(body)?;
+        let block = self.lower_function_body(body, return_type)?;
 
         self.pop_scope();
 
@@ -164,6 +172,48 @@ impl<'a> CitadelLowering<'a> {
         }));
 
         Ok(())
+    }
+
+    fn lower_function_body(&mut self, body_idx: Index, return_type: &VType) -> Result<BlockStmt<'a>, Report> {
+        let body_node = self
+            .nodes
+            .get(body_idx)
+            .ok_or_else(|| crate::codegen_err!("Invalid body index", None))?;
+
+        match &body_node.kind {
+            NodeKind::Expr {
+                kind: ExprKind::Block { exprs },
+                ..
+            } => {
+                let mut stmts = Vec::new();
+                let len = exprs.len();
+
+                for (i, expr_idx) in exprs.iter().enumerate() {
+                    let is_last = i == len - 1;
+
+                    if is_last && !return_type.is_zst() {
+                        let (prereqs, expr) = self.lower_expr_with_prereqs(*expr_idx)?;
+                        stmts.extend(prereqs);
+                        stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                    } else {
+                        let expr_stmts = self.lower_expr_to_stmts_inner(*expr_idx)?;
+                        stmts.extend(expr_stmts);
+                    }
+                }
+                Ok(BlockStmt { stmts })
+            }
+            _ => {
+                if !return_type.is_zst() {
+                    let (prereqs, expr) = self.lower_expr_with_prereqs(body_idx)?;
+                    let mut stmts = prereqs;
+                    stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                    Ok(BlockStmt { stmts })
+                } else {
+                    let stmts = self.lower_expr_to_stmts_inner(body_idx)?;
+                    Ok(BlockStmt { stmts })
+                }
+            }
+        }
     }
 
     fn lower_block(&mut self, body_idx: Index) -> Result<BlockStmt<'a>, Report> {
@@ -185,7 +235,6 @@ impl<'a> CitadelLowering<'a> {
                 Ok(BlockStmt { stmts })
             }
             _ => {
-                // Single expression body
                 let stmts = self.lower_expr_to_stmts_inner(body_idx)?;
                 Ok(BlockStmt { stmts })
             }
@@ -298,6 +347,14 @@ impl<'a> CitadelLowering<'a> {
                 ExprKind::LetBinding { name, value, .. } => {
                     let (mut stmts, val) = self.lower_expr_with_prereqs(*value)?;
                     let var_type = type_.as_ref().map(|t| self.lower_type(t)).unwrap_or(Type::Ident(INT32_T));
+
+                    if type_.as_ref().map(|t| t.is_zst()).unwrap_or(false) {
+                        if let IRExpr::Call(call) = val {
+                            stmts.push(IRStmt::Call(call));
+                        }
+                        return Ok((stmts, IRExpr::Literal(Literal::Int32(0), Type::Ident(INT32_T))));
+                    }
+
                     let var_name = self.declare_var(*name, var_type.clone());
 
                     stmts.push(IRStmt::Variable(VarStmt {
@@ -344,7 +401,6 @@ impl<'a> CitadelLowering<'a> {
             }
             VLit::Float(v) => Ok(IRExpr::Literal(Literal::Float64(v), Type::Ident(ir::FLOAT64_T))),
             VLit::Bool(v) => Ok(IRExpr::Literal(Literal::Bool(v), Type::Ident(INT8_T))),
-            VLit::Nil => Ok(IRExpr::Literal(Literal::Int32(0), Type::Ident(INT32_T))),
         }
     }
 
@@ -496,18 +552,39 @@ impl<'a> CitadelLowering<'a> {
             NodeKind::Expr { kind, type_ } => {
                 match kind {
                     ExprKind::Return { value } => {
-                        let ret_val = if let Some(val_idx) = value {
+                        if let Some(val_idx) = value {
+                            let val_node = self.nodes.get(*val_idx);
+                            let is_zst = val_node
+                                .and_then(|n| {
+                                    if let NodeKind::Expr { type_, .. } = &n.kind {
+                                        type_.as_ref().map(|t| t.is_zst())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .unwrap_or(false);
+
+                            if is_zst {
+                                return Ok(vec![IRStmt::Return(ReturnStmt { ret_val: None })]);
+                            }
+
                             let (stmts, expr) = self.lower_expr_with_prereqs(*val_idx)?;
                             let mut result = stmts;
-                            result.push(IRStmt::Return(ReturnStmt { ret_val: expr }));
+                            result.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
                             return Ok(result);
-                        } else {
-                            IRExpr::Literal(Literal::Int32(0), Type::Ident(INT32_T))
-                        };
-                        Ok(vec![IRStmt::Return(ReturnStmt { ret_val })])
+                        }
+                        Ok(vec![IRStmt::Return(ReturnStmt { ret_val: None })])
                     }
 
                     ExprKind::LetBinding { name, value, .. } => {
+                        if type_.as_ref().map(|t| t.is_zst()).unwrap_or(false) {
+                            let (mut stmts, val) = self.lower_expr_with_prereqs(*value)?;
+                            if let IRExpr::Call(call) = val {
+                                stmts.push(IRStmt::Call(call));
+                            }
+                            return Ok(stmts);
+                        }
+
                         let (mut stmts, val) = self.lower_expr_with_prereqs(*value)?;
                         let var_type = type_.as_ref().map(|t| self.lower_type(t)).unwrap_or(Type::Ident(INT32_T));
                         let var_name = self.declare_var(*name, var_type.clone());
@@ -575,8 +652,12 @@ impl<'a> CitadelLowering<'a> {
                         self.push_scope();
                         let mut stmts = Vec::new();
                         for expr_idx in exprs {
+                            let diverges = self.is_diverging(*expr_idx);
                             let expr_stmts = self.lower_expr_to_stmts_inner(*expr_idx)?;
                             stmts.extend(expr_stmts);
+                            if diverges {
+                                break;
+                            }
                         }
                         self.pop_scope();
                         Ok(stmts)

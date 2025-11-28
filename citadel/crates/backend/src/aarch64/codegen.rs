@@ -158,8 +158,10 @@ impl<'c> CodeGenerator<'c> {
     }
 
     fn gen_return(&mut self, ret: &'c ReturnStmt) {
-        let val = self.gen_expr(&ret.ret_val);
-        self.mov_to_reg(Register::X0, val);
+        if let Some(ref ret_val) = ret.ret_val {
+            let val = self.gen_expr(ret_val);
+            self.mov_to_reg(Register::X0, val);
+        }
         self.gen_epilogue();
     }
 

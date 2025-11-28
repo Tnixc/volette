@@ -103,7 +103,7 @@ pub enum PrimitiveTypes {
     F32,
     F64,
     Bool,
-    Nil,
+    Unit,
     Never,
 }
 
@@ -112,7 +112,6 @@ pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
     BoolLiteral(bool),
-    NilLiteral,
     StringLiteral(SymbolUsize),
     Keyword(Keyword),
     TypeLiteral(PrimitiveTypes),

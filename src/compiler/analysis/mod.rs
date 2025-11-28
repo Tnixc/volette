@@ -37,6 +37,5 @@ pub fn literal_default_types(literal: Literal) -> VType {
         Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
         Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
         Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
-        Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     }
 }

@@ -1,0 +1,15 @@
+fn get_unit(): unit {
+    {}
+}
+
+fn returns_nothing(): unit {
+    let x: i32 = 10;
+    let y: i32 = 20;
+    {}
+}
+
+fn test_unit(): i32 {
+    let u: unit = {};
+    let v: unit = get_unit();
+    42
+}

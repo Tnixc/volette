@@ -18,7 +18,6 @@ pub fn check_literal(
         Literal::Int(_) => VType::Primitive(PrimitiveTypes::I32),
         Literal::Float(_) => VType::Primitive(PrimitiveTypes::F32),
         Literal::Bool(_) => VType::Primitive(PrimitiveTypes::Bool),
-        Literal::Nil => VType::Primitive(PrimitiveTypes::Nil),
     };
 
     let target = expected.unwrap_or(&inferred);

@@ -1,6 +1,6 @@
 //! Type conversion utilities between Volette types and Citadel IR types
 
-use citadel_api::frontend::ir::{FLOAT32_T, FLOAT64_T, INT8_T, INT16_T, INT32_T, INT64_T, Type};
+use citadel_api::frontend::ir::{FLOAT32_T, FLOAT64_T, INT8_T, INT16_T, INT32_T, INT64_T, NEVER_T, Type, UNIT_T};
 
 use crate::compiler::{parser::node::VType, tokens::PrimitiveTypes};
 
@@ -8,9 +8,16 @@ impl VType {
     pub fn to_citadel_type(&self) -> Type<'static> {
         match self {
             VType::Primitive(p) => Type::Ident(p.to_citadel_str()),
-            VType::Pointer(_) => Type::Ident(INT64_T), // pointers as i64
+            VType::Pointer(_) => Type::Ident(INT64_T),
             VType::Custom(_) => panic!("Custom types not yet supported in Citadel backend"),
         }
+    }
+
+    pub fn is_zst(&self) -> bool {
+        matches!(
+            self,
+            VType::Primitive(PrimitiveTypes::Unit) | VType::Primitive(PrimitiveTypes::Never)
+        )
     }
 }
 
@@ -29,9 +36,13 @@ impl PrimitiveTypes {
             PrimitiveTypes::Usize => INT64_T,
             PrimitiveTypes::F32 => FLOAT32_T,
             PrimitiveTypes::F64 => FLOAT64_T,
-            PrimitiveTypes::Bool => INT8_T,   // bools as i8
-            PrimitiveTypes::Nil => INT32_T,   // placeholder for void
-            PrimitiveTypes::Never => INT32_T, // placeholder
+            PrimitiveTypes::Bool => INT8_T,
+            PrimitiveTypes::Unit => UNIT_T,
+            PrimitiveTypes::Never => NEVER_T,
         }
+    }
+
+    pub fn is_zst(&self) -> bool {
+        matches!(self, PrimitiveTypes::Unit | PrimitiveTypes::Never)
     }
 }

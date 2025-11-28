@@ -13,6 +13,8 @@ pub const INT32_T: &str = "i32";
 pub const INT64_T: &str = "i64";
 pub const FLOAT32_T: &str = "f32";
 pub const FLOAT64_T: &str = "f64";
+pub const UNIT_T: &str = "unit";
+pub const NEVER_T: &str = "never";
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IRStmt<'ir> {
@@ -159,7 +161,7 @@ pub struct LabelStmt<'ir> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnStmt<'ir> {
-    pub ret_val: IRExpr<'ir>,
+    pub ret_val: Option<IRExpr<'ir>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

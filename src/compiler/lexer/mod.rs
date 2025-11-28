@@ -140,7 +140,6 @@ impl<'a> Lexer<'a> {
                         && !self.check_type_literals()
                         && !self.check_keywords()
                         && !self.check_bool()
-                        && !self.check_nil()
                         && !c.is_valid_ident_char()
                         && !self.current_chars.is_empty()
                         && self.current_chars.len() > 1

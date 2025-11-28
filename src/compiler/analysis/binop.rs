@@ -27,7 +27,7 @@ pub(crate) fn check_binop(
     let left_ty = resolve_expr_type(left, None, nodes, interner, ident_types, fn_table, diagnostics)?;
     let right_ty = resolve_expr_type(right, None, nodes, interner, ident_types, fn_table, diagnostics)?;
 
-    if left_ty == VType::Primitive(PrimitiveTypes::Nil) || left_ty == VType::Primitive(PrimitiveTypes::Nil) {
+    if left_ty == VType::Primitive(PrimitiveTypes::Unit) || right_ty == VType::Primitive(PrimitiveTypes::Unit) {
         return Err(crate::analysis_err!(
             "Invalid binary operation '{:?}': cannot be used with type {:?}",
             Some(

@@ -26,7 +26,10 @@ mod tests {
         let ir_stream = [
             IRStmt::Label(LabelStmt { name: "myLabel" }),
             IRStmt::Return(ReturnStmt {
-                ret_val: IRExpr::Literal(Literal::String("test".into()), ir::Type::Array(&ir::Type::Ident(INT8_T), 4)),
+                ret_val: Some(IRExpr::Literal(
+                    Literal::String("test".into()),
+                    ir::Type::Array(&ir::Type::Ident(INT8_T), 4),
+                )),
             }),
         ];
 

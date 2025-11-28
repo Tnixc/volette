@@ -17,7 +17,6 @@ impl<'a> Parser<'a> {
             TokenKind::IntLiteral(i) => Literal::Int(i),
             TokenKind::FloatLiteral(f) => Literal::Float(f),
             TokenKind::BoolLiteral(b) => Literal::Bool(b),
-            TokenKind::NilLiteral => Literal::Nil,
             _ => {
                 return Err(crate::parse_err!(
                     "Invalid token in literal context: Expected literal, got {:?}",

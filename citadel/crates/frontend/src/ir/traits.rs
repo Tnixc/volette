@@ -56,7 +56,10 @@ impl Display for LabelStmt<'_> {
 
 impl Display for ReturnStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ret {}", self.ret_val)
+        match &self.ret_val {
+            Some(val) => write!(f, "ret {}", val),
+            None => write!(f, "ret"),
+        }
     }
 }
 

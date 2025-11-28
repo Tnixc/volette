@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
 
         self.advance();
 
-        let mut return_type = VType::Primitive(PrimitiveTypes::Nil);
+        let mut return_type = VType::Primitive(PrimitiveTypes::Unit);
 
         if let TokenKind::Punctuation(Punctuation::Colon) = self.current().kind {
             self.advance();

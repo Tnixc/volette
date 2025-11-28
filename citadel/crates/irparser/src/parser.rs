@@ -357,7 +357,7 @@ impl<'p> Parser<'p> {
     fn parse_return(&mut self) -> Option<IRStmt<'p>> {
         self.next_tok();
         let expr = self.parse_expr();
-        Some(IRStmt::Return(ReturnStmt { ret_val: expr? }))
+        Some(IRStmt::Return(ReturnStmt { ret_val: expr }))
     }
 
     fn parse_exit(&mut self) -> Option<IRStmt<'p>> {

@@ -155,9 +155,9 @@ pub(crate) fn resolve_expr_type(
             }
             ExprKind::Block { exprs } => {
                 if exprs.is_empty() {
-                    Ok(VType::Primitive(PrimitiveTypes::Nil))
+                    Ok(VType::Primitive(PrimitiveTypes::Unit))
                 } else {
-                    let mut last_expr_type = VType::Primitive(PrimitiveTypes::Nil);
+                    let mut last_expr_type = VType::Primitive(PrimitiveTypes::Unit);
                     for &expr_idx in &exprs {
                         match resolve_expr_type(expr_idx, None, nodes, interner, ident_types, fn_table, diagnostics) {
                             Ok(ty) => last_expr_type = ty,
@@ -198,15 +198,15 @@ pub(crate) fn resolve_expr_type(
                         .attach(Help("Ensure the branches match".into())))
                     }
                 } else {
-                    // if without else should return nil when condition is false
-                    Ok(VType::Primitive(PrimitiveTypes::Nil))
+                    // if without else should return unit when condition is false
+                    Ok(VType::Primitive(PrimitiveTypes::Unit))
                 }
             }
             ExprKind::While { cond, body } => {
                 let bool_type = VType::Primitive(PrimitiveTypes::Bool);
                 resolve_expr_type(cond, Some(&bool_type), nodes, interner, ident_types, fn_table, diagnostics)?;
                 resolve_expr_type(body, None, nodes, interner, ident_types, fn_table, diagnostics)?;
-                Ok(VType::Primitive(PrimitiveTypes::Nil))
+                Ok(VType::Primitive(PrimitiveTypes::Unit))
             }
             ExprKind::Break | ExprKind::Continue => Ok(VType::Primitive(PrimitiveTypes::Never)),
             ExprKind::Call { func, args } => {
