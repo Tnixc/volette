@@ -25,7 +25,7 @@ fn test(a: i32): i32 {
     // x = 10 + ( a - 10 )
     x += a -= x;
     let k : &i32 = &x;
-    {
+    while false {
         let a = 4;
         a += 5;
     }

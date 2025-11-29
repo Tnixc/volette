@@ -192,9 +192,14 @@ impl<'a> CitadelLowering<'a> {
                     let is_last = i == len - 1;
 
                     if is_last && !return_type.is_zst() {
-                        let (prereqs, expr) = self.lower_expr_with_prereqs(*expr_idx)?;
-                        stmts.extend(prereqs);
-                        stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                        if self.is_diverging(*expr_idx) {
+                            let expr_stmts = self.lower_expr_to_stmts_inner(*expr_idx)?;
+                            stmts.extend(expr_stmts);
+                        } else {
+                            let (prereqs, expr) = self.lower_expr_with_prereqs(*expr_idx)?;
+                            stmts.extend(prereqs);
+                            stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                        }
                     } else {
                         let expr_stmts = self.lower_expr_to_stmts_inner(*expr_idx)?;
                         stmts.extend(expr_stmts);
@@ -204,10 +209,16 @@ impl<'a> CitadelLowering<'a> {
             }
             _ => {
                 if !return_type.is_zst() {
-                    let (prereqs, expr) = self.lower_expr_with_prereqs(body_idx)?;
-                    let mut stmts = prereqs;
-                    stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
-                    Ok(BlockStmt { stmts })
+                    // Check if body already diverges
+                    if self.is_diverging(body_idx) {
+                        let stmts = self.lower_expr_to_stmts_inner(body_idx)?;
+                        Ok(BlockStmt { stmts })
+                    } else {
+                        let (prereqs, expr) = self.lower_expr_with_prereqs(body_idx)?;
+                        let mut stmts = prereqs;
+                        stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                        Ok(BlockStmt { stmts })
+                    }
                 } else {
                     let stmts = self.lower_expr_to_stmts_inner(body_idx)?;
                     Ok(BlockStmt { stmts })
@@ -367,6 +378,76 @@ impl<'a> CitadelLowering<'a> {
                     }));
 
                     Ok((stmts, IRExpr::Ident(var_name)))
+                }
+
+                ExprKind::Return { value } => {
+                    // return is a diverging expression - emit return statement and return a dummy value
+                    // i've replaced dummy values with 555, 777, etc to see if they show up
+                    // hopefully not
+                    if let Some(val_idx) = value {
+                        let val_node = self.nodes.get(*val_idx);
+                        let is_zst = val_node
+                            .and_then(|n| {
+                                if let NodeKind::Expr { type_, .. } = &n.kind {
+                                    type_.as_ref().map(|t| t.is_zst())
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or(false);
+
+                        if is_zst {
+                            return Ok((
+                                vec![IRStmt::Return(ReturnStmt { ret_val: None })],
+                                IRExpr::Literal(Literal::Int32(333), Type::Ident(INT32_T)),
+                            ));
+                        }
+
+                        let (mut stmts, expr) = self.lower_expr_with_prereqs(*val_idx)?;
+                        stmts.push(IRStmt::Return(ReturnStmt { ret_val: Some(expr) }));
+                        Ok((stmts, IRExpr::Literal(Literal::Int32(444), Type::Ident(INT32_T))))
+                    } else {
+                        Ok((
+                            vec![IRStmt::Return(ReturnStmt { ret_val: None })],
+                            IRExpr::Literal(Literal::Int32(555), Type::Ident(INT32_T)),
+                        ))
+                    }
+                }
+
+                ExprKind::If {
+                    cond,
+                    then_block,
+                    else_block,
+                } => {
+                    let stmts = self.lower_if(*cond, *then_block, *else_block)?;
+                    Ok((stmts, IRExpr::Literal(Literal::Int32(777), Type::Ident(INT32_T))))
+                }
+
+                ExprKind::While { cond, body } => {
+                    let stmts = self.lower_while(*cond, *body)?;
+                    Ok((stmts, IRExpr::Literal(Literal::Int32(888), Type::Ident(INT32_T))))
+                }
+
+                ExprKind::Break => {
+                    let ctx = self
+                        .loop_stack
+                        .last()
+                        .ok_or_else(|| crate::codegen_err!("'break' outside of loop", Some(node.span.to_display(self.interner))))?;
+                    Ok((
+                        vec![IRStmt::Jump(JumpStmt { label: ctx.break_label })],
+                        IRExpr::Literal(Literal::Int32(0), Type::Ident(INT32_T)),
+                    ))
+                }
+
+                ExprKind::Continue => {
+                    let ctx = self
+                        .loop_stack
+                        .last()
+                        .ok_or_else(|| crate::codegen_err!("'continue' outside of loop", Some(node.span.to_display(self.interner))))?;
+                    Ok((
+                        vec![IRStmt::Jump(JumpStmt { label: ctx.continue_label })],
+                        IRExpr::Literal(Literal::Int32(0), Type::Ident(INT32_T)),
+                    ))
                 }
 
                 _ => Err(crate::codegen_err!(
