@@ -15,7 +15,7 @@ use crate::{
     is_float, is_int,
 };
 
-pub(crate) fn check_unaryop(
+pub fn check_unary_op(
     expr: Index,
     op: UnaryOpKind,
     nodes: &mut Arena<Node>,

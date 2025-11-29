@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
                 left_expr_idx = self.parse_if_expr_nud(current_token)?;
             }
             TokenKind::Keyword(Keyword::While) => {
-                left_expr_idx = self.parse_while(current_token)?;
+                left_expr_idx = self.parse_while_expr_nud(current_token)?;
             }
             TokenKind::Punctuation(Punctuation::OpenParen) => {
                 left_expr_idx = self.parse_paren_expr_nud(current_token)?;

@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-pub(crate) fn check_binop(
+pub fn check_binary_op(
     left: Index,
     right: Index,
     op: BinOpKind,

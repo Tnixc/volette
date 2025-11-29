@@ -173,4 +173,20 @@ impl<'a> Parser<'a> {
             span,
         )))
     }
+
+    pub fn parse_while_expr_nud(&mut self, while_keyword_token: Token) -> Result<Index, Report> {
+        self.advance(); // consume 'while'
+
+        let cond = self.pratt_parse_expression(BindingPower::None)?;
+        let loop_content = self.parse_block_body()?;
+        let start_span = while_keyword_token.span;
+
+        Ok(self.push(Node::new(
+            NodeKind::Expr {
+                kind: ExprKind::While { cond, body: loop_content },
+                type_: None,
+            },
+            start_span.connect_new(&self.current().span),
+        )))
+    }
 }

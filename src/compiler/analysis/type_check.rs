@@ -7,7 +7,7 @@ use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsiz
 use crate::{
     SafeConvert,
     compiler::{
-        analysis::{binop::check_binop, compatible::can_convert, literal::check_literal, unaryop::check_unaryop},
+        analysis::{binary_op::check_binary_op, compatible::can_convert, literal::check_literal, unary_op::check_unary_op},
         error::{Help, ReportCollection},
         parser::node::{DefKind, ExprKind, Node, NodeKind, VType},
         tokens::PrimitiveTypes,
@@ -79,7 +79,7 @@ pub fn type_check_root(
 /// resolves the type of an expression.
 /// if `expected` is `some`, it checks the expression against that type.
 /// if `expected` is `none`, it infers the expression's type.
-pub(crate) fn resolve_expr_type(
+pub fn resolve_expr_type(
     target_idx: Index,
     expected: Option<&VType>,
     nodes: &mut Arena<Node>,
@@ -146,7 +146,7 @@ pub(crate) fn resolve_expr_type(
                     Ok(target_type)
                 }
             }
-            ExprKind::BinOp { left, right, op } => check_binop(left, right, op, nodes, interner, ident_types, fn_table, diagnostics),
+            ExprKind::BinOp { left, right, op } => check_binary_op(left, right, op, nodes, interner, ident_types, fn_table, diagnostics),
             ExprKind::Return { value } => {
                 if let Some(v) = value {
                     resolve_expr_type(v, expected, nodes, interner, ident_types, fn_table, diagnostics)?;
@@ -278,7 +278,7 @@ pub(crate) fn resolve_expr_type(
 
                 Ok(target_type)
             }
-            ExprKind::UnaryOp { op, expr } => check_unaryop(expr, op, nodes, interner, ident_types, fn_table, diagnostics),
+            ExprKind::UnaryOp { op, expr } => check_unary_op(expr, op, nodes, interner, ident_types, fn_table, diagnostics),
             _ => {
                 return Err(
                     crate::analysis_err!("Unsupported expression kind: {:?}", Some(span.to_display(interner)), kind)

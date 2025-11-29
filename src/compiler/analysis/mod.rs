@@ -1,9 +1,9 @@
-mod binop;
+mod binary_op;
 mod compatible;
 mod function_table;
 mod literal;
 mod type_check;
-mod unaryop;
+mod unary_op;
 
 use std::collections::HashMap;
 
@@ -16,13 +16,13 @@ use crate::compiler::{
     tokens::PrimitiveTypes,
 };
 
-pub fn analysis_pass(
+pub fn analyze(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
-    mut nodes: &mut Arena<Node>,
+    nodes: &mut Arena<Node>,
 ) -> ResultWithDiagnostics<HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>> {
-    let function_table = function_table::generate_function_table(&mut nodes);
-    let type_check_result = type_check::type_check_root(root, &interner, &mut nodes, &function_table);
+    let function_table = function_table::generate_function_table(nodes);
+    let type_check_result = type_check::type_check_root(root, interner, nodes, &function_table);
 
     let mut result = ResultWithDiagnostics::new(function_table);
     if let Err(diagnostics) = type_check_result {

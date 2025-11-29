@@ -1,6 +1,6 @@
 use std::fs;
 use string_interner::StringInterner;
-use volette::compiler::analysis::analysis_pass;
+use volette::compiler::analysis::analyze;
 use volette::compiler::lexer::Lexer;
 use volette::compiler::parser::Parser;
 use volette::compiler::tokens::{Span, Token, TokenKind};
@@ -32,7 +32,7 @@ fn analyze_source(source: &str) -> Result<String, String> {
         return Err(format!("Parse errors: {:?}", parse_errors));
     }
 
-    let result = analysis_pass(&root, &interner, &mut tree);
+    let result = analyze(&root, &interner, &mut tree);
 
     if result.has_errors() {
         return Err(format!("{:?}", result.diagnostics));

@@ -10,7 +10,7 @@ pub mod lexer;
 pub mod parser;
 pub mod tokens;
 
-use analysis::analysis_pass;
+use analysis::analyze;
 use colored::Colorize;
 use error::{ReportCollection, ResultWithDiagnostics, print_reports};
 use lexer::Lexer;
@@ -162,7 +162,7 @@ fn analysis_phase(
     >,
     ReportCollection,
 > {
-    let analysis_result = analysis_pass(root, interner, nodes);
+    let analysis_result = analyze(root, interner, nodes);
 
     if analysis_result.has_errors() {
         Err(analysis_result.diagnostics)

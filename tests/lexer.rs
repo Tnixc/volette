@@ -23,13 +23,13 @@ let dy = p1.y - p2.y; */
 
 const SIZE = 10;
 
-fn fill(arr: [u8; SIZE], val: u8): Nil {
+fn fill(arr: [u8; SIZE], val: u8): unit {
     let i = 0;
     while i < SIZE {
         arr[i] = val;
         i = i + 1;
     }
-    Nil
+    unit
 }
 
 fn fact(n: u64): u64 {
@@ -137,8 +137,8 @@ fn test_lexer() {
         ("TypeLiteral(U8)", 19, (31, 32)),
         ("Punctuation(CloseParen)", 19, (33, 33)),
         ("Punctuation(Colon)", 19, (34, 34)),
-        ("TypeLiteral(Nil)", 19, (36, 38)),
-        ("Punctuation(OpenBrace)", 19, (40, 40)),
+        ("TypeLiteral(Unit)", 19, (36, 39)),
+        ("Punctuation(OpenBrace)", 19, (41, 41)),
         ("Keyword(Let)", 20, (5, 7)),
         ("Identifier(i)", 20, (9, 9)),
         ("Punctuation(Eq)", 20, (11, 11)),
@@ -163,7 +163,7 @@ fn test_lexer() {
         ("IntLiteral(1)", 23, (17, 17)),
         ("Punctuation(Semicolon)", 23, (18, 18)),
         ("Punctuation(CloseBrace)", 24, (5, 5)),
-        ("TypeLiteral(Nil)", 25, (5, 7)),
+        ("TypeLiteral(Unit)", 25, (5, 8)),
         ("Punctuation(CloseBrace)", 26, (1, 1)),
         ("Keyword(Fn)", 28, (1, 2)),
         ("Identifier(fact)", 28, (4, 7)),
@@ -489,7 +489,7 @@ fn test_lex_bool() {
 fn test_lex_types() {
     let mut interner = StringInterner::new();
     let file = interner.get_or_intern("");
-    let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool Nil"#;
+    let contents = r#"i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 bool unit"#;
     let mut lexer = Lexer::new(&mut interner, file);
 
     let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
@@ -507,7 +507,7 @@ fn test_lex_types() {
         (TypeLiteral(F32), 1, (31, 33)),
         (TypeLiteral(F64), 1, (35, 37)),
         (TypeLiteral(Bool), 1, (39, 42)),
-        (TypeLiteral(Nil), 1, (44, 46)),
+        (TypeLiteral(Unit), 1, (44, 47)),
     ];
 
     let tokens = lexer
