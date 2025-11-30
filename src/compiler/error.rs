@@ -112,7 +112,7 @@ impl AttachmentHandler<DisplaySpan> for SourceSnippetHandler {
                     line.len().saturating_sub(col_start).max(1)
                 };
 
-                let carets = "^".repeat(len);
+                let carets = "▔".repeat(len);
                 write!(f, "{} {} {}{}", padding, "🮌".blue(), indicator_padding, carets.red().bold())?;
             }
         }

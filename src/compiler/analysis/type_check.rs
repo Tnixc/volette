@@ -35,6 +35,18 @@ pub fn type_check_root(
 
                     let mut ident_types: HashMap<SymbolUsize, VType> = HashMap::new();
                     params.iter().for_each(|param| {
+                        if ident_types.contains_key(&param.0) {
+                            diagnostics.push(
+                                crate::analysis_err!(
+                                    "Duplicate parameter name '{}'",
+                                    Some(param.2.to_display(interner)),
+                                    interner.resolve(param.0).safe()
+                                )
+                                .attach(Help("Parameter names must be unique within a function".into()))
+                                .into_cloneable(),
+                            );
+                        }
+
                         ident_types.insert(param.0, param.1.clone());
                     });
 

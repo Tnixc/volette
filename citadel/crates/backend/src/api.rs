@@ -13,6 +13,7 @@ pub trait Target: Debug + Default + Copy + Clone {
     fn name(&self) -> &str;
 }
 
+// TODO: add x86_64 target. it already exists
 /// # Introduction
 ///
 /// The Backend trait. A Backend is the part
@@ -23,7 +24,7 @@ pub trait Target: Debug + Default + Copy + Clone {
 ///
 /// Luckily you don't need to write these backends
 /// yourself, but can use backends that are made by
-/// the community. Popular backends are: \[WIP\]
+/// the community. Popular backends are: \[WIP\] 😭
 ///
 /// # Implementation
 ///
