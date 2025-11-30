@@ -843,9 +843,8 @@ impl<'a> CitadelLowering<'a> {
         match ty {
             VType::Primitive(p) => Type::Ident(p.to_citadel_str()),
             VType::Pointer(_) => Type::Ident(INT64_T),
-            VType::Custom(sym) => {
-                let name = self.resolve_symbol(*sym);
-                Type::Ident(name)
+            _ => {
+                todo!()
             }
         }
     }

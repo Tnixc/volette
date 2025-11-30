@@ -80,6 +80,9 @@ pub fn type_check_root(
                             }
                         }
                     }
+                } else {
+                    diagnostics
+                        .push(crate::analysis_err!("Ts Unsupported vro: {}", Some(node.span.to_display(interner)), node,).into_cloneable())
                 }
             }
         }

@@ -18,6 +18,7 @@ pub mod expr;
 pub mod grouping;
 pub mod identifier;
 pub mod literal;
+pub mod r#struct;
 #[macro_use]
 pub mod node;
 pub mod precedence;

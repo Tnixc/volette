@@ -9,7 +9,7 @@ impl VType {
         match self {
             VType::Primitive(p) => Type::Ident(p.to_citadel_str()),
             VType::Pointer(_) => Type::Ident(INT64_T),
-            VType::Custom(_) => panic!("Custom types not yet supported in Citadel backend"),
+            _ => todo!(),
         }
     }
 

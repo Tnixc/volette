@@ -2,7 +2,10 @@ use derive_more::Display;
 use generational_arena::Index;
 use string_interner::symbol::SymbolUsize;
 
-use crate::compiler::tokens::{PrimitiveTypes, Span};
+use crate::compiler::{
+    parser::r#struct::Field,
+    tokens::{PrimitiveTypes, Span},
+};
 
 #[derive(Debug, Clone, PartialEq, Display)]
 pub enum VType {
@@ -12,6 +15,8 @@ pub enum VType {
     Custom(SymbolUsize),
     #[display("Pointer({:?})", _0)]
     Pointer(Box<VType>),
+    #[display("Struct({:?})", _0)]
+    Struct(Vec<Field>),
 }
 
 impl VType {
@@ -217,7 +222,7 @@ pub enum DefKind {
     },
     Struct {
         name: SymbolUsize,
-        fields: Vec<(SymbolUsize, VType, Span)>,
+        fields: VType,
     },
 }
 

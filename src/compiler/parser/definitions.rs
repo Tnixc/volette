@@ -32,6 +32,7 @@ impl<'a> Parser<'a> {
         let mut base_type = match self.current().kind {
             TokenKind::TypeLiteral(ty) => VType::Primitive(ty),
             TokenKind::Identifier(name) => VType::Custom(name),
+            TokenKind::Punctuation(Punctuation::OpenBrace) => self.parse_struct_body()?,
             _ => {
                 return Err(crate::parse_err!(
                     "Expected type (primitive or identifier), got {:?}",
@@ -57,6 +58,7 @@ impl<'a> Parser<'a> {
     pub fn parse_def(&mut self) -> Result<Index, Report> {
         match self.current().kind {
             TokenKind::Keyword(Keyword::Fn) => self.parse_fn_def(),
+            TokenKind::Keyword(Keyword::Struct) => self.parse_struct(),
             _ => {
                 return Err(crate::parse_err!(
                     "Unexpected token at top level: {:?}",

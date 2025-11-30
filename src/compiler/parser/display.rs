@@ -21,6 +21,20 @@ fn format_type_val(type_val: &VType, interner: &StringInterner<BucketBackend<Sym
         VType::Pointer(inner) => {
             format!("Pointer{{to:{}}}", format_type_val(inner, interner))
         }
+        VType::Struct(fields) => {
+            let fields_str = fields
+                .iter()
+                .map(|field| {
+                    format!(
+                        "Field{{name:\"{}\",type:{}}}",
+                        format_symbol(field.name, interner),
+                        format_type_val(&field.ty, interner)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",");
+            format!("Struct{{fields:[{}]}}", fields_str)
+        }
     }
 }
 
@@ -206,20 +220,23 @@ impl DefKind {
                     format_type_val(return_type, interner)
                 )
             }
-            DefKind::Struct { name, fields } => {
-                let fields_str = fields
-                    .iter()
-                    .map(|(f_name, f_type, _span)| {
-                        format!(
-                            "Field{{name:\"{}\",type:{}}}",
-                            format_symbol(*f_name, interner),
-                            format_type_val(f_type, interner)
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(",");
-                format!("Struct{{name:\"{}\",fields:[{}]}}", format_symbol(*name, interner), fields_str)
-            }
+            DefKind::Struct { name, fields } => match fields {
+                VType::Struct(field_list) => {
+                    let fields_str = field_list
+                        .iter()
+                        .map(|field| {
+                            format!(
+                                "Field{{name:\"{}\",type:{}}}",
+                                format_symbol(field.name, interner),
+                                format_type_val(&field.ty, interner)
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    format!("Struct{{name:\"{}\",fields:[{}]}}", format_symbol(*name, interner), fields_str)
+                }
+                _ => unreachable!(),
+            },
         }
     }
 }
