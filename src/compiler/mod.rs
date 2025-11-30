@@ -18,6 +18,8 @@ use parser::Parser;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
 use tokens::{Span, Token, TokenKind};
 
+use crate::compiler::parser::node::VType;
+
 pub fn build(file: &Path) {
     let mut all_diagnostics = ReportCollection::new();
 
@@ -156,12 +158,7 @@ fn analysis_phase(
     root: &crate::compiler::parser::node::Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut generational_arena::Arena<crate::compiler::parser::node::Node>,
-) -> Result<
-    ResultWithDiagnostics<
-        std::collections::HashMap<SymbolUsize, (Box<Vec<crate::compiler::parser::node::VType>>, crate::compiler::parser::node::VType)>,
-    >,
-    ReportCollection,
-> {
+) -> Result<ResultWithDiagnostics<std::collections::HashMap<SymbolUsize, (Vec<VType>, VType)>>, ReportCollection> {
     let analysis_result = analyze(root, interner, nodes);
 
     if analysis_result.has_errors() {

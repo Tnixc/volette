@@ -1,9 +1,11 @@
-mod binary_op;
+mod checks;
 mod compatible;
+mod context;
 mod function_table;
-mod literal;
+mod resolve;
 mod type_check;
-mod unary_op;
+
+pub use context::TypeCtx;
 
 use std::collections::HashMap;
 
@@ -20,7 +22,7 @@ pub fn analyze(
     root: &Node,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
     nodes: &mut Arena<Node>,
-) -> ResultWithDiagnostics<HashMap<SymbolUsize, (Box<Vec<VType>>, VType)>> {
+) -> ResultWithDiagnostics<HashMap<SymbolUsize, (Vec<VType>, VType)>> {
     let function_table = function_table::generate_function_table(nodes);
     let type_check_result = type_check::type_check_root(root, interner, nodes, &function_table);
 
