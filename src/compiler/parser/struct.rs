@@ -50,6 +50,10 @@ impl<'a> Parser<'a> {
         while self.current().kind != TokenKind::Punctuation(Punctuation::CloseBrace) {
             fields.push(self.parse_struct_field()?);
 
+            if self.current().kind == TokenKind::Punctuation(Punctuation::CloseBrace) {
+                break;
+            }
+
             if self.current().kind != TokenKind::Punctuation(Punctuation::Comma) {
                 return Err(parse_err!(
                     "Expected ',' after struct field type definition",

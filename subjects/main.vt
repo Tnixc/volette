@@ -1,5 +1,7 @@
 struct x {
     f: i32,
-    fx: i32,
-    point: {x: f32, y: f32,},
+    point: {
+        x: f32,
+        y: f32
+    }
 }
