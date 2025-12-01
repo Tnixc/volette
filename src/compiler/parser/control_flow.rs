@@ -85,7 +85,13 @@ impl<'a> Parser<'a> {
         let mut value_idx_opt = None;
         let mut current_span = return_keyword_token.span;
 
-        if self.current().kind != TokenKind::Punctuation(Punctuation::Semicolon) {
+        // check if there's a value to return (not at end of block/statement)
+        let has_value = !matches!(
+            self.current().kind,
+            TokenKind::Punctuation(Punctuation::CloseBrace | Punctuation::Semicolon) | TokenKind::Eof
+        );
+
+        if has_value {
             let value_idx = self.pratt_parse_expression(BindingPower::None)?;
             let value_node = self
                 .node(&value_idx)

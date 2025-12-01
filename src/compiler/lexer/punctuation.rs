@@ -8,14 +8,6 @@ impl<'a> Lexer<'a> {
             return;
         }
 
-        // skip consecutive semicolons, leave one
-        if punct == Punctuation::Semicolon
-            && let Some(last_token) = self.tokens.last()
-            && last_token.kind == TokenKind::Punctuation(Punctuation::Semicolon)
-        {
-            return;
-        }
-
         let start_pos = self.current_chars[0].0;
         let end_pos = if chars_consumed <= self.current_chars.len() {
             self.current_chars[chars_consumed - 1].0

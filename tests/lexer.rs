@@ -238,25 +238,6 @@ fn test_lexer() {
 }
 
 #[test]
-fn test_consecutive_semicolons_collapsed() {
-    let mut interner = StringInterner::new();
-    let file = interner.get_or_intern("");
-    let contents = "x;;;; y;;;;; return x;;;";
-    let mut lexer = Lexer::new(&mut interner, file);
-
-    let chars: Vec<char> = contents.chars().chain(std::iter::once('\0')).collect();
-    lexer.tokenize(chars);
-
-    let semicolon_count = lexer
-        .tokens
-        .iter()
-        .filter(|t| format!("{:?}", t.kind).contains("Semicolon"))
-        .count();
-
-    assert_eq!(semicolon_count, 3, "Expected 3 semicolons, got {}", semicolon_count);
-}
-
-#[test]
 fn test_lex_punctuation() {
     let mut interner = StringInterner::new();
     let file = interner.get_or_intern("");
