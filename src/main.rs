@@ -12,8 +12,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    #[command(name = "build", about = "build <file> | Build a volette program into a binary", alias = "b")]
-    Build { file: PathBuf },
+    #[command(name = "build", about = "build <file> | Build a volette program into assembly", alias = "b")]
+    Build {
+        file: PathBuf,
+        #[arg(short = 'o', long = "output", help = "Output assembly file path")]
+        output: Option<PathBuf>,
+    },
     #[command(name = "run", about = "run <file> | Run a volette program", alias = "r")]
     Run,
 }
@@ -24,8 +28,9 @@ fn main() {
     // let file = PathBuf::from("main.vt");
     // compiler::build(&file);
     match cli.command {
-        Commands::Build { file } => {
-            compiler::build(&file);
+        Commands::Build { file, output } => {
+            let output_path = output.unwrap_or_else(|| PathBuf::from("output.s"));
+            compiler::build(&file, &output_path);
         }
         // Commands::Run => {
         //     let file = PathBuf::from("main.vt");

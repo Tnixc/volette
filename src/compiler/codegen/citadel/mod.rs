@@ -3,7 +3,7 @@
 mod lower;
 mod types;
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use bumpalo::Bump;
 use citadel_api::backend::aarch64::{AArch64Backend, TargetAArch64};
@@ -20,6 +20,7 @@ pub fn codegen(
     root: &Node,
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    output_path: &Path,
 ) -> Result<ReportCollection, Report> {
     let arena = Bump::new();
     let diagnostics = ReportCollection::new();
@@ -35,10 +36,9 @@ pub fn codegen(
     let output = backend.generate(hir);
     let asm_output = backend.format(&output).unwrap_or_default();
 
-    let asm_path = PathBuf::from("output.s");
-    std::fs::write(&asm_path, &asm_output).map_err(|e| crate::codegen_err!("Failed to write assembly file: {}", None, e))?;
+    std::fs::write(output_path, &asm_output).map_err(|e| crate::codegen_err!("Failed to write assembly file: {}", None, e))?;
 
-    println!("Assembly written to: {}", asm_path.display());
+    println!("Assembly written to: {}", output_path.display());
 
     Ok(diagnostics)
 }

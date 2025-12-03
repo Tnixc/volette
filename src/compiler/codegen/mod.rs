@@ -2,6 +2,8 @@
 
 pub mod citadel;
 
+use std::path::Path;
+
 use generational_arena::Arena;
 use rootcause::prelude::*;
 use string_interner::{StringInterner, backend::BucketBackend, symbol::SymbolUsize};
@@ -12,6 +14,7 @@ pub fn codegen(
     root: &Node,
     nodes: &Arena<Node>,
     interner: &StringInterner<BucketBackend<SymbolUsize>>,
+    output_path: &Path,
 ) -> Result<ReportCollection, Report> {
-    citadel::codegen(root, nodes, interner)
+    citadel::codegen(root, nodes, interner, output_path)
 }

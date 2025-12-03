@@ -20,7 +20,7 @@ use tokens::{Span, Token, TokenKind};
 
 use crate::compiler::parser::node::VType;
 
-pub fn build(file: &Path) {
+pub fn build(file: &Path, output_path: &Path) {
     let mut all_diagnostics = ReportCollection::new();
 
     let contents = match std::fs::read_to_string(file) {
@@ -89,7 +89,7 @@ pub fn build(file: &Path) {
     println!("{}", "=== Code Generation Phase ===".bright_blue());
     root.print_tree(&tree, &interner);
 
-    match codegen::codegen(&root, &tree, &interner) {
+    match codegen::codegen(&root, &tree, &interner, output_path) {
         Ok(diag) => {
             all_diagnostics.extend(diag);
         }
